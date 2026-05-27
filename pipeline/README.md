@@ -12,5 +12,8 @@ Library files are designed to be copied or soft-linked into the workspace for a 
   * Standard CSS style file
   * Standard JS library file, to be included if functions are needed (might contain axis control functions, for example)
 
+## Demonstrations
+Demonstration files are designed to showcase a particualr technique.
+
 ## ...
 
