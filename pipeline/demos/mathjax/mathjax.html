@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Displayed Math Demonstration</title>
+  
+  <link rel="stylesheet" href="mathjax.css">
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath:  [['$',  '$']],
+        displayMath: [['$$', '$$']]
+      },
+      options: {
+        renderActions: {
+          addMenu: [] // Keeps context menus simple for keyboard navigation focus
+        }
+      },
+      startup: {
+        ready: () => {
+          MathJax.startup.defaultReady();
+          // Initialize calculation after MathJax engine confirms it is ready
+          initCalculator();
+        }
+      }
+    };
+  </script>
+  
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <script src="mathjax.js" defer></script>
+</head>
+<body>
+
+  <main>
+    <h1>MathJax Demonstration of Displayed Math</h1>
+    <p>
+      Enter values below to calculate the result and update the mathematical
+      equation dynamically.
+    </p>
+
+    <form id="calc-form" onsubmit="return false;">
+      <div class="form-group">
+        <label for="num1">Luminosity (L):</label>
+        <input type="number" id="num1" value="1" step="any" min="0" max="1000000" required>
+      </div>
+
+      <div class="form-group">
+        <label for="num2">Temperature (T):</label>
+        <input type="number" id="num2" value="5800" step="any" min="2300" max="40000" required>
+      </div>
+    </form>
+
+    <section class="output-container" aria-labelledby="output-heading">
+      <h2 id="output-heading" class="sr-only">Calculation Results</h2>
+      
+      <div id="equation-output" aria-hidden="true"></div>
+
+      <div id="sr-live-output" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    </section>
+  </main>
+
+    <p>
+      Note that T is always rounded off to the nearest integer value while 
+      the precision with which L is defined varies depending on its 
+      amplitude, and the calculated radius value is always shown to up to 
+      four decimal places.
+    </p>
+
+    <p>
+      We are using MathJax v3, which is configured to automatically 
+      convert source LaTeX into semantic, screen-reader-accessible MathML. 
+      It includes explicit ARIA live regions and semantic form fields to
+      support both visual users and screen reader users, meeting WCAG AA standards.
+
+      When the DOM changes dynamically via JavaScript, some screen readers fail to
+      re-announce the newly generated MathML. To solve this issue, the rendered math
+      container is hidden from assistive tech via aria-hidden="true", and a
+      companion hidden div using aria-live="polite" is defined to handle verbal
+      notifications.
+   </p>
+
+</body>
+</html>
+

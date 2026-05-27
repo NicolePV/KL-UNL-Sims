@@ -1,0 +1,66 @@
+:root {
+  --primary-color: #005a9c; /* WCAG AA compliant contrast ratio against white text background */
+  --text-color:    #222222;
+  --bg-color:      #fafafa;
+  --input-border:  #767676;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  max-width: 650px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+h1 {
+  color: var(--primary-color);
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+input[type="number"] {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 2px solid var(--input-border);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 200px;
+}
+
+/* Clear focus outline profile for explicit keyboard navigation path (WCAG 2.4.7) */
+input[type="number"]:focus {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.output-container {
+  background: #ffffff;
+  border-left: 4px solid var(--primary-color);
+  padding: 0.5rem;
+  margin-top: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Standard utilities profile for rendering content invisible to sight, but open to screen reader processing */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
