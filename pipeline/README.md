@@ -1,19 +1,13 @@
 # KL-UNL Pipeline
 
-## Template Files
-Template files are designed to be copied into the workspace for a new simulation update.
-  * For Lookback Time Simulator, save template.shtml as lookbacktime.shtml in workspace.
-  * Template file contains an HTML5 framework and implicitly shows our style.
-  * Template file will be updated with components for new simulation.
+## Demonstration Files
+Demonstration files (starter files) can be copied into a workspace and renamed to begin a new simulation update.
+  * Demo #1 shows HTML/CSS/JS for the KL-UNL masthead with a sample equation, figure, and set of controls
+  * The MathJax demo shows a sample equation with live controls
+  * The local server demo contains a python script for running a local server 
 
-## Library Files
-Library files are designed to be copied or soft-linked into the workspace for a new simulation update.
-  * Library files are referenced, and should not be edited (consistent contents across sims).
-  * Standard CSS style file
-  * Standard JS library file, to be included if functions are needed (might contain axis control functions, for example)
-
-## Demonstrations
-Demonstration files are designed to showcase a particualr technique.
-
-## ...
-
+## Foundation Files
+Foundation files are designed to be referenced by an HTML file within the workspace for a simulation update.
+  * A demonstration HTML file (demo_01.html) shows the reference protocols
+  * Foundation files include two files for the masthead (kl-unl-masthead.js and contents.json) and a style file (kl-unl.css)
+  * When creating a new simulation update, add an entry to the masthead contents JSON file with modified text based on the original Help and About material

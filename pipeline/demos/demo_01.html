@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sim Title</title>
+  <meta name="description" content="College-level astronomy materials">
+  <meta name="keywords" content="Astronomy education, undergraduate astronomy">
+  <link href="../foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link rel="icon" type="image/png" href="../foundation/favicon.png">
+  <!-- Uncomment and create properly named file to add CSS for specific sim -->
+  <!-- --><link href="demo_01.css" type="text/css" rel="stylesheet" media="all"> <!-- -->
+
+  <!-- Uncomment (and update initEqn function call) if equations shown in sim -->
+  <!-- --->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath:  [['$',  '$']],
+        displayMath: [['$$', '$$']]
+      },
+      options: {
+        renderActions: {
+          addMenu: [] // Keeps context menus simple for keyboard navigation focus
+        }
+      },
+      startup: {
+        ready: () => {
+          MathJax.startup.defaultReady();
+          // Initialize equation after MathJax engine confirms it is ready
+          initEqn();
+        }
+      }
+    };
+  </script>
+  <!-- -->
+
+  <!-- Uncomment if equations shown in sim -->
+  <!-- -->
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <!-- -->
+  <script src="../foundation/kl-unl-masthead.js" defer></script>
+</head>
+
+<body id="body">
+  <a href="#main-content" class="sr-only sr-only-focusable">Skip to main content</a>
+  <div class="app-shell">
+    <!-- Update simName and add simName entry to JSON file -->
+    <kl-unl-masthead sim-id="newSim" json-url="../foundation/contents.json"></kl-unl-masthead>
+    <main id="main-content" class="app-layout">
+
+      <!-- Example of Displayed Equation -->
+      <section class="equation-bar output-container" aria-labelledby="output-heading">
+        <h2 id="output-heading" class="sr-only">Well-named Equation</h2>
+        <div id="equation-output" aria-hidden="true"></div>
+        <div id="sr-live-output" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+      </section>
+
+      <!-- Example of Displayed Canvas and Image -->
+      <section id="figure-display">
+        <div id="canvas-container">
+          <canvas id="image-diagram" aria-hidden="true"></canvas>
+          <!-- Well-named Image: X by Y pixels -->
+          <img id="component-image" src="pics/demo_01.png" width="300" height="300" alt="Excellent Description of Celestial Sphere">
+          <div id="figure-label" aria-hidden="true"></div>
+        </div>
+        <p id="figure-description" class="sr-only"></p>
+      </section>
+
+      <!-- Example of Control Panel (two sets of Number boxes and slider bars) -->
+      <div class="controls-panel">
+        <fieldset class="control-fieldset control-fieldset--figure">
+          <legend>Parameter #1 (units)</legend>
+          <div class="control-row">
+            <label class="sr-only" for="param01Box">Parameter #1</label>
+            <input id="param01Box" class="control-row__input" type="number" min="0" max="100" value="50" step="1" onChange="newSetup(-1)">
+            <label for="param01Slider" id="param01-slider-label" class="sr-only">Distance</label>
+            <input type="range" id="param01Slider" class="param01-slider" min="0" max="100" value="50" step="1" aria-valuetext="50" onInput="newSetup(-2)">
+            <span></span><span></span><span></span>
+            <div class="button-row">
+              <button type="button" class="button" onclick="newSetup(  0)">  0</button>
+              <button type="button" class="button" onclick="newSetup( 25)"> 25</button>
+              <button type="button" class="button" onclick="newSetup( 50)"> 50</button>
+              <button type="button" class="button" onclick="newSetup( 75)"> 75</button>
+              <button type="button" class="button" onclick="newSetup(100)">100</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="control-fieldset control-fieldset--figure">
+          <legend>Parameter #2 (units)</legend>
+          <div class="control-row">
+            <label class="sr-only" for="param02Box">Parameter #2</label>
+            <input id="param02Box" class="control-row__input" type="number" value="50" min="0" max="100" step="1" onchange="newSetup(-1)">
+            <label for="param02Slider" id="param02-slider-label" class="sr-only">Parameter #2</label>
+            <input type="range" id="param02Slider" class="param02-slider" min="0" max="100" value="50" step="1" aria-valuetext="50" onInput="newSetup(-2)">
+            <span></span><span></span><span></span>
+            <div class="button-row">
+              <button type="button" class="button" onclick="newSetup(0)"  >  0</button>
+              <button type="button" class="button" onclick="newSetup(50)" > 50</button>
+              <button type="button" class="button" onclick="newSetup(100)">100</button>
+           </div>
+          </div>
+        </fieldset>
+      </div>
+    </main>
+  </div>
+
+  <!-- Uncomment and create properly named file to add JS for specific sim -->
+  <!-- --><script src="demo_01.js" charset="utf-8"></script> <!-- -->
+  <!-- Uncomment (and update initEqn function call) if equations shown in sim -->
+  <!-- -->
+  <script>
+    // Listen for a reset signal from the masthead component
+    document.addEventListener('sim-reset', () => {
+      // Invoke reset state logic here:
+      initEqn();
+    });
+  </script>
+  <!-- -->
+</body>
+</html>

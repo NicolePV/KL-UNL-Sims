@@ -1,14 +1,7 @@
-# KL-UNL Pipeline Demonstations
+# KL-UNL Pipeline Demonstrations
 
-## Demonstrations
-Demonstration files are designed to showcase a particualr technique.
-
-## MathJax
-Demonstration showcasing a dynamic LaTeX-format formula within a web page
-  * Contains HTML, CSS, and JS files.
-  * WCAG AA accessibility-compliant (to first order)
-
-## Local HTTP server
-Python script to run a local HTTP server with custom SSI implementation 
-  * Allows local testing of HTML, CSS, JS file sims
-  * Can handle .shtml files with <!--#include file="..." -->
+## Demonstration Files
+Demonstration files (starter files) can be copied into a workspace and renamed to begin a new simulation update.
+  * Demo #1 shows HTML/CSS/JS for the KL-UNL masthead with a sample equation, figure, and set of controls
+  * The MathJax demo shows a sample equation with live controls
+  * The local server demo contains a python script for running a local server 
