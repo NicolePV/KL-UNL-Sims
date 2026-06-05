@@ -7,5 +7,8 @@ Pilot studies done to assess the feasibiilty of various techniques and determine
 This tool shows a HRD and a size comparison figure to illustrate the properties of stars.
   * Nicole created an HTML5 version in 2017; she is revamping it for WCAG AA accessibility in 2026.
 
+## Small Angle Approximation Demonstration
+  * A pilot test for a low-complexity sim
+
 ## ...
 
