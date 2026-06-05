@@ -1,0 +1,57 @@
+/* CSS styling specific to this sim */
+
+.panel--hrd {
+  padding-bottom: 0.5rem;
+}
+
+.panel__canvas-wrap--hrd {
+  padding:        0 0.625rem;
+}
+
+.control-fieldset--stars {
+  padding-top:    0.25rem;
+}
+
+.control-grid--stars {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Desktop widths (larger screens) */
+.control-row {
+  grid-template-columns: 5.5rem 6.25rem auto 8.5rem;  /* 4 T/L columns (label, number, unit, bar) */
+}
+
+/* Handheld widths (smaller screens) */
+@media (max-width: 56rem) {
+  .control-row {
+    grid-template-columns: 6.5rem 6.5rem 1fr 10fr;  /* 4 T/L columns (label, number, unit, bar) */
+  }
+}
+
+#sizecmpc {
+  background:     #000000;
+  display:        block;
+  max-width:      100%;
+}
+
+.output-container {
+  background:     #ffffff;
+  border-left:    4px solid var(--primary-color);
+  padding:        0.25rem;
+  margin-top:     0.25rem;
+}
+
+.radius-eqn {
+  margin:         0.25rem 0 0.25rem;
+}
+
+#reqn {
+  display:        inline;
+  max-width:      100%;
+}
+
+#hrdc:focus-visible {
+  outline:        0.125rem solid #c00000;
+  outline-offset: 0.125rem;
+}
+

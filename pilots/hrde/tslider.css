@@ -1,0 +1,131 @@
+  /* Container */
+  .slider-container {
+    max-width: 500px;
+    margin: 0 auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  /* Slider Styling */
+  .t-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 16px;
+    border-radius: 8px;
+    outline: none;
+    /* 7-Color Gradient */
+    background: linear-gradient(to right,
+      /* cut back on blue in */
+      /* shift match to color intervals in size comparison panel */
+      #ff000080  3.7%, /* Red          */
+      #ffa500e6  7.7%, /* Orange       */
+      #f1c40fe5  9.8%, /* Yellow       */
+      #f7dc6fe6 13.8%, /* Yellow-white */
+      #aed6f1e5 41.6%, /* White-blue   */
+      #aed6f1e6 73.5%, /* Ice-blue     */
+      #0000ff80 100.0% /* Blue         */
+      /* shift by one color match to color intervals in size comparison panel */
+      /*
+      #ff000080  3.7%, /* Red          *
+      #ffa500e6  7.7%, /* Orange       *
+      #f1c40fe5  9.8%, /* Yellow       *
+      #f7dc6fe6 13.8%, /* Yellow-white *
+      #aed6f1e5 20.4%, /* White-blue   *
+      #aed6f1e6 73.5%, /* Ice-blue     *
+      #0000ff80 100.0% /* Blue         *
+      */
+      /* match to color intervals in size comparison panel */
+      /*
+      #ff000080  0%,   /* Red          *
+      #ffa500e6  9.8%, /* Orange       *
+      #f1c40fe5 13.8%, /* Yellow       *
+      #f7dc6fe6 15.9%, /* Yellow-white *
+      #aed6f1e5 19.9%, /* White-blue   *
+      #aed6f1e6 26.5%, /* Ice-blue     *
+      #0000ff80 79.6%  /* Blue         *
+      */
+      /* space colors out evenly       */
+      /*
+      #ff000080 0%,    /* Red          *
+      #ffa500e6 16.6%, /* Orange       *
+      #f1c40fe5 33.2%, /* Yellow       *
+      #f7dc6fe6 49.8%, /* Yellow-white *
+      #aed6f1e5 66.4%, /* White-blue   *
+      #aed6f1e6 83.0%, /* Ice-blue     *
+      #0000ff80 100%   /* Blue         *
+      */
+    );
+ }
+
+  /* Thumb (Slider Handle) */
+  .t-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    /* White with a high-contrast dark border for accessibility */
+    background-color: #ffffff;
+    border: 3px solid #1a1a1a; 
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+  }
+
+  .t-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    border: 3px solid #1a1a1a;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+  }
+
+  /* Keyboard Focus Indicator for WCAG AA Compliance */
+  .t-slider:focus-visible::-webkit-slider-thumb {
+    outline: 3px solid #005fcc;
+    outline-offset: 3px;
+    transform: scale(1.1);
+  }
+  
+  .t-slider:focus-visible::-moz-range-thumb {
+    outline: 3px solid #005fcc;
+    outline-offset: 3px;
+    transform: scale(1.1);
+  }
+
+  /* Tooltip and Labels */
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #555;
+  }
+
+  #value-display {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+    text-align: center;
+    font-size: 1.1rem;
+    color: #222;
+  }
+
