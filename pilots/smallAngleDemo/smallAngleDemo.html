@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Small-Angle Approximation</title>
+  <meta name="description" content="College-level astronomy materials">
+  <meta name="keywords" content="Astronomy education, undergraduate astronomy">
+  <link rel="icon" type="image/png" href="../foundation/favicon.png">
+  <link href="../foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="smallAngleDemo.css"       type="text/css" rel="stylesheet" media="all">
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath:  [['$',  '$']],
+        displayMath: [['$$', '$$']]
+      },
+      options: {
+        renderActions: {
+          addMenu: [] // Keeps context menus simple for keyboard navigation focus
+        }
+      },
+      startup: {
+        ready: () => {
+          MathJax.startup.defaultReady();
+          // Initialize equation after MathJax engine confirms it is ready
+          initEqn();
+        }
+      }
+    };
+  </script>
+
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="../template_masthead/kl-unl-masthead.js" defer></script>
+</head>
+
+<body id="body">
+  <a href="#main-content" class="sr-only sr-only-focusable">Skip to main content</a>
+  <div class="app-shell">
+    <kl-unl-masthead sim-id="smallAngleDemo" json-url="../foundation/contents.json"></kl-unl-masthead>
+    <main id="main-content" class="app-layout">
+
+      <section class="equation-bar output-container" aria-labelledby="output-heading">
+        <h2 id="output-heading" class="sr-only">Angle Calculation Equation</h2>
+        <div id="equation-output" aria-hidden="true"></div>
+        <div id="sr-live-output" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+      </section>
+
+      <section id="angle-display">
+        <div id="canvas-container">
+          <canvas id="angle-diagram" aria-hidden="true"></canvas>
+          <!-- Person_with_Sextant: 199 by 591 pixels -->
+          <img id="viewer-image" src="pics/Person_with_Sextant.png" alt="Person with Sextant">
+          <!-- Ball: 102 by 102 pixels -->
+          <img id="object-image" src="pics/Ball.png" alt="Ball">
+          <div id="angle-label" aria-hidden="true"></div>
+        </div>
+        <p id="figure-description" class="sr-only"></p>
+      </section>
+
+      <div class="controls-panel">
+        <fieldset class="control-fieldset control-fieldset--figure">
+          <legend>Distance (units)</legend>
+          <div class="control-row">
+            <label class="sr-only" for="distBox">Distance</label>
+            <input id="distBox" class="control-row__input" type="number" min="20" max="60" value="40" step="0.1" onChange="newSetup(-1,0)">
+            <label for="distSlider" id="dist-slider-label" class="sr-only">Distance</label>
+            <input type="range" id="distSlider" class="dist-slider" min="20" max="60" value="40" step="0.1" aria-valuetext="40" onInput="newSetup(-2,0)">
+            <span></span><span></span><span></span>
+            <div class="button-row">
+              <button type="button" class="button" onclick="newSetup(20,0)">20</button>
+              <button type="button" class="button" onclick="newSetup(30,0)">30</button>
+              <button type="button" class="button" onclick="newSetup(40,0)">40</button>
+              <button type="button" class="button" onclick="newSetup(50,0)">50</button>
+              <button type="button" class="button" onclick="newSetup(60,0)">60</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="control-fieldset control-fieldset--figure">
+          <legend>Diameter (units)</legend>
+          <div class="control-row">
+            <label class="sr-only" for="diamBox">Diameter</label>
+            <input id="diamBox" class="control-row__input" type="number" value="2" min="1" max="3" step="0.1" onchange="newSetup(0,-1)">
+            <label for="diamSlider" id="diam-slider-label" class="sr-only">Diameter</label>
+            <input type="range" id="diamSlider" class="diam-slider" min="1" max="3" value="2" step="0.1" aria-valuetext="2" onInput="newSetup(0,-2)">
+            <span></span><span></span><span></span>
+            <div class="button-row">
+              <button type="button" class="button" onclick="newSetup(0,1)">1</button>
+              <button type="button" class="button" onclick="newSetup(0,2)">2</button>
+              <button type="button" class="button" onclick="newSetup(0,3)">3</button>
+           </div>
+          </div>
+        </fieldset>
+      </div>
+    </main>
+  </div>
+
+  <script src="smallAngleDemo.js" charset="utf-8"></script>
+  <script>
+    // Listen for a reset signal from the masthead component
+    document.addEventListener('sim-reset', () => {
+      // Invoke reset state logic here:
+      initEqn();
+    });
+  </script>
+</body>
+</html>
