@@ -1,5 +1,28 @@
 /* Default CSS style */
 
+/* Default color palette and style for project, including masthead */
+:root {
+  --foreground-color:        #1a1a1a;  /* dark charcoal grey */
+  --background-color:        #ffffff;  /* white              */
+  --alert-color-r:           #ea351f;  /* red-orange         */
+  --alert-color-g:           #b3f681;  /* light neon green   */
+  --outline-color:           #005fcc;  /* deep azure blue    */
+  
+  --button-foreground-color: #ffffff;  /* white              */
+  --button-background-color: #005a9c;  /* french blue        */
+  --button-outline-width:    2px;      /* aka focus ring     */
+  --button-outline-style:    solid;
+  --button-outline-color:    #ffbc00;  /* yellow-orange      */
+  --button-hover-darken:     0.9;      /* reduces brightness to 90% */
+
+  --border-width:            1px;
+  --border-style:            solid;
+  --border-color:            #767676;  /* medium grey        */
+  --border-bottom-width:     3px;
+  --border-bottom-style:     solid;
+  --border-bottom-color:     #005a9c;  /* french blue        */
+}
+
 html {
   font-size:      100%;
 }
@@ -8,8 +31,8 @@ body {
   font-family:    Sans-Serif, Arial, Helvetica, sans-serif;
   font-size:      0.9rem;
   margin:         0;
-  color:          #1a1a1a;
-  background:     #ffffff;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
 }
 
 /* Visually hidden, available to screen readers */
@@ -35,9 +58,11 @@ body {
   clip:           auto;
   white-space:    normal;
   padding:        0.5rem 1rem;
-  background:     #ffffff;
-  color:          #1a1a1a;
-  border:         1px solid #767676;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
   z-index:        1000;
 }
 
@@ -79,7 +104,7 @@ u
 }
 
 .panel {
-  background:     #ffffff;
+  background:     var(--background-color, #ffffff);
   box-shadow:     0.25rem 0.25rem 0.5rem rgba(0, 0, 0, 0.5);
 }
 
@@ -145,9 +170,11 @@ u
   width:          5.75rem;
   min-height:     1.5rem;
   padding:        0.25rem 0.35rem;
-  color:          #1a1a1a;
-  background:     #ffffff;
-  border:         1px solid #767676;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
 }
 
 .control-row__slider {
@@ -167,9 +194,11 @@ u
 .control-row--axes select {
   min-height:     2.75rem;
   padding:        0.25rem;
-  color:          #1a1a1a;
-  background:     #ffffff;
-  border:         1px solid #767676;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
 }
 
 .control-grid {
@@ -217,7 +246,9 @@ u
 }
 
 :focus-visible {
-  outline:        0.125rem solid #005fcc;
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--outline-color,    #005fcc);
   outline-offset: 0.125rem;
 }
 
@@ -229,7 +260,7 @@ u
   top:            20%;
   right:          20%;
   overflow:       auto;
-  background-color: #ea351f;
+  background:     var(--alert-color-r,    #ea351f);
 }
 
 .modal-content {
@@ -237,15 +268,17 @@ u
   align-items:    flex-start;
   justify-content: space-between;
   gap:            0.5rem;
-  background-color: #fefefe;
   margin:         0.125rem;
-  border:         1px solid #808080;
   padding:        0.5rem;
-  color:          #1a1a1a;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
 }
 
 .close {
-  color:          #555555;
+  color:          var(--border-color,     #767676);
   font-size:      1.75rem;
   font-weight:    bold;
   line-height:    1;
@@ -258,7 +291,7 @@ u
 
 .close:hover,
 .close:focus {
-  color:          #000000;
+  color:          var(--foreground-color, #1a1a1a);
 }
 
 .controls-panel {

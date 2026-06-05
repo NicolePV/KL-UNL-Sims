@@ -59,10 +59,12 @@ class KLUNLMasthead extends HTMLElement {
           display:             flex;
           justify-content:     space-between;
           align-items:         center;
-          background-color:    var(--masthead-bg,   #ffffff);
-          color:               var(--masthead-text, #1a1a1a);
+          background-color:    var(--background-color,          #ffffff);
+          color:               var(--foreground-color,          #1a1a1a);
           padding:             10px 20px;
-          border-bottom:       3px solid var(--primary-color, #005a9c);
+          border-bottom-width: var(--border-bottom-width,       3px);
+          border-bottom-style: var(--border-bottom-style,       solid);
+          border-bottom-color: var(--border-bottom-color,       #005a9c);
         }
         h1 {
           margin:              0;
@@ -73,9 +75,11 @@ class KLUNLMasthead extends HTMLElement {
           gap:                 10px;
         }
         button {
-          background-color:    var(--bg-color,   #005a9c);
-          color:               var(--text-color, #ffffff);
-          border:              1px solid var(--input-border, #767676);
+          color:               var(--button-foreground-color,   #ffffff);
+          background-color:    var(--button-background-color,   #005a9c);
+          border-width:        var(--border-width,              1px);
+          border-style:        var(--border-style,              solid);
+          border-color:        var(--border-color,              #767676);
           padding:             6px 12px;
           border-radius:       4px;
           cursor:              pointer;
@@ -84,29 +88,33 @@ class KLUNLMasthead extends HTMLElement {
           transition:          filter 0.1s ease; /* Smooth hover transition */
         }
         button:hover, button:focus {
-          filter:              brightness(var(--hover-darken, 0.9));
-          outline:             2px solid var(--focus-ring-color, #ffbc00);
+          filter:              brightness( var(--button-hover-darken, 0.9) );
+          outline-width:       var(--button-outline-width,      2px);
+          outline-style:       var(--button-outline-style,      solid);
+          outline-color:       var(--button-outline-color,      #ffbc00);
           outline-offset:      2px;
         }
-        /* Compliant dynamic red for initial prompt (passes 4.5:1 on light gray button) */
+        /* Compliant light neon green for initial prompt */
         .initial-prompt {
-          color:               var(--alert-color, #b3f681);  /* crimson would be #b30000 */
-          border-color:        var(--alert-color, #b3f681);
+          color:               var(--alert-color-g,             #b3f681);
+          border-color:        var(--alert-color-g,             #b3f681);
         }
         
         /* Modal Dialog Styling */
         /* (for overlay showing help or background information) */
         dialog {
           padding:             24px;
-          border:              1px solid var(--input-border, #767676);
+          border-width:        var(--border-width,              1px);
+          border-style:        var(--border-style,              solid);
+          border-color:        var(--border-color,              #767676);
           border-radius:       8px;
           max-width:           600px;
           width:               80vw;
           max-height:          80vh;
           overflow-y:          auto;
           box-shadow:          0 4px 20px rgba(0,0,0,0.2);
-          background-color:    var(--bg-color,   #ffffff);
-          color:               var(--text-color, #222222);
+          background-color:    var(--background-color,          #ffffff);
+          color:               var(--foreground-color,          #1a1a1a);
         }
         dialog::backdrop {
           background-color:    rgba(0, 0, 0, 0.6);
@@ -118,8 +126,8 @@ class KLUNLMasthead extends HTMLElement {
           justify-content:     flex-end;
         }
         .close-btn {
-          background-color:    var(--primary-color,      #005a9c);
-          color:               var(--inverse-text-color, #ffffff);
+          color:               var(--background-color,          #ffffff);
+          background-color:    var(--button-background-color,   #005a9c);
           border:              none;
         }
       </style>
