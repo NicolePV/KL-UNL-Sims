@@ -27,7 +27,7 @@ var hrdc_ct     = document.getElementById('hrdc'    ).getContext('2d'),
   // context.fillText  (string01, 100, 100);
 
 // Define values for key text strings and sample data sets
-function initFigure()  {
+function klunlInitFigure()  {
 
   // Identify platform
   navPlat  = navigator.platform;
@@ -36,42 +36,6 @@ function initFigure()  {
   } else  {
     mobile = false;
   }
-  
-  /*
-  // Set up help screens
-  helpText   = "Help: Q "; 
-  helpText  += "This tool introduces the Hertzsprung-Russell (H-R) Diagram, a plot showing the "; 
-  helpText  += "relationship between luminosity and temperature for stars. Q "; 
-  helpText  += "The H-R Diagram is shown in the upper-right panel. The cursor (the red "; 
-  helpText  += "\'X\' symbol) represents a star with the temperature and luminosity shown in the Cursor "; 
-  helpText  += "Properties panel (lower-left). The cursor's location can be changed by ";
-  if (mobile)  {
-    helpText  += "tapping on the figure, by dragging the cursor around";
-  } else  {
-    helpText  += "clicking on the figure, by dragging the cursor around (with the shift key ";
-    helpText  += "depressed), by using the arrow keys";
-  }
-  helpText  += ", or by adjusting the cursor slider or stepper controls. The Size Comparison panel "; 
-  helpText  += "(upper-left) shows what a star at the cursor's location would look like next to the Sun. Q "; 
-  helpText  += "One can mark features on the H-R Diagram like the Main Sequence (where young, "; 
-  helpText  += "unevolved stars are found), isoradius lines (lines along which all stars have "; 
-  helpText  += "the same radius), luminosity classes, and the Instability Strip (where "; 
-  helpText  += "pulsating stars are found). The X axis can be labeled with either the intrinsic "; 
-  helpText  += "property of temperature or the observable properties of color or type, and the "; 
-  helpText  += "Y axis can be labeled with either luminosity or absolute magnitude. Q "; 
-  helpText  += "One can also show the nearest and brightest stars on the H-R Diagram. "; 
-  helpText  += "The are 140 bright stars (selected from the Bright Star Catalog), 98 nearby  "; 
-  helpText  += "stars (assembled by the Research Consortium on Nearby Stars), and 5 stars "; 
-  helpText  += "which belong to both groups. "; 
-
-  aboutText  = "About: Q ";
-  aboutText += "This web application was created by Nicole Vogt, \u00A9 2017, and is based ";
-  aboutText += "on part of the Hertzsprung-Russell Diagram Module of the Nebraska Astronomy ";
-  aboutText += "Applet Project. Our goal is to allow continued usage of their excellent ";
-  aboutText += "tool as Adobe Flash becomes less and less available. Q ";
-  aboutText += "You can explore their astronomy education resources at http://astro.unl.edu. ";
-//aboutText += " ";
-  */
   
 //screenc.style.display = 'none';
   mbox_frame.style.top  =  '20%';
@@ -235,7 +199,7 @@ function newStar(mode)  {
   lslider();
 
   // Update radius equation
-  requation();
+  rEquation();
 
   // Update star size   for new temperature or luminosity
   showSize();
@@ -1218,7 +1182,7 @@ function colorTemp(tK)  {
   else if (tK <  6000)  { clr   = '#f1c40f'; }  // yellow
   else if (tK <  7500)  { clr   = '#f7dc6f'; }  // yellow-white
 //else if (tK < 10000)  { clr   = '#aed6f1'; }  // white-blue
-  else if (tK < 18000)  { clr   = '#aed6f1'; }  // white-blue (cut back on blue)
+  else if (tK < 18000)  { clr   = '#aed6f1'; }  // white-blue (shifted to cut back on blue)
   else if (tK < 30000)  { clr   = '#9ce8e7'; }  // ice-blue
   else                  { clr   = '#0000ff'; }  // blue
 
@@ -1411,11 +1375,11 @@ function lslide()  {
 
 //////////////////////////////////////////////////////////////////////////////
 // Equation for radius
-//////////////////////////////////////////////////////////////////////////////
+////////////////mt////////////////////////////////////////////////////////////
 
 
 // Format calculated radius for display and screen reader announcements
-function formatRadiusDisplay()  {
+function radiusFmt()  {
 
   var r0 = Math.sqrt(lSolar.value) / Math.pow( (tKelvin.value / tSun), 2 );
   var r1;
@@ -1438,200 +1402,38 @@ function announceStarProperties()  {
   if (!announcer)  {
     return;
   }
-  var r = formatRadiusDisplay();
+  
   announcer.textContent =
     'Temperature ' + tKelvin.value + ' kelvin. ' +
-    'Luminosity ' + lSolar.value + ' solar luminosities. ' +
-    'Calculated star radius is now ' + r + ' solar radii. Visual comparison updated.';
+    'Luminosity '  + lSolar.value  + ' solar luminosities. ' +
+    'Calculated star radius is now ' + radiusFmt() + ' solar radii. ' + 
+    'Visual comparison updated.';
 
 }
 
 
 // Draw equation for radius
-function requation()  {
-
-  /*
-  reqn_ct.clearRect(0, 0, reqn.width, reqn.height);
-  //
-  reqn_ct.fillStyle = '#dddddd';
-//reqn_ct.fillRect (0, 0, reqn.width, reqn.height);
-  //
-
-  // Display radius R to nearest ten's place above 1000,   (1,000       to 6,000), 
-  // show three significant digits at intermediate values, (    0.00100 to     1,000),
-  // show two   significant digits at lowest       values  (    0.00020 to         0.00100)
-  r0 = Math.sqrt(lSolar.value) / Math.pow( (tKelvin.value / tSun), 2 );
-  if (r0 >= 1000)  {
-    r1 = 10*Math.round(0.1*r0);
-  } else if (r0 >= 0.01)  {
-    r1 = r0.toPrecision(3);
-  } else  {
-    r1 = r0.toFixed(5);
-  }
-  // Add comma's as appropriate for readability for thousands and millions places in L, R, and T values
-  r2  = formatNumber(r1.toString());
-  l2  = formatNumber(lSolar.value.toString());
-  t2  = formatNumber(tKelvin.value.toString());
-  t0  = formatNumber(tSun.toString());
-
-  // Place text elements along center of equation
-  reqn_ct.textAlign    = 'center';
-  reqn_ct.textBaseline = 'middle';
-  reqn_ct.font         = '16px Sans-Serif';
-  reqn_ct.fillStyle    = '#000000';
-  reqn_ct.strokeStyle  = '#000000';
-
-  // First equals sign
-  var midy = reqn.height / 2;
-  var x    =  0;
-  var y    = midy - 18;
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x,      y     );
-  reqn_ct.lineTo(x + 10, y     );
-  reqn_ct.moveTo(x,      y +  4);
-  reqn_ct.lineTo(x + 10, y +  4);
-  reqn_ct.stroke();
-
-  // Square-root symbol around L symbol
-  // (x,y) approximates lower-left corner of symbol
-  x += 25;
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x -  3, y -  8);
-  reqn_ct.lineTo(x -  1,  y - 10);
-  reqn_ct.lineTo(x +  1, y     );
-  reqn_ct.lineTo(x +  8, y - 20);
-  reqn_ct.lineTo(x + 21, y - 20);
-  reqn_ct.stroke();
-  // Dividing line between L and T / T_solar symbols
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x -  8, y +  3);
-  reqn_ct.lineTo(x + 40, y +  3);
-  reqn_ct.stroke();
-  // Left and right parentheses around T / T_solar symbols
-  reqn_ct.beginPath();
-  reqn_ct.arc(x + 51, y + 34, 55, Math.PI-30*Math.PI/180, Math.PI+30*Math.PI/180, false);
-  reqn_ct.stroke();
-  reqn_ct.beginPath();
-  reqn_ct.arc(x - 25, y + 34, 55,        -30*Math.PI/180,         30*Math.PI/180, false);
-  reqn_ct.stroke();
-  // Power of two around T / T_solar symbols
-  reqn_ct.font         = '10px Sans-Serif';
-  reqn_ct.fillText('2', x + 34, y +  9);
-  reqn_ct.font         = '16px Sans-Serif';
-  // Dividing line between T and T_solar symbols
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x +  4, y + 33);
-  reqn_ct.lineTo(x + 22, y + 33);
-  reqn_ct.stroke();
-  // L, T and T_solar symbols
-  reqn_ct.fillText('L', x + 14, midy - 26);
-  reqn_ct.fillText('T', x + 13, y + 23);
-  reqn_ct.fillText('T', x + 10, y + 43);
-  reqn_ct.font         = '11px Sans-Serif';
-  reqn_ct.fillText('\u2609', x + 17, y + 48);
-  reqn_ct.font         = '16px Sans-Serif';
-
-  // Second equals sign
-  x += 47;
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x,      y     );
-  reqn_ct.lineTo(x + 10, y     );
-  reqn_ct.moveTo(x,      y +  4);
-  reqn_ct.lineTo(x + 10, y +  4);
-  reqn_ct.stroke();
-
-  // Square-root symbol around lSolar
-  // (x,y) approximates lower-left corner of symbol
-  x += 19;
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x -  2, y -  8);
-  reqn_ct.lineTo(x,      y - 10);
-  reqn_ct.lineTo(x +  2, y     );
-  reqn_ct.lineTo(x +  9, y - 20);
-  reqn_ct.lineTo(x + 82, y - 20);
-  reqn_ct.stroke();
-  // Dividing line between lSolar and tKelvin / tSun
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x -  4, y +  3);
-  reqn_ct.lineTo(x + 90, y +  3);
-  reqn_ct.stroke();
-  // Left and right parentheses around tKelvin / tSun
-  reqn_ct.beginPath();
-  reqn_ct.arc(x + 64, y + 34, 55, Math.PI-30*Math.PI/180, Math.PI+30*Math.PI/180, false);
-  reqn_ct.stroke();
-  reqn_ct.beginPath();
-  reqn_ct.arc(x + 23, y + 34, 55,        -30*Math.PI/180,         30*Math.PI/180, false);
-  reqn_ct.stroke();
-  // Power of two around tKelvin / tSun
-  reqn_ct.font         = '10px Sans-Serif';
-  reqn_ct.fillText('2', x + 82, y +  9);
-  reqn_ct.font         = '16px Sans-Serif';
-  // Dividing line between tKelvin and tSun
-  reqn_ct.beginPath();
-  if (tKelvin.value < 10000)  {
-    reqn_ct.moveTo(x + 24, y + 33);
-    reqn_ct.lineTo(x + 67, y + 33);
-  } else  {
-    reqn_ct.moveTo(x + 17, y + 33);  // Extend line leftwards when tKelvin >= 10,000
-    reqn_ct.lineTo(x + 67, y + 33);
-  }
-  reqn_ct.stroke();
-
-  // lSolar, tKelvin, and tSun values
-  reqn_ct.fillText(l2, x + 44, midy-26);
-  reqn_ct.textAlign    = 'right';
-  reqn_ct.fillText(t2, x + 67, midy+  4);  // Line up decimal point for two temperature values
-  reqn_ct.fillText(t0, x + 67, midy+ 24);
-
-  // Third equals sign
-  x +=  96;
-  reqn_ct.beginPath();
-  reqn_ct.moveTo(x,      y     );
-  reqn_ct.lineTo(x + 10, y     );
-  reqn_ct.moveTo(x,      y +  4);
-  reqn_ct.lineTo(x + 10, y +  4);
-  reqn_ct.stroke();
-
-  // Add solar symbol to units for radius at end of equation
-  x  += 16;
-  r2 += ' R';
-  reqn_ct.textAlign    = 'left';
-  reqn_ct.fillText(r2, x, midy - 16);
-  rwid = reqn_ct.measureText(r2)
-  reqn_ct.font         = '11px Sans-Serif';
-  reqn_ct.fillText('\u2609', x + rwid.width, midy - 16 + 5);  // place solar symbol according to length of R value
-  reqn_ct.font         = '16px Sans-Serif';
-
-  reqn.setAttribute('aria-label',
-    'Radius equals the square root of Luminosity, divided by the square of the ratio of the star\'s temperature to the Sun\'s temperature. Current value is ' +
-    formatRadiusDisplay() + ' solar radii.');
-  */
+function rEquation()  {
 
   // Format L, T, and R values for equation display
-  const s0 = formatNumber(tSun.toString());
-  const s1 = formatNumber(lSolar.value.toString());
-  const s2 = formatNumber(tKelvin.value.toString());
+  const s0 = formatNumber(lSolar.value.toString());
+  const s1 = formatNumber(tKelvin.value.toString());
+  const s2 = formatNumber(tSun.toString());
 
-  // Update equation output container with current values
-  const mathContainer = document.getElementById('equation-output');
-  if (mathContainer) {
+  // Define equation in LaTeX format
+  const s3 = 
+    `$$\\text{Radius} = ` + 
+    `\\frac{ \\sqrt{ L } }{ \\left( \\frac{ T }{ T_{\\odot} } \\right)^2 } = ` + 
+    `\\frac{ \\sqrt{` + s0 + `} }{ \\left( \\frac{` + s1 + `}{` + s2 + `} \\right)^2 } = ` + 
+    radiusFmt() + `\\,R_{\\odot}$$`;
 
-    mathContainer.innerHTML = 
-      `$$\\text{Radius} = ` + 
-      `\\frac{ \\sqrt{ L } }{ \\left( \\frac{ T }{ T_{\\odot} } \\right)^2 } = ` + 
-      `\\frac{ \\sqrt{` + s1 + `} }{ \\left( \\frac{` + s2 + `}{` + s0 + `} \\right)^2 } = ` + 
-      formatRadiusDisplay() + `\\,R_{\\odot}$$`;
-
-    // Fire the asynchronous compilation task through MathJax
-    if (window.MathJax && MathJax.typesetPromise) {
-      MathJax.typesetPromise([mathContainer]).catch((err) => console.error(err));
-    }
-  }
-
-  // Update the screen reader live output
-  document.getElementById('sr-live-output').textContent =
-    'Radius equals the square root of luminosity, divided by the square of the ratio of the star\'s temperature to the Sun\'s temperature. Current value is ' +
-    formatRadiusDisplay() + ' solar radii.';  
+  // Update screen reader content
+  const s4 = 
+    'Radius equals the square root of luminosity, divided by the square ' +
+    'of the ratio of the star\'s temperature to the Sun\'s temperature. ' +
+    'Current value is ' + radiusFmt() + ' solar radii.';
+  
+  klunlShowEquation( [ 'equation-output', s3 ], [ 'sr-live-output', s4 ] );
 
 }
 

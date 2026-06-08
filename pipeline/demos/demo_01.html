@@ -10,7 +10,7 @@
   <!-- Uncomment and create properly named file to add CSS for specific sim -->
   <!-- --><link href="demo_01.css" type="text/css" rel="stylesheet" media="all"> <!-- -->
 
-  <!-- Uncomment (and update initEqn function call) if equations shown in sim -->
+  <!-- Uncomment (and write own klunlInitEqn function) if equations shown in sim -->
   <!-- --->
   <script>
     window.MathJax = {
@@ -27,7 +27,7 @@
         ready: () => {
           MathJax.startup.defaultReady();
           // Initialize equation after MathJax engine confirms it is ready
-          initEqn();
+          klunlInitEqn();
         }
       }
     };
@@ -90,9 +90,9 @@
           <legend>Parameter #2 (units)</legend>
           <div class="control-row">
             <label class="sr-only" for="param02Box">Parameter #2</label>
-            <input id="param02Box" class="control-row__input" type="number" value="50" min="0" max="100" step="1" onchange="newSetup(-1)">
+            <input id="param02Box" class="control-row__input" type="number" value="40" min="0" max="100" step="1" onchange="newSetup(-1)">
             <label for="param02Slider" id="param02-slider-label" class="sr-only">Parameter #2</label>
-            <input type="range" id="param02Slider" class="param02-slider" min="0" max="100" value="50" step="1" aria-valuetext="50" onInput="newSetup(-2)">
+            <input type="range" id="param02Slider" class="param02-slider" min="0" max="100" value="40" step="1" aria-valuetext="50" onInput="newSetup(-2)">
             <span></span><span></span><span></span>
             <div class="button-row">
               <button type="button" class="button" onclick="newSetup(0)"  >  0</button>
@@ -105,15 +105,17 @@
     </main>
   </div>
 
+  <!-- Uncomment if equations shown in sim -->
+  <script src="../foundation/kl-unl.js" charset="utf-8"></script>
   <!-- Uncomment and create properly named file to add JS for specific sim -->
   <!-- --><script src="demo_01.js" charset="utf-8"></script> <!-- -->
-  <!-- Uncomment (and update initEqn function call) if equations shown in sim -->
+  <!-- Uncomment (and write own klunlInitEqn function) if equations shown in sim -->
   <!-- -->
   <script>
     // Listen for a reset signal from the masthead component
     document.addEventListener('sim-reset', () => {
       // Invoke reset state logic here:
-      initEqn();
+      klunlInitEqn();
     });
   </script>
   <!-- -->

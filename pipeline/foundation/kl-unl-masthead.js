@@ -17,7 +17,7 @@ class KLUNLMasthead extends HTMLElement {
 
   async connectedCallback() {
     const simId   = this.getAttribute('sim-id');
-    const jsonUrl = this.getAttribute('json-url') || '../template_masthead/localization.json';
+    const jsonUrl = this.getAttribute('json-url') || '../foundation/contents.json';
 
     if (!simId) {
       console.error('kl-unl-masthead: "sim-id" attribute is required.');
@@ -37,7 +37,7 @@ class KLUNLMasthead extends HTMLElement {
       this.render();
       this.setupEventListeners();
     } catch (error) {
-      console.error('kl-unl-masthead: Failed to load localization data.', error);
+      console.error('kl-unl-masthead: Failed to load sim-specific data.', error);
     }
   }
 
@@ -46,9 +46,10 @@ class KLUNLMasthead extends HTMLElement {
     const metaData       = this.simData.meta;
 
     // Check if help content exists and isn't empty
-    const hasHelpContent = mastheadData.help && mastheadData.help.content.trim() !== "";
+    const hasHelpContent = ( mastheadData.help && mastheadData.help.content.trim() !== "" );
 
     this.shadowRoot.innerHTML = `
+      <link href="../foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
       <style>
         :host {
           display:             block;
@@ -135,17 +136,20 @@ class KLUNLMasthead extends HTMLElement {
       <div class="masthead-container">
         <h1 id="sim-title">${metaData.title}</h1>
         <nav class="controls-group" aria-label="Simulation Controls">
-          <button id="resetBtn">Reset</button>
-          ${hasHelpContent ? `<button id="helpBtn" class="initial-prompt">Review Help Guide</button>` : ''}
-          <button id="aboutBtn">About</button>
+          <button id="resetBtn-mh">Reset</button>
+          ${hasHelpContent ? `<button id="helpBtn-mh" class="initial-prompt">Review Help Guide</button>` : ''}
+          <button id="aboutBtn-mh">About</button>
         </nav>
       </div>
 
-      <dialog id="infoDialog" aria-labelledby="dialogTitle">
-        <h2 id="dialogTitle" style="margin-top: 0;"></h2>
-        <div id="dialogBody"></div>
+      <dialog id="infoDialog-mh" role="alertdialog" aria-labelledby="dialogTitle-mh">
+        <h2 id="dialogTitle-mh" style="margin-top: 0;"></h2>
+        <div aria-hidden="true">
+          <div id="dialogBody-mh"></div>
+        </div>
+        <p id="sr-description-mh" class="sr-only"></p>
         <div class="dialog-footer">
-          <button id="closeDialogBtn" class="close-btn">Close</button>
+          <button id="closeDialogBtn-mh" class="close-btn" aria-describedby="sr-description-mh">Close</button>
         </div>
       </dialog>
     `;
@@ -153,11 +157,11 @@ class KLUNLMasthead extends HTMLElement {
 
   setupEventListeners() {
     const shadow   = this.shadowRoot;
-    const dialog   = shadow.getElementById('infoDialog');
-    const helpBtn  = shadow.getElementById('helpBtn');
-    const aboutBtn = shadow.getElementById('aboutBtn');
-    const resetBtn = shadow.getElementById('resetBtn');
-    const closeBtn = shadow.getElementById('closeDialogBtn');
+    const dialog   = shadow.getElementById('infoDialog-mh');
+    const helpBtn  = shadow.getElementById('helpBtn-mh');
+    const aboutBtn = shadow.getElementById('aboutBtn-mh');
+    const resetBtn = shadow.getElementById('resetBtn-mh');
+    const closeBtn = shadow.getElementById('closeDialogBtn-mh');
 
     if (helpBtn) {
       helpBtn.addEventListener('click', () => this.openModal('help', helpBtn));
@@ -177,13 +181,28 @@ class KLUNLMasthead extends HTMLElement {
 
   openModal(type, triggerBtn) {
     this.activeTriggerButton = triggerBtn;
-    const dialog             = this.shadowRoot.getElementById('infoDialog');
-    const title              = this.shadowRoot.getElementById('dialogTitle');
-    const body               = this.shadowRoot.getElementById('dialogBody');
+    const dialog             = this.shadowRoot.getElementById('infoDialog-mh');
+    const title              = this.shadowRoot.getElementById('dialogTitle-mh');
+    const body               = this.shadowRoot.getElementById('dialogBody-mh');
+    const srDesc             = this.shadowRoot.getElementById('sr-description-mh');
     const targetData         = this.simData.masthead[type];
 
     title.textContent        = targetData.title;
     body.innerHTML           = targetData.content;
+
+    // Convert rich HTML content to a clean, flat string block for VoiceOver
+    const tempDiv            = document.createElement('div');
+    tempDiv.innerHTML        = targetData.content;
+    const flatText           = tempDiv.textContent || tempDiv.innerText || "";
+
+    // Set description text for the Close button
+    // 
+    // Note that VoiceOver will say "close" first and then read the button
+    // description. Getting to this point was fairly difficult, so we may have
+    // to live with this order as it is fundamental to the accessibility model.
+    // (First label element and then read descriptive text.)
+    // 
+    srDesc.textContent       = flatText;
 
     // Handle Help button state modifications on initial click
     if (type === 'help' && !this.hasReadHelp) {
@@ -193,11 +212,20 @@ class KLUNLMasthead extends HTMLElement {
     }
 
     dialog.showModal();
-    this.shadowRoot.getElementById('closeDialogBtn').focus();
+
+    // Add small delay to allow VoiceOver to finish processing modal opening event
+    setTimeout(() => {
+      this.shadowRoot.getElementById('closeDialogBtn-mh').focus();
+    }, 50);
+    
   }
 
   closeModal() {
-    this.shadowRoot.getElementById('infoDialog').close();
+    this.shadowRoot.getElementById('infoDialog-mh').close();
+
+    // Clear description so it's ready for next time a masthead button is clicked
+    this.shadowRoot.getElementById('sr-description-mh').textContent = "";
+    
     this.handleFocusRestoration();
   }
 

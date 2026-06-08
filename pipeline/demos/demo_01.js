@@ -9,18 +9,18 @@
 // Initialize
 //////////////////////////////////////////////////////////////////////////////
 
-// Set up canvas for primary display
-
 // Global variables
 let dist = 50;
-let diam = 50;
+let diam = 40;
 
-// Attach figure update function to window resize event
+// Update figure on window resize event
 window.addEventListener('resize', updateFigure);
 
-function initEqn()  { 
+function klunlInitEqn()  { 
 
-  // Initialize displayed equation (tied to MathJax in HTML)
+  // Initialize displayed equation (tied to MathJax in HTML); 
+  // Note that this version of the function will over-ride default
+  // version in demo_01.js
   
   newSetup( 0 );
 
@@ -39,52 +39,31 @@ function newSetup()  {
 function updateFigure()  {
 
   // Update primary figure in response to user action
+  //
+  // Note that number boxes, sliders, and buttons are not connected to each
+  // other or to the variable valuess, as this is just a formatting demonstration. 
 
   // Update displayed equation with current values
   // (populated with small angle approximation equation for demonstration purposes)
-  const mathContainer = document.getElementById('equation-output');
-  if (mathContainer) {
 
-    let angleVal = 206265 * diam / dist;
-    
-    mathContainer.innerHTML =
-      `$$\\alpha \\,=\\, ` + 
-      `206,265 \\times \\frac{ \\text{linear diameter} }{ \\text{distance} } \\,=\\, ` + 
-      angleVal.toLocaleString( undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) +
-      `\\;\\text{arcsec}$$`;
+  // Define angle from distance to and size of object
+  const angle    = 206265 * diam / dist;
+  const angleFmt = angle.toLocaleString( undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-    // Fire the asynchronous compilation task through MathJax
-    if (window.MathJax && MathJax.typesetPromise) {
-      MathJax.typesetPromise([mathContainer]).catch((err) => console.error(err));
-    }
+  // Define display equation in LaTeX-format
+  const s0 = 
+    `$$\\alpha \\,=\\, ` + 
+    `206,265 \\times \\frac{ \\text{linear diameter} }{ \\text{distance} } \\,=\\, ` + 
+    angleFmt + `\\;\\text{arcsec}$$`;
 
-    updateAccessibleOutput(angleVal, dist, diam);
-  }
+  // Define text of screen reader message (same for both equation and associated figure)
+  let s1 =
+    `Alpha equals 206,265 times linear diameter divided by distance, equal to ${angleFmt} arcseconds. ` + 
+    `Distance ${dist} units, diameter ${diam} unit`;
+  
+  if ( diam > 1 ) { s1 += `s.` } 
+  else            { s1 += `.`  }
+
+  klunlShowEquation( [ 'equation-output', s0 ], [ 'sr-live-output', s1 ], [ 'figure-description', s1 ] );
 
 };
-
-
-function updateAccessibleOutput(angleVal, distVal, diamVal) {
-
-  const live       = document.getElementById('sr-live-output');
-  const figureDesc = document.getElementById('figure-description');
-  const formatted  = angleVal.toLocaleString(undefined, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  });
-
-  let message = 
-    `Alpha equals 206,265 times linear diameter divided by distance, equal to ${formatted} arcseconds. ` + 
-    `Distance ${distVal} units, diameter ${diamVal} unit`;
-  if ( diamVal == 1 ) { message += `s.` } 
-  else                { message += `.`  }
-
-  if (live) {
-    live.textContent       = message;
-  }
-  if (figureDesc) {
-    figureDesc.textContent = message;
-  }
-}
-
-

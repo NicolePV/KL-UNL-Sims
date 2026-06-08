@@ -26,7 +26,7 @@
           ready: () => {
             MathJax.startup.defaultReady();
             // Initialize radius calculation features after MathJax engine confirms it is ready
-            initFigure();
+            klunlInitFigure();
           }
         }
       };
@@ -210,6 +210,7 @@
       </div>
     </div>
 
+    <script src="../foundation/kl-unl.js" charset="utf-8"></script>
     <script src="hrd_explorer.js" charset="utf-8"></script>
     <script src="glass.js" charset="utf-8"></script>
     <script src="tknob.js" charset="utf-8"></script>
@@ -219,7 +220,8 @@
       document.addEventListener('sim-reset', () => {
         // Invoke original reset state logic here:
         // specificToApp.resetToDefaults();
-        newStar(0);
+        // newStar(0);
+        klunlInitFigure();
       });
     </script>
     </body>

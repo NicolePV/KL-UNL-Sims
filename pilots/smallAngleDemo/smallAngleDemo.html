@@ -24,14 +24,14 @@
         ready: () => {
           MathJax.startup.defaultReady();
           // Initialize equation after MathJax engine confirms it is ready
-          initEqn();
+          klunlInitEqn();
         }
       }
     };
   </script>
 
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  <script src="../template_masthead/kl-unl-masthead.js" defer></script>
+  <script src="../foundation/kl-unl-masthead.js" defer></script>
 </head>
 
 <body id="body">
@@ -96,12 +96,13 @@
     </main>
   </div>
 
+  <script src="../foundation/kl-unl.js" charset="utf-8"></script>
   <script src="smallAngleDemo.js" charset="utf-8"></script>
   <script>
-    // Listen for a reset signal from the masthead component
+    // Listen for a reset signal from masthead component
     document.addEventListener('sim-reset', () => {
       // Invoke reset state logic here:
-      initEqn();
+      klunlInitEqn();
     });
   </script>
 </body>
