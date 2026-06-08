@@ -144,11 +144,11 @@ function updateFigure()  {
   // Define x-range and y-range of angle diagram,
   // and location of angle label, within figure
   const  Scl =  10;                                               // Scale object size to be easily visible
-  const xArc = 125;                                               // Label         distance from  left  edge
+  const xArc = 125;                                               // Label         distance from  vertex
   const xMin =  39;                                               // Angle diagram distance from  left  edge
   const yMid =  50;                                               // Angle diagram distance below upper edge
   const xMax = xMin + ( saa.width - 2 * xMin ) * dist / distMax;  // Angle diagram distance from  right edge
-  const yDel =  Scl * diam * 0.96;                               // 96% shifts ends of angle rays into ball
+  const yDel =  Scl * diam * 0.96;                                // 96% shifts ends of angle rays into ball
 
   // Shift object to correct distance and update diameter
   ball.style.height = 2 * Scl * diam      + "px";
@@ -156,8 +156,9 @@ function updateFigure()  {
   ball.style.left   = xMax - ball.height/2 + "px";
 
   // Shift arc label
+  const r0 = Math.atan( yDel / (xMax - xMin) );
   labl.style.left = xMin + xArc - Scl + "px";  
-  labl.style.top  = yMid - 3*Scl - ( xMin + xArc) * Math.sin( diam/dist ) + "px";
+  labl.style.top  = yMid - 3*Scl - xArc * Math.tan( r0 ) + "px";
 
   // Redraw angle rays
   saa_ct.strokeStyle = "#000000";
@@ -170,7 +171,7 @@ function updateFigure()  {
 
   // Redraw angle label arc (subtending angle)
   saa_ct.beginPath();
-  saa_ct.arc( xMin, yMid, xArc, -diam/dist, diam/dist );
+  saa_ct.arc( xMin, yMid, xArc, -r0, r0 );
   saa_ct.stroke();
 
 };
