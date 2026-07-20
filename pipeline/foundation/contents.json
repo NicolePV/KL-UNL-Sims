@@ -205,7 +205,7 @@
     }
   }, 
 
-  "celestialEquatorial": { 
+  "celestialEquatorial": {
     "meta": {
       "title": "Celestial-Equatorial (RA/Dec) Demonstrator",
       "version": "2.0 (Accessible HTML5)"
@@ -213,7 +213,7 @@
     "masthead": {
       "help": {
         "title": "Help and Instructions",
-        "content": "<p>This demonstrator illustrates the celestial-equatorial (RA/Dec) coordinate system, where declination and right ascension define an object's position on the celestial sphere.</p><p></p>"
+        "content": "<p>This demonstrator illustrates the celestial-equatorial (RA/Dec) coordinate system, where declination and right ascension define an object's position on the celestial sphere.</p><p>The star's position can be changed by using the slider bars or by dragging it.</p>"
       },
       "about": {
         "title": "About this Demonstrator",
@@ -1238,23 +1238,6 @@
       "about": {
         "title": "About this Simulator",
         "content": "<p>This simulator is part of the Extrasolar Planets Module of the <a href=\"https://astro.unl.edu/naap/\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">Nebraska Astronomy Applet Project<span class=\"sr-only\"> (opens in new tab)</span></a>; supporting materials can be found there.</p>_DEFAEUNL__AASATF_"
-      }
-    }
-  }, 
-
-  "radecdemo": {
-    "meta": {
-      "title": "Celestial-Equatorial (RA/Dec) Demonstrator",
-      "version": "2.0 (Accessible HTML5)"
-    },
-    "masthead": {
-      "help": {
-        "title": "Help and Instructions",
-        "content": "<p>This demonstrator illustrates the celestial-equatorial (RA/dec) coordinate system, where declination and right ascension define an object's position on the celestial sphere.</p><p>The star's position can be changed by using the slider bars or by dragging it.</p>"
-      },
-      "about": {
-        "title": "About this Demonstrator",
-        "content": "_DEFAEUNL__AASATF__FUNDYES_"
       }
     }
   }, 
