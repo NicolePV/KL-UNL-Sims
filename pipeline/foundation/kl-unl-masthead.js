@@ -211,7 +211,8 @@ class KLUNLMasthead extends HTMLElement {
 
     // Convert rich HTML content to a clean, flat string block for VoiceOver
     const tempDiv            = document.createElement('div');
-    tempDiv.innerHTML        = targetData.content;
+  //tempDiv.innerHTML        = targetData.content;
+    tempDiv.innerHTML        = body.innerHTML;
     const flatText           = tempDiv.textContent || tempDiv.innerText || "";
 
     // Set description text for the Close button
