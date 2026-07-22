@@ -188,25 +188,26 @@ class KLUNLMasthead extends HTMLElement {
     const targetData         = this.simData.masthead[type];
 
     title.textContent        = targetData.title;
-    body.innerHTML           = targetData.content;
+   //body.innerHTML          = targetData.content;
+    let s0                   = targetData.content;
 
-    // Update About entry for all simulations with common text
     if ( type == "about" )  {
       // Add boilerplate Astronomy Education at UNL statement to About entry for all simulations
-      if ( body.innerHTML.includes("_DEFAEUNL_") )  {
-        body.innerHTML = body.innerHTML.replace( "_DEFAEUNL_", "<p>For additional astronomy education materials please visit <a href=\"https://astro.unl.edu/\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">Astronomy Education<span class=\"sr-only\"> (opens in new tab)</span></a> at the University of Nebraska-Lincoln.</p>" );
+      if ( s0.includes("_DEFAEUNL_") )  {
+        s0 = s0.replace( "_DEFAEUNL_", "<p>For additional astronomy education materials please visit <a href=\"https://astro.unl.edu/\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">Astronomy Education<span class=\"sr-only\"> (opens in new tab)</span></a> at the University of Nebraska-Lincoln.</p>" );
       }
       // Add boilerplate AAS Applet Task Force statement to About entry for all simulations
-      if ( body.innerHTML.includes("_AASATF_") )  {
-        body.innerHTML = body.innerHTML.replace( "_AASATF_", "<p>This tool has been modernized by the AAS Applet Task Force to meet modern web accessibility standards (WCAG 2.1 AA).</p>" );
+      if ( s0.includes("_AASATF_") )  {
+        s0 = s0.replace( "_AASATF_", "<p>This tool has been modernized by the AAS Applet Task Force to meet modern web accessibility standards (WCAG 2.1 AA).</p>" );
       }
       // Add boilerplate funding statement to About entry for most funded simulations
-      if ( body.innerHTML.includes("_FUNDYES_") )  {
-        body.innerHTML = body.innerHTML.replace( "_FUNDYES_", "<p>Initial funding for this work was provided by NSF grants #0231270 and/or #0404988.</p>" );
+      if ( s0.includes("_FUNDYES_") )  {
+        s0 = s0.replace( "_FUNDYES_", "<p>Initial funding for this work was provided by NSF grants #0231270 and/or #0404988.</p>" );
       }
       // Add boilerplate license statement to About entry for all simulations
-      body.innerHTML  += "<p>Copyright 2026 The Board of Regents of the University of Nebraska</p><p class=\"p-indent\">Licensed under <a href=\"https://www.apache.org/licenses/LICENSE-2.0\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">the Apache License, Version 2.0<span class=\"sr-only\"> (opens in new tab)</span></a> (the \"License\"); you may not use this file except in compliance with the License.</p><p class=\"p-indent\">Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.</p>";
+      s0  += "<p>Copyright 2026 The Board of Regents of the University of Nebraska</p><p class=\"p-indent\">Licensed under <a href=\"https://www.apache.org/licenses/LICENSE-2.0\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">the Apache License, Version 2.0<span class=\"sr-only\"> (opens in new tab)</span></a> (the \"License\"); you may not use this file except in compliance with the License.</p><p class=\"p-indent\">Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.</p>";
     }
+    body.innerHTML = s0;
 
     // Convert rich HTML content to a clean, flat string block for VoiceOver
     const tempDiv            = document.createElement('div');
