@@ -1,0 +1,3 @@
+This animation shows Ptolemy's 
+--- RECORDSEPARATOR ---
+model for the orbit of Mars.

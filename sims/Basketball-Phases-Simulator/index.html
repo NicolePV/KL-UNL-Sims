@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basketball Phases Simulator</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#controls-heading">Skip to controls</a>
+
+  <div class="app-shell">
+
+    <!-- Title bar + Reset / Help / About all come from the shared masthead
+         component, which reads its text from foundation/contents.json. -->
+    <kl-unl-masthead sim-id="basketball" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="sim-main">
+
+      <!-- The original Flash stage is a wide left diagram with a narrow right
+           column stacking "View of Ball" over the controls. .app-layout gives
+           that two-column grid; styles.css widens the left column (the
+           foundation default is narrow-left) and keeps the 56rem collapse. -->
+      <div class="app-layout sim-layout">
+
+        <!-- ============ Left: the overhead view ============ -->
+        <div class="app-layout__left sim-layout__wide">
+          <section class="panel sim-panel" aria-labelledby="orbit-heading">
+            <h2 id="orbit-heading" class="panel__heading">Overhead View</h2>
+
+            <div class="panel__canvas-wrap sim-canvas-wrap">
+              <div class="sim-stage" id="orbit-stage">
+                <canvas id="orbit-canvas" role="img"
+                        aria-labelledby="orbit-heading"
+                        aria-describedby="orbit-desc"></canvas>
+
+                <!-- "Light" is real HTML, not canvas-baked text, so it scales
+                     with the user's font size and at 200% zoom. -->
+                <span class="sim-light-label" id="light-label" aria-hidden="true">Light</span>
+
+                <!-- Keyboard/AT proxy for the draggable eye. It tracks the eye's
+                     position so click-to-focus and Tab-to-focus land in the same
+                     place, and arrow keys move the eye around its circle. -->
+                <div class="sim-eye-handle" id="eye-handle"
+                     role="slider" tabindex="0"
+                     aria-valuemin="0" aria-valuemax="359" aria-valuenow="0"
+                     aria-valuetext="Viewing angle 0 degrees. The basketball appears fully lit."
+                     aria-label="Observer position around the basketball"></div>
+              </div>
+            </div>
+
+            <!-- Viewing angle readout, typeset by MathJax via klunlShowEquation. -->
+            <div class="sim-readout">
+              <span class="sim-readout__label" id="angle-label">Viewing angle:</span>
+              <span class="sim-readout__math" id="angle-eqn" aria-hidden="true"></span>
+            </div>
+            <p class="sr-only" id="angle-eqn-sr"></p>
+            <p class="sr-only" id="orbit-desc"></p>
+          </section>
+        </div><!-- /app-layout__left -->
+
+        <!-- ============ Right: view of the ball, then the controls ============ -->
+        <div class="app-layout__right sim-layout__narrow">
+
+          <section class="panel sim-panel" aria-labelledby="ball-heading">
+            <h2 id="ball-heading" class="panel__heading">View of Ball</h2>
+
+            <div class="panel__canvas-wrap sim-canvas-wrap">
+              <div class="sim-stage sim-stage--ball">
+                <canvas id="ball-canvas" role="img"
+                        aria-labelledby="ball-heading"
+                        aria-describedby="ball-desc"></canvas>
+              </div>
+            </div>
+            <p class="sr-only" id="ball-desc"></p>
+
+            <div class="button-row sim-button-row">
+              <!-- One toggle. The original stacks a "Hide Basketball" button on
+                   top of a "Show Basketball" button and flips which is visible;
+                   the observable behaviour is a single button whose label swaps. -->
+              <button type="button" class="button sim-button" id="hide-button">Hide Basketball</button>
+            </div>
+          </section>
+
+          <section class="panel sim-panel sim-panel--controls" aria-labelledby="controls-heading">
+            <h2 id="controls-heading" class="panel__heading">Controls</h2>
+
+            <fieldset class="control-fieldset">
+              <legend class="control-fieldset__legend">Eye Motion</legend>
+              <div class="control-choice">
+                <input type="radio" id="eye-manual" name="eye-motion" value="manual" checked>
+                <label for="eye-manual">Move Eye Manually</label>
+              </div>
+              <div class="control-choice">
+                <input type="radio" id="eye-animate" name="eye-motion" value="animate">
+                <label for="eye-animate">Animate Eye</label>
+              </div>
+            </fieldset>
+
+            <hr class="sim-rule">
+
+            <fieldset class="control-fieldset">
+              <legend class="control-fieldset__legend">Phases</legend>
+              <div class="control-choice">
+                <input type="radio" id="phase-with" name="phases" value="with" checked>
+                <label for="phase-with">With Phases</label>
+              </div>
+              <div class="control-choice">
+                <input type="radio" id="phase-none" name="phases" value="none">
+                <label for="phase-none">No Phases</label>
+              </div>
+            </fieldset>
+
+            <hr class="sim-rule">
+
+            <fieldset class="control-fieldset">
+              <legend class="control-fieldset__legend">
+                <label for="speed-range">Speed of Animation</label>
+              </legend>
+              <!-- Native range: arrows, Page keys and Home/End come for free.
+                   aria-valuetext carries the spoken value with its unit. -->
+              <input class="control-row__slider sim-slider" type="range" id="speed-range"
+                     min="0.01" max="0.1" step="0.001" value="0.05"
+                     aria-valuetext="50 degrees per second">
+              <div class="sim-slider-ends" aria-hidden="true">
+                <span>Slow</span>
+                <span>Fast</span>
+              </div>
+            </fieldset>
+          </section>
+
+        </div><!-- /app-layout__right -->
+
+      </div><!-- /app-layout -->
+    </main>
+  </div>
+
+  <!-- Single polite status region: announces committed state changes. -->
+  <p class="sr-only" id="sim-status" role="status" aria-live="polite"></p>
+
+  <!-- Foundation equation helper (copied in unchanged) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Shared masthead custom element (copied in unchanged) -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- MathJax (vendored locally; SVG output is self-contained, no CDN).
+       enableMenu stays true so right-clicking any typeset math opens the
+       MathJax menu, per the pipeline's verification test. -->
+  <script>
+    window.MathJax = {
+      loader: { failed: function (err) { console.warn('[MathJax] optional component not vendored:', err.message); } },
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'local' },
+      options: { enableMenu: true, menuOptions: { settings: { assistiveMml: false } } }
+    };
+  </script>
+  <script src="assets/mathjax/tex-mml-svg.js"></script>
+
+  <!-- Sim logic -->
+  <script src="simulation.js"></script>
+</body>
+</html>

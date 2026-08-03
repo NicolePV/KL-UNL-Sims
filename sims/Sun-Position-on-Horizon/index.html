@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sun's Position on Horizon</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <link rel="stylesheet" href="foundation/kl-unl.css">
+  <link rel="stylesheet" href="styles/styles.css">
+
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <script src="foundation/kl-unl.js" defer></script>
+  <script type="module" src="simulation.js"></script>
+</head>
+
+<body>
+  <a class="sr-only sr-only-focusable" href="#controlsHeading">Skip to simulation controls</a>
+
+  <div class="app-shell">
+
+    <kl-unl-masthead sim-id="horizon" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout">
+
+      <!-- ============================ the horizon scene ==================== -->
+      <section class="panel sim-panel" aria-labelledby="stageHeading">
+        <h2 class="panel__heading" id="stageHeading">Horizon View</h2>
+
+        <!-- The original sim's "descTextField". Lifted out of the artwork into
+             real HTML so it zooms and meets contrast requirements. -->
+        <p class="sim-caption" id="viewCaption">Position of the sun on the horizon at sunrise</p>
+
+        <div class="panel__canvas-wrap sim-stage-wrap">
+          <svg id="stage" class="sim-stage"
+               viewBox="-425 -275 850 335"
+               preserveAspectRatio="xMidYMid meet"
+               role="img" aria-labelledby="stageTitle stageDesc">
+            <title id="stageTitle">Sunrise view toward the eastern horizon</title>
+            <desc id="stageDesc">The sun is on the horizon due east.</desc>
+
+            <!-- Shape library, copied verbatim from the decompiled export -->
+            <defs id="shapeDefs"></defs>
+
+            <g id="layerSky"></g>
+
+            <!-- the sun clip: glow plus the date label that travels with it -->
+            <g id="layerSun">
+              <use id="sunGlow" href="#sh72"></use>
+              <text id="dateMonth" class="stage-date" text-anchor="middle" x="0" y="-136.5"></text>
+              <text id="dateDay"   class="stage-date" text-anchor="middle" x="0" y="-116.5"></text>
+            </g>
+
+            <g id="layerGround"></g>
+            <g id="layerShadows"></g>
+            <g id="layerFg"></g>
+
+            <!-- direction labels; white with a dark halo for contrast -->
+            <g id="layerLabels">
+              <text id="labelCentre" class="stage-label stage-label--centre" text-anchor="start"></text>
+              <text id="labelLeft"   class="stage-label" text-anchor="start"></text>
+              <text id="labelRight"  class="stage-label" text-anchor="start"></text>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ============================== controls =========================== -->
+      <section class="panel sim-panel" aria-labelledby="controlsHeading">
+        <h2 class="panel__heading" id="controlsHeading">Controls</h2>
+
+        <div class="sim-controls">
+
+          <fieldset class="control-fieldset sim-control">
+            <legend class="control-fieldset__legend">View</legend>
+            <div class="control-choice">
+              <input type="radio" id="viewSunrise" name="view" value="0" checked>
+              <label for="viewSunrise">East/Sunrise</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" id="viewSunset" name="view" value="1">
+              <label for="viewSunset">West/Sunset</label>
+            </div>
+          </fieldset>
+
+          <div class="control-fieldset sim-control">
+            <div class="sim-date-head">
+              <label class="control-fieldset__legend" for="dateSlider">Date</label>
+              <output class="sim-readout" id="dateReadout" for="dateSlider">March 21</output>
+            </div>
+            <input type="range" class="control-row__slider sim-slider" id="dateSlider"
+                   min="0" max="365" step="1" value="0">
+
+            <!-- Type a date directly. Options are filled from the simulation's
+                 own month table so the two can never disagree. -->
+            <div class="sim-date-fields">
+              <div class="sim-field">
+                <label class="sim-field__label" for="monthSelect">Month</label>
+                <select class="sim-field__input sim-field__input--month" id="monthSelect"></select>
+              </div>
+              <div class="sim-field">
+                <label class="sim-field__label" for="dayInput">Day</label>
+                <input class="sim-field__input sim-field__input--day" id="dayInput"
+                       type="number" min="1" max="31" step="1" value="21" inputmode="numeric">
+              </div>
+            </div>
+          </div>
+
+          <div class="control-fieldset sim-control sim-control--action">
+            <span class="control-fieldset__legend" id="animLabel">Animation</span>
+            <button type="button" class="button sim-play" id="playBtn"
+                    aria-describedby="animLabel">Play</button>
+          </div>
+
+        </div>
+
+        <details class="sim-help panel__help" open>
+          <summary>Keyboard controls</summary>
+          <ul>
+            <li><strong>Tab</strong> moves between the view choices, the date slider,
+                the month and day fields, and the Play button.</li>
+            <li>On the date slider, <strong>Left</strong>/<strong>Down</strong> and
+                <strong>Right</strong>/<strong>Up</strong> change the date by one day,
+                <strong>Page Up</strong>/<strong>Page Down</strong> by ten days, and
+                <strong>Home</strong>/<strong>End</strong> jump to the ends of the year.
+                The mouse wheel also changes the date while the slider is focused.</li>
+            <li>In the <strong>Day</strong> field, type a number, or use
+                <strong>Up</strong>/<strong>Down</strong>, <strong>Page Up</strong>/<strong>Page Down</strong>,
+                <strong>Home</strong>/<strong>End</strong>, or the mouse wheel.
+                In the <strong>Month</strong> field, use <strong>Up</strong>/<strong>Down</strong>
+                or type the first letter of a month.</li>
+            <li><strong>Space</strong> or <strong>Enter</strong> starts and stops the animation.</li>
+            <li><strong>Reset</strong> in the title bar returns the simulation to March 21, sunrise, paused.</li>
+          </ul>
+        </details>
+      </section>
+
+    </main>
+
+    <!-- Announces committed changes: date, view and play state -->
+    <p class="sr-only" id="srStatus" role="status" aria-live="polite"></p>
+
+  </div>
+</body>
+</html>

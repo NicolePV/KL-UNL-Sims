@@ -1,0 +1,583 @@
+/* ==========================================================================
+   Time-Lapse Seasons Demonstrator -- sim-specific styles ONLY.
+
+   The shared palette, .panel / .control-* classes and the 56rem column
+   collapse all come from foundation/kl-unl.css, which is copied in
+   byte-for-byte unchanged. Nothing here edits or forks the foundation;
+   it only layers on top (hard rule 9).
+   ========================================================================== */
+
+:root {
+  /* ---- Horizon-diagram palette -------------------------------------------
+     Values marked ORIG are the original Flash colours, reused unchanged.
+     The diagram art itself (green plane, sun disc, stickman) is the
+     EXPORTED SVG reused as-is; these variables cover only the code-drawn
+     circles that the ActionScript builds at runtime with drawArc(). */
+  --sim-diagram-bg:      #ffffff;  /* panel background behind the sphere      */
+  --sim-meridian:        #ffffff;  /* ORIG 0xFFFFFF alpha 20  meridians       */
+  --sim-dec-limit:       #ffffff;  /* ORIG 0xFFFFFF alpha 50  +/-23.44 circles*/
+  --sim-equator:         #2c7bfe;  /* ORIG 0x2C7BFE alpha 60  celestial eq.   */
+  --sim-sun-path:        #ffcc00;  /* ORIG 0xFFCC00 alpha 70  sun daily path  */
+  --sim-sky-inner:       #bfe4ff;  /* ORIG 0xBFE4FF  sky gradient             */
+  --sim-sky-back:        #b2d3e6;  /* ORIG 0xB2D3E6  far-side sky             */
+  --sim-no-image:        #999999;  /* ORIG 0x999999  "days with no image" band*/
+
+  /* Timeline cursor colours (the cursor art itself is the exported SVG). */
+  --sim-cursor-line:     #767676;
+
+  /* One spacing scale, reused everywhere, so panels and rows breathe
+     equally and nothing reads as cramped next to something loose. */
+  --sim-gap-xs:          0.35rem;
+  --sim-gap-sm:          0.6rem;
+  --sim-gap-md:          1rem;
+  --sim-gap-lg:          1.5rem;
+
+  /* One field size, reused by every equal-purpose readout, so the value
+     boxes line up on a shared grid instead of a jumble of widths. */
+  --sim-readout-width:   6.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Type scale. Body copy sits above the 1.125rem floor and everything is
+   sized in rem/em so it tracks the browser font setting and reflows at
+   200% zoom without clipping (WCAG 1.4.4 / 1.4.10).
+   -------------------------------------------------------------------------- */
+body {
+  font-size:              1.125rem;
+  line-height:            1.5;
+}
+
+.sim-main {
+  display:                flex;
+  flex-direction:         column;
+  gap:                    var(--sim-gap-sm);
+  padding-bottom:         var(--sim-gap-md);
+}
+
+.panel__heading {
+  font-size:              1.25rem;
+  padding:                var(--sim-gap-sm) var(--sim-gap-md);
+}
+
+.control-fieldset {
+  padding:                0 var(--sim-gap-md) var(--sim-gap-sm);
+}
+
+.control-fieldset__legend {
+  font-size:              1.0625rem;
+  padding-bottom:         var(--sim-gap-xs);
+}
+
+/* --------------------------------------------------------------------------
+   Page skeleton.
+
+   The original Flash layout (frames/1.png, 820x600) is a large photo panel
+   on the left, a horizon diagram stacked above an animation-controls panel
+   on the right, and a full-width timeline beneath both. The same grouping
+   and reading order is rebuilt here with the KL-UNL grid.
+
+   NOTE: kl-unl.css has a stray "u" token immediately before its
+   .app-layout__right rule, which turns that rule into "u .app-layout__right"
+   and stops it applying. The foundation is copied in unchanged (hard rule 7),
+   so the min-width:0 it was meant to provide is restored here instead.
+   -------------------------------------------------------------------------- */
+.app-layout__right {
+  min-width:              0;
+}
+
+/* The masthead's internal .masthead-container is a non-wrapping flex row
+   (title on the left, Reset / Help / About on the right). Below about 360px
+   its content needs ~380px and pushes the whole PAGE into horizontal scroll.
+   That markup lives inside kl-unl-masthead.js, which is copied in unchanged,
+   so it cannot be fixed here -- but styling the host element from outside
+   confines the overflow to the masthead strip, leaving the simulation itself
+   free of horizontal scrolling. Worth fixing upstream with a flex-wrap.
+   See CONVERSION_NOTES.md. */
+kl-unl-masthead {
+  display:                block;
+  max-width:              100%;
+  overflow-x:             auto;
+}
+
+/* In the original (frames/1.png) the photo panel spans exactly the combined
+   height of the horizon-diagram and animation-controls panels stacked beside
+   it -- 455px on the left against 335 + 5 + 115 on the right. `stretch` (the
+   grid default, so simply not overriding it) reproduces that: both columns
+   take the height of the taller one, and their bottom edges line up. */
+.sim-layout {
+  display:                grid;
+  grid-template-columns:  minmax(0, 1.62fr) minmax(0, 1fr);
+  gap:                    var(--sim-gap-sm);
+  align-items:            stretch;
+}
+
+.sim-col-right {
+  display:                flex;
+  flex-direction:         column;
+  gap:                    var(--sim-gap-sm);
+  min-width:              0;
+  height:                 100%;
+}
+
+/* The diagram panel absorbs the slack so the pair still ends flush with the
+   photo panel, rather than leaving a gap under the controls. */
+.sim-col-right > .sim-panel:first-child {
+  flex:                   1 1 auto;
+}
+
+.sim-col-right > .sim-panel:last-child {
+  flex:                   0 0 auto;
+}
+
+.sim-panel {
+  padding-bottom:         var(--sim-gap-sm);
+  min-width:              0;
+}
+
+/* --------------------------------------------------------------------------
+   Photo panel. The webcam frame keeps its original 4:3 aspect ratio and
+   scales with the column; the direction overlay is positioned on top of it
+   in the same relative coordinates the Flash movie used.
+   -------------------------------------------------------------------------- */
+.sim-photo-wrap {
+  position:               relative;
+  margin:                 0 var(--sim-gap-md);
+  aspect-ratio:           4 / 3;
+  background:             #000000;
+  overflow:               hidden;
+}
+
+.sim-photo {
+  display:                block;
+  width:                  100%;
+  height:                 100%;
+  object-fit:             cover;
+}
+
+/* Shown when the selected day has no photograph (a "missing" day). */
+.sim-photo-missing {
+  position:               absolute;
+  inset:                  0;
+  display:                none;
+  align-items:            center;
+  justify-content:        center;
+  padding:                var(--sim-gap-md);
+  text-align:             center;
+  color:                  #ffffff;
+  background:             #333333;
+  font-size:              1rem;
+}
+
+.sim-photo-wrap[data-missing="true"] .sim-photo-missing {
+  display:                flex;
+}
+
+/* Exported vector overlay (shapes/11.svg), reused as-is, toggled by the
+   "show directions" checkbox. Sized relative to the photo so it tracks
+   the photo at every width and zoom level. */
+.sim-photo-directions {
+  position:               absolute;
+  left:                   50%;
+  top:                    50%;
+  width:                  47.6%;                  /* 328.5px of the 690px stage width */
+  transform:              translate(-50%, -50%);
+  pointer-events:         none;
+}
+
+.sim-photo-directions[hidden] {
+  display:                none;
+}
+
+/* Caption block under the photo: place, coordinates, then the date/time
+   line. Label and value columns line up down the block. */
+.sim-caption {
+  margin:                 var(--sim-gap-sm) var(--sim-gap-md) 0;
+  text-align:             center;
+}
+
+.sim-caption__place {
+  font-weight:            bold;
+  margin:                 0;
+}
+
+.sim-caption__coords {
+  margin:                 0.15rem 0 0;
+  font-size:              1rem;
+}
+
+.sim-datetime {
+  display:                flex;
+  flex-wrap:              wrap;
+  align-items:            baseline;
+  justify-content:        center;
+  gap:                    0.15rem var(--sim-gap-md);
+  margin:                 var(--sim-gap-sm) 0 0;
+  font-variant-numeric:   tabular-nums;
+}
+
+.sim-datetime__date {
+  display:                inline-flex;
+  align-items:            baseline;
+  gap:                    0.4rem;
+}
+
+/* Fixed slots so the date does not jitter as the day changes: the widest
+   weekday and month still fit, and the digits stay decimal-aligned. */
+.sim-datetime__weekday { min-width: 5.5em; text-align: right;  }
+.sim-datetime__daynum  { min-width: 1.6em; text-align: right;  }
+.sim-datetime__month   { min-width: 5.5em; text-align: left;   }
+.sim-datetime__year    { min-width: 3ch;   text-align: left;   }
+.sim-datetime__time    { min-width: 8.5em; text-align: left;   }
+
+.sim-photo-options {
+  display:                flex;
+  justify-content:        center;
+  margin:                 var(--sim-gap-sm) var(--sim-gap-md) 0;
+}
+
+/* The foundation sizes a checkbox at 1.25rem. The box itself is left alone,
+   but the label is stretched so the combined clickable target clears the
+   44px minimum on touch, without forking the foundation's look. */
+.control-choice {
+  min-height:             2.75rem;
+}
+
+.control-choice label {
+  display:                inline-flex;
+  align-items:            center;
+  min-height:             2.75rem;
+  padding:                0.25rem 0.15rem;
+}
+
+/* --------------------------------------------------------------------------
+   Horizon diagram.
+
+   The canvas keeps the ORIGINAL internal stage coordinates (the celestial
+   sphere is 260 units across, drawn into a 300x300 box centred on the
+   sphere's origin). CSS scales the element; the drawing and projection
+   maths never sees the on-screen size, so parity with the ActionScript
+   holds at any display width. Pointer coordinates are mapped back through
+   the same scale factor in simulation.js.
+   -------------------------------------------------------------------------- */
+.sim-stage {
+  position:               relative;
+  margin:                 0 var(--sim-gap-md);
+  width:                  100%;
+  max-width:              22rem;
+  margin-inline:          auto;
+  aspect-ratio:           1 / 1;
+  touch-action:           none;          /* the sphere is draggable */
+}
+
+.sim-stage canvas {
+  display:                block;
+  width:                  100%;
+  height:                 100%;
+}
+
+/* Cardinal-direction labels. These live in HTML rather than being painted
+   into the canvas so they stay crisp, honour the user's font size, and are
+   not distorted by the horizon plane's vertical squash (see ACCESSIBILITY.md).
+   They are positioned from render() in percentages of the stage. */
+/* The original painted these white directly on the green horizon plane,
+   which measures only 3.17:1 against #3aa53a -- short of the 4.5:1 that
+   WCAG 1.4.3 asks of text. The glyph stays white (so it still reads as the
+   original did) but sits on a dark chip, which lifts it to about 9.8:1 and
+   keeps it legible over the sky when the view is rotated. */
+.sim-dir-label {
+  position:               absolute;
+  transform:              translate(-50%, -50%);
+  padding:                0.05em 0.35em;
+  border-radius:          0.2em;
+  font-size:              0.9rem;
+  font-weight:            bold;
+  line-height:            1.3;
+  color:                  #ffffff;
+  background:             rgba(0, 0, 0, 0.55);
+  pointer-events:         none;
+  user-select:            none;
+}
+
+/* Focusable proxy for the draggable sun disc. It sits exactly over the
+   painted sun so a click lands on it (and therefore focuses it), and so
+   the focus ring appears around the sun itself. */
+.sim-sun-handle {
+  position:               absolute;
+  width:                  2.75rem;                /* >= 44px touch target */
+  height:                 2.75rem;
+  transform:              translate(-50%, -50%);
+  border-radius:          50%;
+  background:             transparent;
+  border:                 0;
+  padding:                0;
+  cursor:                 grab;
+  touch-action:           none;
+}
+
+.sim-sun-handle:active {
+  cursor:                 grabbing;
+}
+
+.sim-sun-handle[hidden] {
+  display:                none;
+}
+
+/* Focusable proxy for rotating the view, matching the original's
+   drag-anywhere-on-the-sphere behaviour with a keyboard equivalent. */
+.sim-view-handle {
+  position:               absolute;
+  left:                   0;
+  top:                    0;
+  width:                  100%;
+  height:                 100%;
+  background:             transparent;
+  border:                 0;
+  padding:                0;
+  cursor:                 move;
+  touch-action:           none;
+}
+
+/* Readouts under the diagram. Label column right-aligned, value column
+   left-aligned, so the colons line up and the numbers form a clean column. */
+.sim-readouts {
+  display:                grid;
+  grid-template-columns:  1fr auto;
+  justify-content:        center;
+  align-items:            baseline;
+  gap:                    var(--sim-gap-xs) var(--sim-gap-sm);
+  margin:                 var(--sim-gap-md) var(--sim-gap-md) 0;
+}
+
+.sim-readouts__label {
+  text-align:             right;
+}
+
+.sim-readouts__value {
+  min-width:              var(--sim-readout-width);
+  text-align:             left;
+  font-variant-numeric:   tabular-nums;
+}
+
+/* MathJax output is display-only: never a tab stop (hard rule 8b). */
+.sim-math,
+.sim-math * {
+  -webkit-user-select:    text;
+  user-select:            text;
+}
+
+.sim-math mjx-container {
+  margin:                 0;
+}
+
+/* --------------------------------------------------------------------------
+   Animation controls.
+   -------------------------------------------------------------------------- */
+.sim-animate-row {
+  display:                flex;
+  justify-content:        center;
+  margin-bottom:          var(--sim-gap-sm);
+}
+
+.sim-animate-button {
+  min-width:              12rem;
+}
+
+.sim-rate-row {
+  display:                grid;
+  grid-template-columns:  auto minmax(0, 1fr);
+  align-items:            center;
+  gap:                    var(--sim-gap-sm);
+}
+
+.sim-rate-row input[type="range"] {
+  width:                  100%;
+  min-height:             2.75rem;                /* comfortable touch target */
+}
+
+/* --------------------------------------------------------------------------
+   Timeline.
+
+   Full-width strip: month ticks and labels above, the draggable cursor on
+   the scale, and the "days with no image" band beneath. Built from HTML +
+   a canvas strip so the month labels remain real, zoomable text.
+   -------------------------------------------------------------------------- */
+.sim-timeline-wrap {
+  margin:                 0 var(--sim-gap-md);
+}
+
+.sim-timeline {
+  position:               relative;
+  width:                  100%;
+  /* The strip must have a definite height of its own: the canvas inside is
+     height:100%, so without this the two would resolve against each other
+     and collapse the strip (and the cursor button) to zero height.
+     732 x 46 is the canvas's own coordinate system. */
+  aspect-ratio:           732 / 46;
+  /* Keeps the strip readable once the column gets narrow on a phone. */
+  min-height:             1.75rem;
+  touch-action:           none;
+}
+
+.sim-timeline canvas {
+  display:                block;
+  width:                  100%;
+  height:                 100%;
+}
+
+/* Safari below 15 has no aspect-ratio; fall back to a padding box so the
+   strip still reserves height there. */
+@supports not (aspect-ratio: 1 / 1) {
+  .sim-timeline {
+    height:               0;
+    padding-bottom:       6.284%;         /* 46 / 732 */
+  }
+
+  .sim-timeline canvas {
+    position:             absolute;
+    top:                  0;
+    left:                 0;
+    width:                100%;
+    height:               100%;
+  }
+}
+
+/* The month labels sit in HTML above the tick canvas, centred in each
+   month's span, so they zoom with the page instead of being baked in. */
+.sim-month-labels {
+  position:               relative;
+  height:                 1.5em;
+  margin-bottom:          0.1rem;
+}
+
+.sim-month-label {
+  position:               absolute;
+  transform:              translateX(-50%);
+  font-size:              0.95rem;
+  white-space:            nowrap;
+  user-select:            none;
+}
+
+/* Draggable day cursor. A real focusable slider so the timeline is fully
+   keyboard-operable; the red pointer art is the exported shapes/61.svg. */
+.sim-day-cursor {
+  position:               absolute;
+  top:                    50%;
+  width:                  2.75rem;                /* >= 44px touch target */
+  height:                 100%;
+  /* The strip itself gets short at phone widths, so the handle keeps its own
+     44px minimum and simply overhangs the strip rather than shrinking below
+     a usable touch target. */
+  min-height:             2.75rem;
+  transform:              translate(-50%, -50%);
+  background:             transparent;
+  border:                 0;
+  padding:                0;
+  cursor:                 ew-resize;
+  touch-action:           none;
+}
+
+.sim-timeline-legend {
+  display:                flex;
+  flex-wrap:              wrap;
+  align-items:            center;
+  justify-content:        space-between;
+  gap:                    var(--sim-gap-sm) var(--sim-gap-md);
+  margin:                 var(--sim-gap-sm) var(--sim-gap-md) 0;
+}
+
+.sim-legend-key {
+  display:                inline-flex;
+  align-items:            center;
+  gap:                    var(--sim-gap-xs);
+  font-size:              1rem;
+}
+
+.sim-legend-swatch {
+  display:                inline-block;
+  width:                  2rem;
+  height:                 0.75rem;
+  background:             var(--sim-no-image, #999999);
+  border:                 1px solid var(--border-color, #767676);
+  flex-shrink:            0;
+}
+
+/* --------------------------------------------------------------------------
+   Panel help text under a panel heading.
+   -------------------------------------------------------------------------- */
+.sim-help {
+  font-size:              1rem;
+  line-height:            1.45;
+  margin:                 var(--sim-gap-sm) var(--sim-gap-md) 0;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive: desktop -> iPad -> phone portrait.
+
+   The foundation's own 56rem collapse is left intact. These sim-specific
+   breakpoints carry the layout the rest of the way down to phone portrait:
+   a single column, panels full-width in reading order, no horizontal scroll.
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .sim-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-stage {
+    max-width:            24rem;
+  }
+}
+
+@media (max-width: 34rem) {
+  body {
+    font-size:            1.0625rem;
+  }
+
+  .sim-photo-wrap,
+  .sim-stage,
+  .sim-timeline-wrap,
+  .sim-caption,
+  .sim-readouts {
+    margin-left:          var(--sim-gap-sm);
+    margin-right:         var(--sim-gap-sm);
+  }
+
+  .sim-stage {
+    margin-inline:        auto;
+    max-width:            100%;
+  }
+
+  .sim-rate-row {
+    grid-template-columns: 1fr;
+    gap:                  var(--sim-gap-xs);
+  }
+
+  .sim-animate-button {
+    width:                100%;
+  }
+
+  .sim-timeline-legend {
+    justify-content:      flex-start;
+  }
+
+  /* Keep the date on one readable line-set instead of a jittery grid. */
+  .sim-datetime__weekday,
+  .sim-datetime__daynum,
+  .sim-datetime__month,
+  .sim-datetime__year,
+  .sim-datetime__time {
+    min-width:            0;
+    text-align:           left;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: the animation loop is replaced by an instantaneous jump
+   to the end state (handled in simulation.js). Nothing here animates on
+   its own, so this only softens the cursor transition.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration:  0.01ms !important;
+    animation-duration:   0.01ms !important;
+  }
+}

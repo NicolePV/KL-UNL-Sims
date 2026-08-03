@@ -1,0 +1,21 @@
+When solving for apparent magnitude (m) or 
+--- RECORDSEPARATOR ---
+absolute magnitude (M), it is best to first set 
+--- RECORDSEPARATOR ---
+the distance (d) slider and lock it.  Then set 
+--- RECORDSEPARATOR ---
+the slider for the other known value.
+--- RECORDSEPARATOR ---
+If solving for distance, it is best to lock the d 
+--- RECORDSEPARATOR ---
+slider (at any value) and then set the 
+--- RECORDSEPARATOR ---
+absolute magnitude (M).  Once set, lock M 
+--- RECORDSEPARATOR ---
+and then set the apparent magnitude (m) 
+--- RECORDSEPARATOR ---
+slider to the appropriate value.
+--- RECORDSEPARATOR ---
+Note: The distance can also be set by clicking 
+--- RECORDSEPARATOR ---
+and dragging the star on the diagram.

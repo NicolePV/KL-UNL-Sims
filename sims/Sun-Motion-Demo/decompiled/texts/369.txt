@@ -1,0 +1,3 @@
+show stickfigure
+--- RECORDSEPARATOR ---
+and its shadow

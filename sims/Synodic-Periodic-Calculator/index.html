@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Synodic Period Calculator</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <!-- MathJax (vendored locally in assets/, SVG output = no external font fetches).
+       Configured BEFORE the library loads. The contextual menu is left enabled so
+       right-clicking any equation opens "Show Math As -> TeX / MathML". -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' },
+      options: {
+        // Keep the right-click context menu, but take math OUT of the tab order
+        // (inTabOrder:false stops MathJax adding tabindex="0" to every
+        // mjx-container) so Tab does not stop on equations or variable labels.
+        menuOptions: { settings: { assistiveMml: true, inTabOrder: false } }
+      }
+    };
+  </script>
+  <script src="assets/tex-svg.js" id="MathJax-script" async></script>
+
+  <!-- KL-UNL foundation (copied byte-for-byte into foundation/; do not edit) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Title bar + Reset / Help / About, provided entirely by the shared
+         component; we never build our own. Reset fires the "sim-reset" event. -->
+    <kl-unl-masthead sim-id="synodiccalculator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout syn-layout">
+
+      <!-- ============ CONFIGURATION PANEL ============ -->
+      <section class="panel syn-panel" aria-labelledby="config-heading">
+        <h2 id="config-heading" class="panel__heading">Configuration</h2>
+
+        <div class="syn-config">
+          <fieldset class="control-fieldset syn-fieldset">
+            <legend class="control-fieldset__legend">Planets</legend>
+            <div class="control-choice">
+              <input type="radio" id="planet-superior" name="planets" value="Superior" checked>
+              <label for="planet-superior">Superior</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" id="planet-inferior" name="planets" value="Inferior">
+              <label for="planet-inferior">Inferior</label>
+            </div>
+          </fieldset>
+
+          <fieldset class="control-fieldset syn-fieldset">
+            <legend class="control-fieldset__legend">Units</legend>
+            <div class="control-choice">
+              <input type="radio" id="units-years" name="units" value="Years" checked>
+              <label for="units-years">Years</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" id="units-days" name="units" value="Days">
+              <label for="units-days">Days</label>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+
+      <!-- ============ CALCULATION PANEL ============ -->
+      <section class="panel syn-panel" aria-labelledby="calc-heading">
+        <h2 id="calc-heading" class="panel__heading">Calculation</h2>
+
+        <div class="syn-calc">
+          <!-- The relationship, typeset by MathJax; the minus order swaps with the
+               planet mode (updated by simulation.js via klunlShowEquation). -->
+          <div class="syn-equation" id="eqn-synodic" aria-hidden="true"></div>
+
+          <p class="syn-help">
+            Enter a value in the planet period <span class="syn-var">\(P\)</span> box
+            or the synodic period <span class="syn-var">\(S\)</span> box; the other is
+            computed from it. Earth's period <span class="syn-var">\(E\)</span> is fixed
+            by the chosen units.
+          </p>
+
+          <!-- Three value cells in S, E, P order, echoing the fraction above. -->
+          <div class="syn-values">
+
+            <div class="syn-value">
+              <span class="syn-value__label"><span class="syn-var">\(S\)</span> =</span>
+              <input type="text" id="s-input" class="control-row__input syn-input"
+                     inputmode="decimal" pattern="[0-9.e]*" autocomplete="off"
+                     aria-describedby="syn-live">
+              <span class="syn-value__unit" id="s-unit" aria-hidden="true">years</span>
+            </div>
+
+            <div class="syn-value">
+              <span class="syn-value__label"><span class="syn-var">\(E\)</span> =</span>
+              <output class="control-row__input syn-input syn-output" id="e-output"></output>
+              <span class="syn-value__unit" id="e-unit" aria-hidden="true">years</span>
+            </div>
+
+            <div class="syn-value">
+              <span class="syn-value__label"><span class="syn-var">\(P\)</span> =</span>
+              <input type="text" id="p-input" class="control-row__input syn-input"
+                     inputmode="decimal" pattern="[0-9.e]*" autocomplete="off"
+                     aria-describedby="syn-live">
+              <span class="syn-value__unit" id="p-unit" aria-hidden="true">years</span>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Screen-reader live region: computed results announced here, with units. -->
+  <div id="syn-live" class="sr-only" aria-live="polite"></div>
+
+  <!-- Spoken equivalent for the equation (kept in sync by klunlShowEquation). -->
+  <div class="sr-only"><span id="sr-eqn-synodic"></span></div>
+
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <script src="foundation/kl-unl.js"></script>
+  <script type="module" src="simulation.js"></script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+/* =========================================================================
+   Sim-specific styles for "Determining Moon Phases Using Bisectors".
+   Layered on top of the KL-UNL foundation (kl-unl.css) — the foundation
+   files themselves are never edited. Uses foundation CSS variables/classes
+   where possible; only sim-specific layout/appearance lives here.
+   ========================================================================= */
+
+/* Comfortable, zoomable base type (rem-based, tracks browser font size). */
+body {
+  font-size: 1.05rem;
+}
+
+/* ---------- Two-column layout: diagram (left, wide) + controls (right) ----------
+   Mirrors the original Flash screenshot (scene on the left, control panels on the
+   right). Collapses to a single stacked column on narrow / portrait widths. */
+.mbd-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24rem;
+  gap: 0.75rem;
+  align-items: start;
+  padding-top: 0.5rem;
+}
+
+.mbd-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* ---------- Diagram panel + canvas ---------- */
+.mbd-panel-diagram {
+  min-width: 0;
+}
+
+.mbd-canvas-wrap {
+  padding: 0.5rem;
+  background: #000;
+}
+
+.mbd-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #000;
+  touch-action: none;   /* dragging rotates the view instead of scrolling */
+  cursor: grab;
+}
+
+.mbd-canvas:active {
+  cursor: grabbing;
+}
+
+/* ---------- Panels: consistent internal rhythm ---------- */
+.panel + .panel,
+.mbd-controls .panel {
+  /* foundation .panel already provides background + shadow */
+}
+
+.control-fieldset {
+  padding: 0.25rem 1rem 0.75rem;
+}
+
+/* ---------- Control rows: aligned label / control columns ---------- */
+.mbd-row {
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.mbd-row .control-row__label {
+  text-align: right;
+}
+
+.mbd-slider {
+  width: 100%;
+  min-height: 1.75rem;
+  cursor: pointer;
+  accent-color: var(--button-background-color, #005a9c);
+}
+
+/* Contrast row sits under the "show shadows" checkbox, indented like a sub-control. */
+.mbd-contrast-row {
+  grid-template-columns: 5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0.15rem 0 0.25rem 1.75rem;
+}
+
+.mbd-contrast-label {
+  font-style: italic;
+  text-align: right;
+}
+
+/* Disabled contrast slider reads as inactive. */
+.mbd-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.mbd-contrast-row:has(.mbd-slider:disabled) .mbd-contrast-label {
+  opacity: 0.55;
+}
+
+/* ---------- Button rows ---------- */
+.mbd-button-row {
+  gap: 0.75rem;
+  justify-content: flex-start;
+}
+
+.mbd-button-row .button {
+  flex: 1 1 0;
+  max-width: 10rem;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------- Checkboxes: comfortable spacing ---------- */
+.control-choice {
+  min-height: 2rem;
+  gap: 0.5rem;
+}
+
+.control-choice label {
+  line-height: 1.3;
+}
+
+/* ---------- Phase readout (Step 6) ---------- */
+.mbd-phase-readout {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+  min-height: 3.25rem;
+}
+
+.mbd-disc {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+}
+
+.mbd-phase-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* ===========================================================================
+   Responsive: below the foundation's 56rem breakpoint, stack to one column
+   in reading order (diagram, then controls) with no horizontal scrolling.
+   =========================================================================== */
+@media (max-width: 56rem) {
+  .mbd-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mbd-controls {
+    width: 100%;
+  }
+
+  .mbd-canvas {
+    max-width: 34rem;   /* keep the scene from becoming oversized on tablets */
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 30rem) {
+  .mbd-row {
+    grid-template-columns: 7rem minmax(0, 1fr);
+  }
+  .mbd-contrast-row {
+    margin-left: 0.75rem;
+  }
+}
+
+/* Honor reduced-motion: the JS also swaps slew animation for an instant jump. */
+@media (prefers-reduced-motion: reduce) {
+  .mbd-canvas { scroll-behavior: auto; }
+}

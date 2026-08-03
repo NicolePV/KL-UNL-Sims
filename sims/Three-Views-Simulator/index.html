@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Three Views Simulator</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <!-- Shared KL-UNL foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#main-content">Skip to main content</a>
+
+  <main class="app-shell" id="main-content">
+
+    <!-- Title + Reset / Help / About come from the shared component, keyed by sim-id -->
+    <kl-unl-masthead sim-id="moonphases" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout tv-layout">
+
+      <!-- ============================ ORBIT / TOP-DOWN VIEW ============================ -->
+      <section class="panel tv-panel tv-panel--orbit" aria-labelledby="orbit-heading">
+        <h2 class="panel__heading" id="orbit-heading">Orbit View (from above)</h2>
+        <div class="panel__canvas-wrap tv-canvas-wrap">
+          <canvas id="orbit-canvas" width="592" height="600"
+                  class="tv-canvas"
+                  role="img"
+                  aria-describedby="orbit-desc"></canvas>
+          <p id="orbit-desc" class="sr-only" aria-live="off">
+            A top-down view of the Sun, the Earth, and the Moon orbiting the Earth.
+          </p>
+          <!-- Keyboard/pointer proxy for the draggable "point in space" observer -->
+          <div id="space-observer"
+               class="tv-observer-proxy"
+               role="application"
+               tabindex="0"
+               aria-roledescription="Draggable observation point"
+               aria-label="Observation point in space; use the arrow keys to move it"
+               aria-hidden="true"
+               hidden></div>
+        </div>
+        <p class="panel__help tv-help" id="orbit-help">
+          The Sun is at the center. The Earth orbits the Sun and the Moon orbits the Earth.
+        </p>
+      </section>
+
+      <!-- ============================ RIGHT-HAND COLUMN ============================ -->
+      <div class="tv-right">
+
+        <!-- ---------------------------- VIEW OF MOON ---------------------------- -->
+        <section class="panel tv-panel tv-panel--moon" aria-labelledby="moonview-heading">
+          <h2 class="panel__heading" id="moonview-heading">View of Moon</h2>
+          <div class="panel__canvas-wrap tv-canvas-wrap tv-canvas-wrap--moon">
+            <canvas id="moon-canvas" width="240" height="240"
+                    class="tv-canvas tv-canvas--moon"
+                    role="img"
+                    aria-describedby="moon-desc"></canvas>
+            <p id="moon-desc" class="sr-only" aria-live="off">The Moon as currently seen.</p>
+          </div>
+          <div class="tv-button-row">
+            <button type="button" id="hide-show-btn" class="button tv-button">Hide Moon</button>
+          </div>
+        </section>
+
+        <!-- ---------------------------- PERSPECTIVE + CONTROLS ---------------------------- -->
+        <section class="panel tv-panel tv-panel--controls" aria-labelledby="controls-heading">
+          <h2 class="panel__heading" id="controls-heading">Perspective</h2>
+
+          <fieldset class="control-fieldset tv-fieldset">
+            <legend class="control-fieldset__legend sr-only">Choose a viewpoint for the Moon</legend>
+
+            <div class="control-choice">
+              <input type="radio" name="perspective" id="persp-earth" value="earth" checked>
+              <label for="persp-earth">From Earth</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" name="perspective" id="persp-sun" value="sun">
+              <label for="persp-sun">From Sun</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" name="perspective" id="persp-space" value="space">
+              <label for="persp-space">From Space</label>
+            </div>
+          </fieldset>
+
+          <fieldset class="control-fieldset tv-fieldset tv-fieldset--speed">
+            <legend class="control-fieldset__legend">Animation Speed</legend>
+            <div class="tv-slider-row">
+              <span class="tv-slider-end" aria-hidden="true">Slow</span>
+              <input type="range" id="speed-slider"
+                     class="control-row__slider tv-slider"
+                     min="1" max="100" step="1" value="50"
+                     aria-label="Animation speed"
+                     aria-valuetext="Animation speed 50 out of 100">
+              <span class="tv-slider-end" aria-hidden="true">Fast</span>
+            </div>
+          </fieldset>
+
+          <div class="tv-button-row tv-button-row--run">
+            <button type="button" id="run-btn" class="button tv-button" aria-pressed="false">Run Animation</button>
+            <button type="button" id="restart-btn" class="button tv-button">Restart</button>
+          </div>
+        </section>
+
+      </div><!-- /.tv-right -->
+
+    </div><!-- /.app-layout -->
+
+    <!-- Screen-reader status: announces state changes on commit (not per animation tick) -->
+    <p id="sr-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  </main>
+
+  <!-- Shared MathJax/equation helper from the foundation (redefined by simulation.js) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Masthead custom element -->
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <!-- Simulation logic -->
+  <script src="simulation.js" defer></script>
+</body>
+</html>

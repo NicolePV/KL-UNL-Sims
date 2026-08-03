@@ -1,0 +1,302 @@
+/* ==========================================================================
+   Synodic Lag Demonstrator -- sim-specific styles.
+
+   These styles LAYER ON TOP of foundation/kl-unl.css. The foundation files are
+   copied in byte-for-byte unchanged and are never edited; everything below is
+   additive and scoped to this sim's own classes (the only global rules are the
+   body type-size floor required by the accessibility guidelines, and the
+   box-sizing reset).
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Larger, zoomable body type (WCAG 1.4.4). The foundation ships 0.9rem; the
+   pipeline accessibility floor for body copy is ~1.125rem. All sizing below is
+   in rem/em so it tracks the reader's own browser font setting. */
+body {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+/* The foundation's `.app-layout__right` rule is unreachable, so the min-width
+   that keeps a grid column from overflowing is restated here on our own class. */
+/* The foundation aligns grid items to `start`, which leaves the two panels at
+   different heights and their bottom edges ragged. Stretching them makes the
+   side-by-side panels share one height and one baseline top and bottom. (In the
+   stacked single-column layout each row holds one panel, so this is a no-op.) */
+.sim-layout {
+  gap: 1rem;
+  padding: 1rem;
+  align-items: stretch;
+}
+
+/* The foundation sizes the diagram column at a flat 25rem. That is right at
+   normal type size, but at 200% zoom 25rem is most of the viewport and the
+   controls get squeezed until they overflow (WCAG 1.4.4 / 1.4.10). Capping the
+   track at a share of the available width as well keeps the same 400px column
+   at default zoom while letting it give ground as the text grows. The
+   foundation's own 56rem collapse to a single column is left untouched. */
+@media (min-width: 56.0625rem) {
+  .sim-layout {
+    grid-template-columns: minmax(0, min(25rem, 45%)) minmax(0, 1fr);
+  }
+}
+
+.sim-layout > .panel {
+  min-width: 0;
+}
+
+.panel__heading {
+  font-size: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: var(--border-width, 1px) var(--border-style, solid)
+                 var(--border-color, #767676);
+}
+
+/* --------------------------------------------------------------------------
+   Orbit diagram panel
+   -------------------------------------------------------------------------- */
+
+.sim-diagram-panel {
+  padding-bottom: 1.25rem;
+}
+
+/* The stage keeps the original 300 x 300 Flash coordinate system in its backing
+   store; CSS scales the element while preserving the 1:1 aspect ratio, so none
+   of the ported geometry has to know the on-screen size. */
+.sim-stage {
+  position: relative;
+  margin: 0 auto;
+  padding: 0.75rem 1.25rem 0;
+  max-width: 28rem;
+  container-type: inline-size;
+}
+
+#stage {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  touch-action: manipulation;
+}
+
+/* "angle to noon" readout, overlaid at the position the Flash sim drew it:
+   centred horizontally, just below the Sun and inside the orbit circle.
+   Sized with a rem floor so it never becomes illegible, and with cqw above that
+   so it grows in step with the diagram instead of crowding it. */
+.sim-readout {
+  position: absolute;
+  left: 1.25rem;
+  right: 1.25rem;
+  top: 56%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15em;
+  text-align: center;
+  line-height: 1.25;
+  pointer-events: none;
+}
+
+.sim-readout__label,
+.sim-readout__value {
+  font-size: 1.0625rem;
+}
+
+@supports (width: 1cqw) {
+  .sim-readout__label,
+  .sim-readout__value {
+    font-size: max(1.0625rem, 4.6cqw);
+  }
+}
+
+/* MathJax output is display-only: never a tab stop, but its own context menu
+   (right-click -> Show Math As) must keep working, so it is not aria-hidden and
+   pointer events are re-enabled just for the typeset value. */
+.sim-readout__value {
+  pointer-events: auto;
+  min-height: 1.4em;
+}
+
+.sim-readout__value:focus {
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   Controls panel
+   -------------------------------------------------------------------------- */
+
+/* Three control groups sit side by side, mirroring the original's
+   actions / length of day / animation columns, and fold to fewer columns as
+   the panel narrows. */
+/* Flex-wrap rather than a fixed column count: the number of groups per row then
+   follows the PANEL's own width, not the viewport's, so it stays correct inside
+   the two-column desktop layout, inside the stacked mobile layout, and at 200%
+   zoom -- and no empty tracks are ever created. */
+.sim-controls-panel {
+  padding-bottom: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+/* Full-width rows. The inset comes from padding, not margin: a 100% flex-basis
+   plus horizontal margins would add up to more than the panel and push the text
+   past its own edge. */
+.sim-controls-panel > .panel__heading,
+.sim-controls-panel > .panel__help {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.sim-controls-panel > .sim-fieldset {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+.sim-fieldset {
+  padding: 1rem 1.25rem 0.5rem;
+  display: block;
+}
+
+.control-fieldset__legend {
+  font-size: 1.0625rem;
+  padding-bottom: 0.6rem;
+}
+
+/* Equal-purpose buttons share one width and one height so the column reads as a
+   single aligned stack rather than a jumble of sizes. */
+.sim-button-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.sim-button {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  font-family: inherit;
+  text-align: center;
+  color: var(--button-foreground-color, #ffffff);
+  background-color: var(--button-background-color, #005a9c);
+  border: var(--border-width, 1px) var(--border-style, solid)
+          var(--border-color, #767676);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.sim-button:hover:not(:disabled) {
+  filter: brightness(var(--button-hover-darken, 0.9));
+}
+
+.sim-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Radio / checkbox rows: one consistent row height and a shared left edge so
+   the control column and the label column line up down the group. */
+.sim-choice-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.sim-choice-list .control-choice {
+  min-height: 2.75rem;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.sim-choice-list .control-choice input {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.sim-choice-list .control-choice label {
+  font-size: 1.0625rem;
+  line-height: 1.3;
+}
+
+.sim-fieldset:disabled .control-choice label {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.panel__help {
+  font-size: 1rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0 1.25rem;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive behaviour
+
+   The foundation's own `@media (max-width: 56rem)` rule already collapses
+   `.app-layout` from two columns to one; these sim-specific rules carry the
+   layout the rest of the way, out to wide desktops and down to phone portrait.
+   -------------------------------------------------------------------------- */
+
+/* The masthead's title + three buttons live in the component's shadow DOM as a
+   single non-wrapping flex row, and that row needs about 25rem. Below that the
+   component would push the whole PAGE into horizontal scrolling. The foundation
+   is never edited, so the overflow is contained on the host element instead:
+   the sim content stays fully reflowed and only the masthead itself scrolls.
+   (`showModal()` puts the Help/About dialog in the top layer, so it is not
+   clipped by this scroll container.) */
+@media (max-width: 25rem) {
+  kl-unl-masthead {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* Phone portrait: everything stacks in reading order, full width, no
+   horizontal scrolling. */
+@media (max-width: 34rem) {
+  .sim-layout {
+    padding: 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .sim-stage {
+    padding: 0.75rem 0.75rem 0;
+  }
+
+  .sim-readout {
+    left: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .sim-fieldset {
+    padding: 0.75rem 1rem 0.5rem;
+  }
+
+  .panel__heading {
+    padding: 0.6rem 1rem;
+  }
+
+  .panel__help {
+    margin: 0.5rem 0 1rem;
+    padding: 0 1rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: users who ask for less motion get the end state of a run
+   immediately instead of the animated sweep (the physics is unchanged; only
+   its presentation is). simulation.js reads the same media query.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .sim-button--pause {
+    display: none;
+  }
+}

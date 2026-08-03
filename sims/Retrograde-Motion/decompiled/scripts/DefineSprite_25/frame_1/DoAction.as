@@ -1,0 +1,2 @@
+var toggle = false;
+stop();

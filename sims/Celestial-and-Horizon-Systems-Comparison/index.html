@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Celestial and Horizon Systems Comparison</title>
+
+<link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+<!-- KL-UNL foundation (copied unchanged into foundation/) -->
+<link rel="stylesheet" type="text/css" media="all" href="foundation/kl-unl.css">
+<link rel="stylesheet" type="text/css" media="all" href="styles/styles.css">
+</head>
+
+<body>
+
+<div class="app-shell">
+
+  <kl-unl-masthead sim-id="celestialhorizon" json-url="foundation/contents.json"></kl-unl-masthead>
+
+  <main class="app-layout sim-layout">
+
+    <!-- ================= diagram panel ================= -->
+    <section class="panel sim-panel sim-panel--diagram" aria-labelledby="diagramHeading">
+      <h2 class="panel__heading" id="diagramHeading">Diagram</h2>
+
+      <div class="panel__canvas-wrap sim-stage-wrap">
+        <canvas id="stage"
+                class="sim-stage"
+                width="380" height="380"
+                role="application"
+                tabindex="0"
+                aria-label="Celestial sphere diagram. Drag, or use the arrow keys, to rotate the view."
+                aria-describedby="stageDesc"></canvas>
+      </div>
+
+      <p id="stageDesc" class="sr-only"></p>
+
+      <p class="panel__help sim-help">
+        Drag the diagram to rotate the view. With the diagram focused, the arrow keys
+        rotate it, <kbd>Page&nbsp;Up</kbd> and <kbd>Page&nbsp;Down</kbd> tilt it in larger
+        steps, and <kbd>Home</kbd> and <kbd>End</kbd> jump to the lowest and highest
+        viewing altitude.
+      </p>
+    </section>
+
+    <!-- ================= controls panel ================= -->
+    <section class="panel sim-panel sim-panel--controls" aria-labelledby="controlsHeading">
+      <h2 class="panel__heading" id="controlsHeading">Controls</h2>
+
+      <fieldset class="control-fieldset">
+        <legend class="control-fieldset__legend">Diagram shown</legend>
+
+        <div class="sim-switch-row">
+
+          <span class="sim-switch-side sim-switch-side--left">
+            <span class="sim-mode-label" id="labelCelestial">celestial sphere<span class="sr-only" id="labelCelestialState"></span></span>
+            <span class="sim-arrow sim-arrow--left" aria-hidden="true">
+              <svg class="sim-arrow__head" viewBox="0 0 16.75 8.85" focusable="false">
+                <g transform="translate(5.85,4.45)">
+                  <path id="headLeft"
+                        d="M-1.9 -0.05 Q-1.9 -2.5 -5.75 -4.45 L10.9 -0.05 -5.85 4.4 Q-1.9 2.35 -1.9 -0.05"/>
+                </g>
+              </svg>
+              <span class="sim-arrow__bar" id="barLeft"></span>
+            </span>
+          </span>
+
+          <button type="button" class="button sim-switch" id="switchBtn">switch</button>
+
+          <span class="sim-switch-side sim-switch-side--right">
+            <span class="sim-arrow sim-arrow--right" aria-hidden="true">
+              <span class="sim-arrow__bar" id="barRight"></span>
+              <svg class="sim-arrow__head" viewBox="0 0 16.75 8.85" focusable="false">
+                <g transform="translate(5.85,4.45)">
+                  <path id="headRight"
+                        d="M-1.9 -0.05 Q-1.9 -2.5 -5.75 -4.45 L10.9 -0.05 -5.85 4.4 Q-1.9 2.35 -1.9 -0.05"/>
+                </g>
+              </svg>
+            </span>
+            <span class="sim-mode-label" id="labelHorizon">horizon diagram<span class="sr-only" id="labelHorizonState"></span></span>
+          </span>
+
+        </div>
+      </fieldset>
+
+      <fieldset class="control-fieldset">
+        <legend class="control-fieldset__legend">Observer's latitude</legend>
+
+        <div class="control-row sim-control-row">
+          <label class="control-row__label" for="latNumber">latitude:</label>
+          <input class="control-row__input sim-number" id="latNumber"
+                 type="number" min="-90" max="90" step="0.1" value="41.0"
+                 inputmode="decimal" autocomplete="off">
+          <input class="control-row__slider sim-slider" id="latSlider"
+                 type="range" min="-90" max="90" step="0.1" value="41"
+                 aria-label="Observer's latitude">
+        </div>
+
+        <div class="sim-eqn-row">
+          <div id="latEqn" class="sim-eqn" tabindex="-1" aria-hidden="true"></div>
+          <p id="latEqnMsg" class="sr-only"></p>
+        </div>
+      </fieldset>
+    </section>
+
+  </main>
+
+  <p id="liveRegion" class="sr-only" role="status" aria-live="polite"></p>
+
+</div>
+
+<script src="foundation/kl-unl-masthead.js"></script>
+<script src="foundation/kl-unl.js"></script>
+<script src="simulation.js"></script>
+
+</body>
+</html>

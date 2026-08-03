@@ -1,0 +1,3 @@
+drag objects around to see how 
+--- RECORDSEPARATOR ---
+the observed phases change

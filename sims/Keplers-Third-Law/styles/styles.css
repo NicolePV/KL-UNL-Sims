@@ -1,0 +1,164 @@
+/* ==========================================================================
+   Kepler's Third Law -- sim-specific styles
+   Layered ON TOP of the KL-UNL foundation (foundation files never edited).
+   Only what the foundation does not provide lives here: the equation row, the
+   two matched value boxes with their MathJax exponents, the larger sim type
+   scale, and the sim's own responsive / zoom behavior.
+   ========================================================================== */
+
+:root {
+  /* One spacing scale for the whole sim, so every gap is a multiple of it. */
+  --kt-gap:          1.5rem;
+  /* Both value boxes share these dimensions -- equal-purpose fields are
+     visually equal (7 characters wide, matching the original maxlength). */
+  --kt-box-width:    7.5rem;
+  --kt-box-height:   2.75rem;   /* also the >=44px touch-target floor */
+}
+
+/* The sim is a single centered panel, so collapse the foundation's two-column
+   grid. (Left intact for every other sim -- this only targets .kt-layout.) */
+.kt-layout {
+  grid-template-columns: 1fr;
+}
+
+.kt-panel {
+  width:            100%;
+}
+
+/* Body copy noticeably larger than the foundation default, sized in rem so it
+   tracks the browser font setting and reflows at 200% zoom. */
+.kt-body {
+  display:          flex;
+  flex-direction:   column;
+  align-items:      center;
+  gap:              var(--kt-gap);
+  padding:          2rem 1.25rem 2.5rem;
+  font-size:        1.125rem;
+  line-height:      1.5;
+}
+
+.kt-panel .panel__heading {
+  font-size:        1.25rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Equation rows                                                      */
+/* ------------------------------------------------------------------ */
+.kt-eq {
+  display:          flex;
+  flex-wrap:        wrap;
+  align-items:      center;
+  justify-content:  center;
+  gap:              0.75rem;
+  max-width:        100%;
+}
+
+/* Reference equation: the largest thing on the page, as in the original. */
+.kt-eq--reference {
+  font-size:        clamp(1.75rem, 6vw, 2.75rem);
+}
+
+/* Interactive row sits a step below the reference equation. */
+.kt-eq--inputs {
+  font-size:        clamp(1.35rem, 4.5vw, 1.9rem);
+  gap:              0.9rem;
+}
+
+/* MathJax pieces share a vertical center with the controls beside them. */
+.mj {
+  display:          inline-flex;
+  align-items:      center;
+  line-height:      1;
+}
+
+.kt-eq__rel {
+  /* Nudged down so the "=" centers on the boxes, not on their exponents. */
+  align-self:       center;
+  margin-top:       0.15em;
+}
+
+/* ------------------------------------------------------------------ */
+/* Value boxes (the original p_txt / a_txt edit fields)               */
+/* ------------------------------------------------------------------ */
+.kt-field {
+  display:          inline-flex;
+  align-items:      flex-start;   /* exponent rides at the top right */
+  gap:              0.1em;
+}
+
+/* The two labels carry the foundation's .sr-only class, which takes them out of
+   flow entirely -- so the box and its exponent are the only laid-out children
+   here, and no display:contents (unreliable in the a11y tree on some WebKit
+   versions) is needed to keep them from affecting layout. */
+
+/* Both boxes are identical in width, height, padding, and alignment. */
+.kt-input {
+  box-sizing:       border-box;
+  width:            var(--kt-box-width);
+  height:           var(--kt-box-height);
+  padding:          0.25rem 0.5rem;
+  font-family:      inherit;
+  font-size:        1.25rem;
+  text-align:       center;        /* matches the original Align = center */
+  color:            var(--foreground-color, #1a1a1a);
+  background:       var(--background-color, #ffffff);
+  border-width:     var(--border-width, 1px);
+  border-style:     var(--border-style, solid);
+  border-color:     var(--border-color, #767676);
+  border-radius:    3px;
+}
+
+.kt-input:focus-visible {
+  outline-width:    0.125rem;
+  outline-style:    solid;
+  outline-color:    var(--outline-color, #005fcc);
+  outline-offset:   0.125rem;
+}
+
+.kt-field__exp {
+  /* Aligns the MathJax superscript with the top edge of the box. */
+  padding-top:      0.1em;
+}
+
+/* ------------------------------------------------------------------ */
+/* Caption and hint                                                   */
+/* ------------------------------------------------------------------ */
+.kt-caption,
+.kt-hint {
+  margin:           0;
+  max-width:        34rem;
+  text-align:       center;
+}
+
+.kt-caption {
+  font-size:        1.125rem;
+}
+
+.kt-hint {
+  font-size:        1.125rem;
+  font-style:       italic;
+}
+
+/* ------------------------------------------------------------------ */
+/* Narrow / phone-portrait: one column, nothing clipped, no h-scroll.  */
+/* Zoom to 200% lands here too, and is handled the same way.           */
+/* ------------------------------------------------------------------ */
+@media (max-width: 32rem) {
+  :root {
+    --kt-gap:       1.15rem;
+    --kt-box-width: 6.25rem;
+  }
+
+  .kt-body {
+    padding:        1.5rem 0.75rem 2rem;
+  }
+
+  .kt-eq--reference {
+    font-size:      clamp(1.5rem, 9vw, 2.25rem);
+  }
+
+  .kt-eq--inputs {
+    font-size:      clamp(1.2rem, 6.5vw, 1.6rem);
+    gap:            0.6rem;
+  }
+}

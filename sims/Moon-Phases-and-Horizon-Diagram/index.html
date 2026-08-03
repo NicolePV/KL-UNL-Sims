@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moon Phases and the Horizon Demonstrator</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="icon" type="image/png" sizes="180x180" href="foundation/klunl_favicon_180.png">
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#controls-region">Skip to controls</a>
+
+  <div class="app-shell">
+    <kl-unl-masthead sim-id="positionsdemonstrator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout sim-layout">
+
+      <!-- ================= DIAGRAM (left / large) ================= -->
+      <section class="panel sim-diagram-panel" aria-labelledby="diagramHeading">
+        <h2 class="panel__heading" id="diagramHeading">Horizon Diagram</h2>
+        <div class="panel__canvas-wrap sim-canvas-wrap">
+          <canvas id="sphereCanvas"
+                  class="sim-canvas"
+                  width="400" height="400"
+                  role="application"
+                  tabindex="0"
+                  aria-describedby="diagramDescription sphereHelp"
+                  aria-label="Horizon diagram. Use arrow keys to rotate the view: Left and Right change the viewing azimuth, Up and Down change the viewing altitude.">
+          </canvas>
+        </div>
+        <p class="panel__help" id="sphereHelp">
+          Click and drag the diagram (or focus it and use the arrow keys) to change the
+          orientation of the horizon. The sun and moon discs can also be dragged around the
+          celestial equator.
+        </p>
+      </section>
+
+      <!-- ================= CONTROLS (right / narrow) ================= -->
+      <div class="sim-controls" id="controls-region">
+
+        <!-- ---------- General Settings ---------- -->
+        <section class="panel sim-panel">
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend panel__heading">General Settings</legend>
+
+            <div class="control-grid sim-checkbox-grid">
+              <div class="control-choice">
+                <input type="checkbox" id="cbPositionLabels">
+                <label for="cbPositionLabels">show position labels</label>
+              </div>
+              <div class="control-choice">
+                <input type="checkbox" id="cbEclipticBand">
+                <label for="cbEclipticBand">show ecliptic band</label>
+              </div>
+            </div>
+
+            <div class="control-row sim-slider-row">
+              <label class="control-row__label" for="latitudeSlider">latitude:</label>
+              <output class="sim-value" id="latitudeValue" for="latitudeSlider">41.0&deg;</output>
+              <input type="range" class="control-row__slider sim-slider" id="latitudeSlider"
+                     min="-90" max="90" step="0.1" value="41.0"
+                     aria-describedby="latitudeValue">
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- ---------- Sun Settings ---------- -->
+        <section class="panel sim-panel">
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend panel__heading">Sun Settings</legend>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cbShowSun" checked>
+              <label for="cbShowSun">show sun</label>
+            </div>
+
+            <div class="control-row sim-slider-row">
+              <label class="control-row__label" for="sunPositionSlider">sun position:</label>
+              <output class="sim-value" id="sunPositionValue" for="sunPositionSlider">4</output>
+              <input type="range" class="control-row__slider sim-slider" id="sunPositionSlider"
+                     min="0.51" max="8.49" step="0.01" value="4"
+                     aria-valuetext="Sun position 4 of 8"
+                     aria-describedby="sunPositionValue">
+            </div>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cbShowTime" checked>
+              <label for="cbShowTime">show time</label>
+            </div>
+
+            <div class="control-row sim-readout-row">
+              <span class="control-row__label" id="timeOfDayLabel">time of day:</span>
+              <output class="sim-value sim-value--wide" id="timeOfDayValue"
+                      aria-labelledby="timeOfDayLabel">3:00 PM</output>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- ---------- Moon Settings ---------- -->
+        <section class="panel sim-panel">
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend panel__heading">Moon Settings</legend>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cbShowMoon" checked>
+              <label for="cbShowMoon">show moon</label>
+            </div>
+
+            <div class="control-row sim-slider-row">
+              <label class="control-row__label" for="moonPositionSlider">moon position:</label>
+              <output class="sim-value" id="moonPositionValue" for="moonPositionSlider">2</output>
+              <input type="range" class="control-row__slider sim-slider" id="moonPositionSlider"
+                     min="0.51" max="8.49" step="0.01" value="2"
+                     aria-valuetext="Moon position 2 of 8"
+                     aria-describedby="moonPositionValue">
+            </div>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cbShowPhase" checked>
+              <label for="cbShowPhase">show phase</label>
+            </div>
+
+            <div class="control-row sim-readout-row sim-phase-row">
+              <span class="control-row__label" id="moonPhaseLabel">phase of moon:</span>
+              <output class="sim-value sim-value--wide" id="moonPhaseValue"
+                      aria-labelledby="moonPhaseLabel">First Quarter</output>
+              <canvas id="phaseDiscCanvas" class="sim-phase-disc" width="64" height="64"
+                      aria-hidden="true"></canvas>
+            </div>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cbShowPhaseOnDisc">
+              <label for="cbShowPhaseOnDisc">show phase on moon disc</label>
+            </div>
+          </fieldset>
+        </section>
+
+      </div><!-- /.sim-controls -->
+    </main>
+  </div><!-- /.app-shell -->
+
+  <!-- Screen-reader live region: announces state changes on commit -->
+  <div id="liveRegion" class="sr-only" aria-live="polite" role="status"></div>
+  <!-- Continuously-updated description of what the diagram currently shows -->
+  <div id="diagramDescription" class="sr-only" aria-live="off"></div>
+
+  <script src="foundation/kl-unl.js"></script>
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <script src="simulation.js" type="module"></script>
+</body>
+</html>

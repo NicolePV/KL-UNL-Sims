@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Daylight Simulator</title>
+  <meta name="description" content="College-level astronomy materials">
+  <meta name="keywords" content="Astronomy education, undergraduate astronomy">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link rel="icon" type="image/png" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" href="foundation/klunl_favicon_180.png">
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath:  [['$',  '$']],
+        displayMath: [['$$', '$$']]
+      },
+      svg: { fontCache: 'global' },
+      startup: {
+        ready: () => {
+          MathJax.startup.defaultReady();
+          klunlInitEqn();
+        }
+      }
+    };
+  </script>
+  <!-- MathJax 3.2.2, vendored locally (assets/mathjax/) so the sim has no external
+       dependency. The SVG build is a single self-contained file: no font directory. -->
+  <script id="MathJax-script" async src="assets/mathjax/tex-mml-svg.js"></script>
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+</head>
+
+<body id="body">
+  <a href="#main-content" class="sr-only sr-only-focusable">Skip to main content</a>
+
+  <div class="app-shell">
+    <kl-unl-masthead sim-id="daylightsimulator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main id="main-content" class="app-layout dls-layout">
+
+      <!-- ============================ MAP PANEL ============================ -->
+      <section class="panel dls-panel dls-panel--map" aria-labelledby="map-heading">
+        <h2 id="map-heading" class="panel__heading">Flat Map of Earth</h2>
+
+        <div class="panel__canvas-wrap dls-map-wrap">
+          <div class="dls-map-frame" id="map-frame">
+            <div class="dls-canvas-box">
+              <canvas id="map-canvas" width="1059" height="541" aria-hidden="true"></canvas>
+
+              <!-- Longitude labels above and below the map; latitude labels left
+                   and right. These live in HTML (not painted on the canvas) so
+                   they are MathJax-typeset and scale with browser zoom. They sit
+                   inside the canvas box so their percentage positions resolve
+                   against the canvas itself. -->
+              <div class="dls-axis dls-axis--lon-top"    id="lon-labels-top"    aria-hidden="true"></div>
+              <div class="dls-axis dls-axis--lon-bottom" id="lon-labels-bottom" aria-hidden="true"></div>
+              <div class="dls-axis dls-axis--lat-left"   id="lat-labels-left"   aria-hidden="true"></div>
+              <div class="dls-axis dls-axis--lat-right"  id="lat-labels-right"  aria-hidden="true"></div>
+
+              <!-- Keyboard-operable proxy for the map's pointer drag. Focusable,
+                   arrow keys scroll the map east/west, exactly like dragging. -->
+              <div id="map-drag"
+                   class="dls-drag-proxy"
+                   role="slider"
+                   tabindex="0"
+                   aria-label="Map centre longitude. Drag the map, or use the arrow keys, to scroll east and west."
+                   aria-valuemin="0"
+                   aria-valuemax="360"
+                   aria-valuenow="180"
+                   aria-valuetext="Map centred on longitude 0 degrees"></div>
+            </div>
+          </div>
+
+          <p id="map-description" class="sr-only"></p>
+          <p class="dls-credit">Image Credit: NASA Goddard Space Flight Center</p>
+        </div>
+      </section>
+
+      <!-- ========================== CONTROL PANELS ========================= -->
+      <div class="dls-controls">
+
+        <!-- ------------------------- READOUTS ------------------------- -->
+        <section class="panel dls-panel" aria-labelledby="readout-heading">
+          <h2 id="readout-heading" class="panel__heading">Current Conditions</h2>
+
+          <div class="dls-readouts">
+            <span class="dls-readout__label" id="lbl-date">Date:</span>
+            <span class="dls-readout__value" id="out-date" aria-labelledby="lbl-date">January 1</span>
+
+            <span class="dls-readout__label" id="lbl-time">Time:</span>
+            <span class="dls-readout__value" id="out-time" aria-labelledby="lbl-time">12:00 PM</span>
+
+            <span class="dls-readout__label" id="lbl-dec">Sun Declination:</span>
+            <span class="dls-readout__value" id="out-dec" aria-hidden="true"></span>
+
+            <span class="dls-readout__label" id="lbl-rays">Latitude of Direct Rays:</span>
+            <span class="dls-readout__value" id="out-rays" aria-hidden="true"></span>
+
+            <span class="dls-readout__label" id="lbl-daylight">Daylight Hours:</span>
+            <span class="dls-readout__value" id="out-daylight" aria-hidden="true"></span>
+          </div>
+
+          <!-- Spoken equivalents of the three MathJax readouts above. -->
+          <p id="sr-readouts" class="sr-only"></p>
+        </section>
+
+        <!-- --------------------- OBSERVER LOCATION -------------------- -->
+        <section class="panel dls-panel" aria-labelledby="location-heading">
+          <h2 id="location-heading" class="panel__heading">Your Location</h2>
+
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend">
+              Latitude <span class="dls-range-hint" aria-hidden="true"><span id="lat-min-label"></span> to <span id="lat-max-label"></span></span>
+            </legend>
+            <div class="control-row dls-control-row">
+              <label class="sr-only" for="latBox">Latitude in degrees, negative for south</label>
+              <input id="latBox" class="control-row__input dls-num" type="number"
+                     min="-90" max="90" step="1" value="0">
+              <span class="dls-value" id="lat-value" aria-hidden="true"></span>
+              <label class="sr-only" for="latSlider">Latitude</label>
+              <input id="latSlider" class="control-row__slider dls-slider" type="range"
+                     min="-90" max="90" step="1" value="0"
+                     aria-valuetext="Latitude 0 degrees, the equator">
+            </div>
+          </fieldset>
+
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend">
+              Longitude <span class="dls-range-hint" aria-hidden="true"><span id="lon-min-label"></span> to <span id="lon-max-label"></span></span>
+            </legend>
+            <div class="control-row dls-control-row">
+              <label class="sr-only" for="lonBox">Longitude in degrees, negative for west</label>
+              <input id="lonBox" class="control-row__input dls-num" type="number"
+                     min="-180" max="180" step="1" value="0">
+              <span class="dls-value" id="lon-value" aria-hidden="true"></span>
+              <label class="sr-only" for="lonSlider">Longitude</label>
+              <input id="lonSlider" class="control-row__slider dls-slider" type="range"
+                     min="-180" max="180" step="1" value="0"
+                     aria-valuetext="Longitude 0 degrees, the prime meridian">
+            </div>
+          </fieldset>
+
+          <div class="control-fieldset dls-button-wrap">
+            <button type="button" class="button dls-button" id="resetButton">Reset to (0,0)</button>
+          </div>
+        </section>
+
+        <!-- ----------------------- ANIMATION MODE --------------------- -->
+        <section class="panel dls-panel" aria-labelledby="animation-heading">
+          <h2 id="animation-heading" class="panel__heading">Animation Mode</h2>
+
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend">Cycle</legend>
+            <div class="dls-choices">
+              <div class="control-choice">
+                <input type="radio" id="modeYear" name="animMode" value="Year" checked>
+                <label for="modeYear">Year</label>
+              </div>
+              <div class="control-choice">
+                <input type="radio" id="modeDay" name="animMode" value="Day">
+                <label for="modeDay">Day</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend">
+              Animation Speed <span class="dls-range-hint" aria-hidden="true"><span id="spd-min-label"></span> to <span id="spd-max-label"></span></span>
+            </legend>
+            <div class="control-row dls-control-row">
+              <label class="sr-only" for="speedBox">Animation speed</label>
+              <input id="speedBox" class="control-row__input dls-num" type="number"
+                     min="1" max="10" step="1" value="5">
+              <span class="dls-value" id="spd-value" aria-hidden="true"></span>
+              <label class="sr-only" for="speedSlider">Animation speed</label>
+              <input id="speedSlider" class="control-row__slider dls-slider" type="range"
+                     min="1" max="10" step="1" value="5"
+                     aria-valuetext="Animation speed 5 of 10">
+            </div>
+          </fieldset>
+
+          <div class="control-fieldset dls-button-wrap">
+            <button type="button" class="button dls-button" id="animationButton">Stop Animation</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Announces committed state changes to screen readers. -->
+      <div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    </main>
+  </div>
+
+  <script src="foundation/kl-unl.js" charset="utf-8"></script>
+  <script src="simulation.js" charset="utf-8"></script>
+</body>
+</html>

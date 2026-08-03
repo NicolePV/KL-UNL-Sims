@@ -1,0 +1,327 @@
+/* ==========================================================================
+   Rotating Sky Explorer  --  sim-specific styles only.
+
+   The shared KL-UNL foundation (kl-unl.css / kl-unl.js / kl-unl-masthead.js) is
+   never edited; everything here layers on top of it. Sizing is in rem/em so it
+   tracks the browser font setting and reflows cleanly to phone-portrait widths
+   and at 200% zoom.
+   ========================================================================== */
+
+/* The sim's interface font (Verdana), vendored from the decompiled export so the
+   look is self-contained even where Verdana is not installed. */
+@font-face {
+  font-family: 'SimVerdana';
+  src: url('../assets/fonts/Verdana.ttf') format('truetype');
+  font-weight: normal; font-style: normal; font-display: swap;
+}
+
+:root {
+  --sim-gap:        0.6rem;
+  --sim-sky:        #000000;  /* the two diagram panels are black, as in the original */
+  --sim-sky-text:   #ffffff;
+  --sim-field-w:    5.5rem;   /* one shared width for every small numeric field   */
+  --sim-field-h:    2.75rem;  /* ...and one shared height (44px touch target)  */
+}
+
+/* Comfortably large, zoomable body type (>= 1.125rem floor). */
+body { font-size: 1.125rem; line-height: 1.45; }
+
+/* ==========================================================================
+   Layout -- mirrors the original's panel grouping and reading order:
+     row 1 : celestial sphere view | horizon diagram view
+     row 2 : Observer's Location | Animation Controls | Appearance | Star Controls
+   ========================================================================== */
+/* A 24-column track lets the two diagram panels sit exactly half and half while
+   the four control panels keep the original's relative widths. Animation
+   Controls gets a little extra room (5/24) so its duration select and rate
+   slider are not cramped; the space comes from Observer's Location, whose map
+   scales down happily, rather than from the long labels in Appearance. */
+.sim-layout.app-layout {
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: var(--sim-gap);
+  padding: 0.5rem;
+  align-items: stretch;
+}
+.sim-area-sphere1    { grid-column: 1 / 13;  grid-row: 1; }
+.sim-area-sphere2    { grid-column: 13 / 25; grid-row: 1; }
+.sim-area-location   { grid-column: 1 / 8;   grid-row: 2; }
+.sim-area-animation  { grid-column: 8 / 13;  grid-row: 2; }
+.sim-area-appearance { grid-column: 13 / 19; grid-row: 2; }
+.sim-area-stars      { grid-column: 19 / 25; grid-row: 2; }
+
+.panel {
+  border-radius: 0.25rem;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;              /* let panels shrink instead of forcing h-scroll */
+}
+.panel__heading { font-size: 1.15rem; margin: 0; padding: 0.5rem 0.75rem 0.25rem; }
+
+/* ==========================================================================
+   The two diagram panels (black "sky" boxes, as in the original)
+   ========================================================================== */
+.sim-area-sphere1, .sim-area-sphere2 { background: var(--sim-sky); color: var(--sim-sky-text); }
+.sim-area-sphere1 .panel__heading,
+.sim-area-sphere2 .panel__heading { color: var(--sim-sky-text); font-style: italic; }
+
+.sim-canvas-wrap {
+  padding: 0 0.5rem;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;               /* containing block for the keyboard handle */
+}
+.sim-canvas {
+  display: block;
+  width: 100%;
+  max-width: 27.2rem;               /* 435 CSS px at the default root size */
+  height: auto;
+  aspect-ratio: 435 / 415;          /* keeps the original internal coordinates */
+  margin: 0 auto;
+  background: var(--sim-sky);
+  touch-action: none;               /* dragging the sphere must not scroll the page */
+}
+
+/* Keyboard proxy for view rotation. Invisible and click-through; the pointer
+   drag path still goes straight to the canvas. */
+.sim-view-handle {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 0.25rem;
+}
+.sim-view-handle:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: -0.25rem;
+}
+
+/* ---- Selected-star coordinate strip inside the black panels --------------
+   One label column and one field column, so the two rows line up exactly. */
+.sim-coord-strip {
+  display: grid;
+  gap: 0.3rem 0.5rem;
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+/* [hidden] must still win over the display rule above. */
+.sim-coord-strip[hidden], .sim-menu[hidden] { display: none; }
+.sim-coord-row {
+  display: grid;
+  grid-template-columns: 1fr var(--sim-field-w) 1.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sim-coord-label { text-align: right; font-size: 1rem; }
+.sim-coord-input {
+  width: 100%;
+  min-height: var(--sim-field-h);
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 1rem;
+  text-align: right;                /* numeric readouts align on their digits */
+  padding: 0.1rem 0.35rem;
+  color: #000;
+  background: #fafafa;
+  border: 1px solid #666;
+  border-radius: 0.2rem;
+}
+.sim-coord-input:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+.sim-coord-unit { font-size: 1rem; }
+
+/* ==========================================================================
+   Control panels
+   ========================================================================== */
+.control-fieldset { padding: 0.25rem 0.75rem 0.5rem; margin: 0; border: 0; }
+
+/* Latitude / longitude: label column, field column, direction column -- all three
+   rows share the same track widths so their edges line up down the panel. */
+.sim-latlon-row {
+  display: grid;
+  grid-template-columns: 1fr var(--sim-field-w) 5rem;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.sim-latlon-row .control-row__label { text-align: right; font-size: 1rem; }
+.sim-num {
+  width: 100%;
+  min-height: var(--sim-field-h);
+  box-sizing: border-box;
+  font: inherit; font-size: 1rem;
+  text-align: right;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--border-color, #767676);
+  border-radius: 0.2rem;
+}
+.sim-select {
+  width: 100%;
+  min-height: var(--sim-field-h);
+  box-sizing: border-box;
+  font: inherit; font-size: 1rem;
+  padding: 0.1rem 0.25rem;
+  border: 1px solid var(--border-color, #767676);
+  border-radius: 0.2rem;
+  background: #fff;
+  color: var(--foreground-color, #1a1a1a);
+}
+.sim-num:focus-visible, .sim-select:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+.sim-select:disabled { background: #e0e0e0; color: #606060; }
+
+/* ---- World map ---- */
+.sim-map-wrap { padding: 0 0.75rem; position: relative; }
+.sim-map {
+  display: block;
+  width: 100%;
+  max-width: 22.5rem;
+  height: auto;
+  aspect-ratio: 2 / 1;
+  margin: 0 auto;
+  border: 1px solid #000;
+  touch-action: none;
+  cursor: crosshair;
+}
+.sim-map-handle { position: absolute; inset: 0 0.75rem; pointer-events: none; }
+.sim-map-handle:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+
+/* ---- Buttons ---- */
+.sim-btn-row {
+  box-sizing: border-box;
+  padding: 0.5rem 0.75rem;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.sim-btn-col { flex-direction: column; align-items: stretch; }
+.button.sim-btn {
+  min-height: 2.75rem;              /* >= 44px touch target */
+  background-color: var(--button-background-color, #005a9c);
+  color: var(--button-foreground-color, #ffffff);
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 4px;
+  font: inherit; font-size: 1rem; font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+.button.sim-btn:hover, .button.sim-btn:focus-visible {
+  filter: brightness(var(--button-hover-darken, 0.9));
+}
+
+/* Star-patterns menu, revealed by its button (no hover-only affordances). */
+.sim-menu {
+  border: 1px solid var(--border-color, #767676);
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: #fff;
+}
+
+/* ---- Inline label + control row (the "animate <select>" row) ---- */
+.sim-inline-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.5rem;
+}
+.sim-inline-row .control-row__label { font-size: 1rem; }
+
+/* ---- Animation-rate slider ---- */
+.sim-slider-row { display: block; padding: 0 0.75rem 0.5rem; }
+.sim-slider-label { display: block; font-size: 1rem; margin-bottom: 0.2rem; }
+.sim-slider {
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: var(--button-background-color, #005a9c);
+  cursor: pointer;
+}
+.sim-slider:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 2px;
+}
+.sim-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+/* ---- Checkbox / radio lists: even rhythm, comfortable tap targets ---- */
+.sim-check-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.sim-check-list .control-choice {
+  display: grid;
+  grid-template-columns: 1.35rem 1fr;   /* boxes align down a single column */
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;                  /* 44px tap target for the whole row */
+}
+.sim-check-list input[type="checkbox"],
+.sim-check-list input[type="radio"] {
+  width: 1.1rem; height: 1.1rem;
+  margin: 0;
+  accent-color: var(--button-background-color, #005a9c);
+}
+/* The label fills the row so the tap target is the full 44px, not just the box. */
+.sim-check-list label { display: flex; align-items: center; min-height: 2.75rem; }
+.sim-check-list label { font-size: 1rem; line-height: 1.3; }
+.sim-menu .control-choice { display: grid; grid-template-columns: 1.35rem 1fr; gap: 0.45rem; align-items: center; }
+.sim-menu input[type="checkbox"] { width: 1.1rem; height: 1.1rem; margin: 0; }
+
+/* ---- Panel help text ---- */
+.sim-help { font-size: 0.95rem; padding: 0.25rem 0.75rem 0.5rem; margin: 0; }
+.sim-area-sphere1 .sim-help, .sim-area-sphere2 .sim-help { color: #d8d8d8; }
+.sim-help kbd {
+  font: inherit; font-size: 0.9em; padding: 0 0.3em;
+  border: 1px solid currentColor; border-radius: 0.2rem;
+}
+
+/* MathJax output is display-only: never a tab stop (see ACCESSIBILITY.md). */
+mjx-container { outline: none; }
+
+/* ==========================================================================
+   Reflow: desktop -> tablet -> phone portrait.
+   The foundation's own 56rem collapse is left intact; these rules define the
+   stacking order and full-width panels below it.
+   ========================================================================== */
+@media (max-width: 75rem) {
+  /* Tablet / small laptop: spheres side by side, controls in a 2x2 block. */
+  .sim-area-sphere1    { grid-column: 1 / 13;  grid-row: 1; }
+  .sim-area-sphere2    { grid-column: 13 / 25; grid-row: 1; }
+  .sim-area-location   { grid-column: 1 / 13;  grid-row: 2; }
+  .sim-area-animation  { grid-column: 13 / 25; grid-row: 2; }
+  .sim-area-appearance { grid-column: 1 / 13;  grid-row: 3; }
+  .sim-area-stars      { grid-column: 13 / 25; grid-row: 3; }
+}
+
+@media (max-width: 56rem) {
+  /* Phone portrait / 200% zoom: one column, full-width panels, reading order. */
+  .sim-area-sphere1, .sim-area-sphere2, .sim-area-location,
+  .sim-area-animation, .sim-area-appearance, .sim-area-stars {
+    grid-column: 1 / 25;
+    grid-row: auto;
+  }
+  .sim-canvas { max-width: 27.2rem; }
+}
+
+@media (max-width: 30rem) {
+  body { font-size: 1.0625rem; }
+  .sim-layout.app-layout { padding: 0.35rem; gap: 0.45rem; }
+  :root { --sim-field-w: 4.75rem; }
+  .sim-latlon-row { grid-template-columns: 1fr var(--sim-field-w) 4.5rem; }
+}
+
+/* Respect a reduced-motion preference: the continuous animation is not started
+   automatically and the JS holds the sim at its end state instead of tweening. */
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+}

@@ -1,0 +1,13 @@
+The apparatus shown is a common demonstration piece in 
+--- RECORDSEPARATOR ---
+introductory science classes. A nail is placed under tension 
+--- RECORDSEPARATOR ---
+and a large electric current is allowed to flow through it. The 
+--- RECORDSEPARATOR ---
+nail's temperature rises until the iron melts and the tension 
+--- RECORDSEPARATOR ---
+pulls the nail apart, breaking the circuit. The way in which 
+--- RECORDSEPARATOR ---
+color and brightness change with temperature illustrates 
+--- RECORDSEPARATOR ---
+Wein's and Stefan-Boltzmann's Laws.

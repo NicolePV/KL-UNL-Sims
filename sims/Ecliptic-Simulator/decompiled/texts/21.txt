@@ -1,0 +1,5 @@
+This simulator is part of the Basic Coordinates and Seasons Module 
+--- RECORDSEPARATOR ---
+of the Nebraska Astronomy Applet Project. Supporting materials 
+--- RECORDSEPARATOR ---
+and additional astronomy education resources can be found at

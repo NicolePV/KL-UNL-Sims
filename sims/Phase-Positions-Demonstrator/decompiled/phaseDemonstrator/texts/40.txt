@@ -1,0 +1,17 @@
+This simulator demonstrates how planet and moon phases 
+--- RECORDSEPARATOR ---
+depend on the viewing geometry.
+--- RECORDSEPARATOR ---
+Drag the planets around to see how the phases change. 
+--- RECORDSEPARATOR ---
+Dragging one planet close to the other will cause it to become 
+--- RECORDSEPARATOR ---
+a moon of the other planet. Drag a moon away to free it.
+--- RECORDSEPARATOR ---
+Hold down the shift key while dragging to keep a planet or 
+--- RECORDSEPARATOR ---
+moon in its original orbit. Note that even when the shift key is 
+--- RECORDSEPARATOR ---
+down a planet might still snap into orbit around the other 
+--- RECORDSEPARATOR ---
+planet if it gets too close.

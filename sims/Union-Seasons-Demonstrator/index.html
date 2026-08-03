@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Time-Lapse Seasons Demonstrator</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#timeline-heading">Skip to the timeline controls</a>
+
+  <div class="app-shell">
+
+    <!-- Title bar + Reset / Help / About all come from the shared masthead
+         component, which also renders the single <h1>. -->
+    <kl-unl-masthead sim-id="transitmovie" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="sim-main">
+
+      <!-- Mirrors the original's panel grouping: photo left, horizon diagram
+           and animation controls stacked right, timeline full width below. -->
+      <div class="sim-layout">
+
+        <!-- ===== Photograph panel ===== -->
+        <section class="panel sim-panel" aria-labelledby="photo-heading">
+          <h2 id="photo-heading" class="panel__heading">Webcam Image</h2>
+
+          <div class="panel__canvas-wrap">
+            <div class="sim-photo-wrap" id="photo-wrap">
+              <img class="sim-photo" id="photo" alt=""
+                   aria-describedby="photo-desc" src="" decoding="async">
+
+              <!-- Exported vector overlay reused as-is (shapes/11.svg). -->
+              <img class="sim-photo-directions" id="photo-directions"
+                   src="assets/shapes/11.svg" alt="" hidden>
+
+              <p class="sim-photo-missing" id="photo-missing">
+                No image was captured on this day.
+              </p>
+            </div>
+          </div>
+
+          <!-- Text equivalent for the photograph, kept in sync by render(). -->
+          <p id="photo-desc" class="sr-only"></p>
+
+          <div class="sim-caption">
+            <p class="sim-caption__place">University of Nebraska Memorial Plaza</p>
+            <p class="sim-caption__coords">
+              <span class="sim-math" id="eqn-location"></span>
+              <span class="sr-only" id="sr-location"></span>
+            </p>
+          </div>
+
+          <p class="sim-datetime">
+            <span class="sim-datetime__date">
+              <span class="sim-datetime__weekday" id="out-weekday"></span>
+              <span class="sim-datetime__daynum"  id="out-daynum"></span>
+              <span class="sim-datetime__month"   id="out-month"></span>
+              <span class="sim-datetime__year"    id="out-year"></span>
+            </span>
+            <span class="sim-datetime__time" id="out-time"></span>
+          </p>
+
+          <div class="sim-photo-options">
+            <span class="control-choice">
+              <input type="checkbox" id="chk-directions">
+              <label for="chk-directions">show directions</label>
+            </span>
+          </div>
+        </section>
+
+        <!-- ===== Right column: horizon diagram + animation controls ===== -->
+        <div class="sim-col-right">
+
+          <section class="panel sim-panel" aria-labelledby="diagram-heading">
+            <h2 id="diagram-heading" class="panel__heading">Horizon Diagram</h2>
+
+            <div class="panel__canvas-wrap">
+              <div class="sim-stage" id="sim-stage">
+                <canvas id="stage-canvas" role="img"
+                        aria-label="Horizon diagram showing the sun's daily path across the celestial sphere"
+                        aria-describedby="stage-desc"></canvas>
+
+                <!-- Rotate the view. Drag anywhere on the sphere (as in the
+                     original) or focus this and use the arrow keys. -->
+                <button type="button" class="sim-view-handle" id="view-handle"
+                        aria-label="Rotate the horizon diagram view. Use the arrow keys to change the viewing direction and elevation."></button>
+
+                <!-- The draggable sun. Positioned over the painted disc by
+                     render(); dragging or arrow-keying it changes the day. -->
+                <button type="button" class="sim-sun-handle" id="sun-handle"
+                        role="slider" aria-valuemin="-23.44" aria-valuemax="23.44"
+                        aria-label="Sun's declination"></button>
+
+                <span class="sim-dir-label" id="dir-n">N</span>
+                <span class="sim-dir-label" id="dir-e">E</span>
+                <span class="sim-dir-label" id="dir-s">S</span>
+                <span class="sim-dir-label" id="dir-w">W</span>
+              </div>
+            </div>
+
+            <!-- Text equivalent for the diagram, kept in sync by render(). -->
+            <p id="stage-desc" class="sr-only"></p>
+
+            <div class="sim-readouts">
+              <span class="sim-readouts__label" id="lbl-alt">Sun's Altitude:</span>
+              <span class="sim-readouts__value sim-math" id="eqn-alt"
+                    aria-hidden="true"></span>
+              <span class="sr-only" id="sr-alt"></span>
+
+              <span class="sim-readouts__label" id="lbl-dec">Declination:</span>
+              <span class="sim-readouts__value sim-math" id="eqn-dec"
+                    aria-hidden="true"></span>
+              <span class="sr-only" id="sr-dec"></span>
+            </div>
+          </section>
+
+          <section class="panel sim-panel" aria-labelledby="animate-heading">
+            <h2 id="animate-heading" class="panel__heading">Animation Controls</h2>
+
+            <div class="control-fieldset">
+              <div class="sim-animate-row">
+                <button type="button" class="button sim-animate-button" id="btn-animate">
+                  start animation
+                </button>
+              </div>
+
+              <div class="sim-rate-row">
+                <label class="control-row__label" for="rate-slider">rate:</label>
+                <input type="range" class="control-row__slider" id="rate-slider"
+                       min="0" max="1000" step="1" value="0">
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- ===== Timeline panel (full width, as in the original) ===== -->
+      <section class="panel sim-panel" aria-labelledby="timeline-heading">
+        <h2 id="timeline-heading" class="panel__heading">Timeline</h2>
+
+        <div class="panel__canvas-wrap sim-timeline-wrap">
+          <div class="sim-month-labels" id="month-labels" aria-hidden="true"></div>
+
+          <div class="sim-timeline" id="timeline">
+            <canvas id="timeline-canvas" role="img"
+                    aria-label="Timeline of the year, marked by month, with bands showing days that have no image"></canvas>
+
+            <!-- Real slider: pointer-draggable and fully keyboard-operable. -->
+            <button type="button" class="sim-day-cursor" id="day-cursor"
+                    role="slider" aria-valuemin="0" aria-valuemax="365"
+                    aria-label="Day of year"></button>
+          </div>
+        </div>
+
+        <div class="sim-timeline-legend">
+          <span class="sim-legend-key">
+            <span class="sim-legend-swatch" aria-hidden="true"></span>
+            <span id="legend-text">days with no image</span>
+          </span>
+
+          <span class="control-choice">
+            <input type="checkbox" id="chk-overcast">
+            <label for="chk-overcast">exclude overcast days</label>
+          </span>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Single polite status region: every committed change is announced here. -->
+  <p id="live-region" class="sr-only" aria-live="polite"></p>
+
+  <!-- Foundation equation helper (copied in unchanged) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Shared masthead custom element (copied in unchanged) -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- MathJax (vendored locally; SVG output is self-contained, no CDN). -->
+  <script>
+    window.MathJax = {
+      loader: { failed: function (err) { console.warn('[MathJax] optional component not vendored:', err.message); } },
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'local' },
+      options: { enableMenu: true, menuOptions: { settings: { assistiveMml: false } } }
+    };
+  </script>
+  <script src="assets/mathjax/tex-mml-svg.js"></script>
+
+  <!-- Sim logic -->
+  <script src="simulation.js"></script>
+</body>
+</html>

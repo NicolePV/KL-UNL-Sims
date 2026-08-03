@@ -1,0 +1,5 @@
+simple
+--- RECORDSEPARATOR ---
+blackbody
+--- RECORDSEPARATOR ---
+component

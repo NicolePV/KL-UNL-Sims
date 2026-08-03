@@ -1,0 +1,9 @@
+relative 
+--- RECORDSEPARATOR ---
+strengths of 
+--- RECORDSEPARATOR ---
+the filters at 
+--- RECORDSEPARATOR ---
+the given 
+--- RECORDSEPARATOR ---
+temperature:

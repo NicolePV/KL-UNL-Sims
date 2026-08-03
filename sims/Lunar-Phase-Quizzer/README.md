@@ -1,0 +1,119 @@
+# Lunar Phase Quizzer — HTML5
+
+An accessible HTML5 rebuild of the NAAP *Lunar Phase Quizzer* (originally Adobe
+Flash / ActionScript 3), running on the shared KL-UNL foundation.
+
+## It must be served over HTTP — it will NOT run from a double-clicked file
+
+Opening `index.html` directly (a `file://` path) shows an empty/broken title bar.
+**Why:** the KL-UNL masthead component (`foundation/kl-unl-masthead.js`) loads the
+title / Help / About text with `fetch('foundation/contents.json')`, and browsers
+block `fetch()` of local files over `file://` (same-origin policy). Served over
+HTTP the fetch succeeds and the simulation loads normally.
+
+## How to run locally
+
+From **inside this `html5/` folder**, start any static server:
+
+```
+# Python 3
+python3 -m http.server 8123
+#   then open  http://localhost:8123/
+
+# Node
+npx serve
+#   or:  npx http-server
+
+# VS Code
+Use the "Live Server" extension.
+```
+
+Because you serve from inside `html5/`, the simulation is at the server **root** —
+open `http://localhost:8123/` (not `.../html5/index.html`).
+
+## Production
+
+When deployed to any static host (served over HTTP/HTTPS) it just works; the
+`file://` limitation only affects local double-clicking. All asset references are
+**relative**, so the sim runs correctly at a site root *or* under a subpath such
+as `https://user.github.io/repo/`.
+
+## Hosting on GitHub Pages
+
+GitHub Pages works, but two of its defaults get in the way of this project, so
+one of the options below is needed:
+
+* **Pages only serves from a repo _root_ or a `/docs` folder** — not from an
+  arbitrary `html5/` subfolder.
+* **Pages runs Jekyll by default**, which can interfere with a plain static
+  site. (This repo ships an empty `html5/.nojekyll` marker to disable it.)
+
+**Option A — Deploy from a branch (simplest, nothing to configure in Actions).**
+The repo root already contains a redirect `index.html` (which forwards to
+`html5/index.html`) and a `.nojekyll` file, so serving the whole repo works:
+
+1. Push the repository to GitHub.
+2. **Settings → Pages → Build and deployment → Source → Deploy from a branch**,
+   and pick your branch with the **`/ (root)`** folder. Save.
+3. Wait ~1 minute, then open `https://<user>.github.io/<repo>/` — the root page
+   redirects into the sim at `.../<repo>/html5/index.html`.
+
+(This publishes the whole repo, including the decompiled source. That is
+harmless but if you want to publish *only* the sim, use Option B.)
+
+**Option B — Deploy `html5/` only, via the included GitHub Action.** The repo
+contains `.github/workflows/deploy-pages.yml`, which uploads just the `html5/`
+folder as the Pages site root. To use it:
+
+1. Push the repository (the workflow runs on a push to `main` **or** `master`).
+2. **Settings → Pages → Build and deployment → Source → GitHub Actions**.
+3. Push, or run the workflow manually from the **Actions** tab. The sim is then
+   live directly at `https://<user>.github.io/<repo>/`.
+
+Because every path in the sim is relative, no code changes are needed for either
+option; the sim has been verified to run correctly both at a site root and under
+a `/<repo>/html5/` subpath.
+
+### If it still doesn't load, check these
+
+* **Which URL and what do you see?** A 404 at `https://<user>.github.io/<repo>/`
+  usually means Pages isn't enabled yet, or the Action hasn't finished (watch the
+  **Actions** tab), or you picked the wrong branch/folder.
+* **Blank white masthead bar** = `foundation/contents.json` didn't load. Open the
+  browser dev console (F12) → Network tab and reload; confirm `contents.json`
+  returns **200** (not 404). A 404 means the files weren't published at the
+  expected path.
+* **Give it a minute.** The first Pages build/deploy can take 30–60+ seconds.
+* Pages must be **enabled** for the repo (public repos, or a plan that includes
+  Pages for private repos).
+
+## Layout
+
+```
+html5/
+  index.html          KL-UNL scaffold: .app-shell + <kl-unl-masthead> + panels
+  foundation/         KL-UNL files (see note below)
+  styles/styles.css   sim-specific styles only (foundation is not edited)
+  simulation.js       all simulation logic (behavior ported from the AS3 source)
+  assets/moon.jpg     the reused Moon photograph (from the original export)
+  README.md           this file
+  CONVERSION_NOTES.md AS3 -> HTML5 behavior mapping and deviations
+  ACCESSIBILITY.md    WCAG affordances, keyboard map, screen-reader notes
+```
+
+### Note on `foundation/contents.json`
+
+The foundation JS/CSS are byte-for-byte copies. The **provided** master
+`contents.json` was **not valid JSON** (literal newlines and unescaped `"`
+characters inside several *other* sims' HTML strings), which made the masthead
+fail to parse the file and load nothing. The copy here was repaired **only** to
+make it parse — no visible text was changed, and this sim's own entry
+(`lunarphasequizzer`, already present in the file) was left as-is. See
+CONVERSION_NOTES.md → "Foundation contents.json repair".
+
+## Browser support
+
+Vanilla HTML/CSS/JS, no build step, no external dependencies. Uses Pointer
+Events, `<canvas>`, native `<input type="range">`, and standards-based CSS
+(grid/flex, `aspect-ratio`, `accent-color`). Works in Chrome, Edge, Firefox, and
+Safari (desktop + iOS) and on Windows/macOS/Linux/Android.

@@ -1,0 +1,9 @@
+where 
+--- RECORDSEPARATOR ---
+P
+--- RECORDSEPARATOR ---
+ is in years and 
+--- RECORDSEPARATOR ---
+a
+--- RECORDSEPARATOR ---
+ is in AUs

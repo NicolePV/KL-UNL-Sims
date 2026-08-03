@@ -1,0 +1,5 @@
+This simulator is part of the Cosmic Distance Ladder Module of the 
+--- RECORDSEPARATOR ---
+Nebraska Astronomy Applet Project. Supporting materials and 
+--- RECORDSEPARATOR ---
+additional astronomy education resources can be found at

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Synodic Lag Demonstrator</title>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") working on every symbol. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <!-- aria-live status region: announces state changes (on commit) with units/context -->
+  <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  <main class="app-shell">
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It renders the <h1>, reads text from foundation/contents.json by sim-id,
+         and dispatches a "sim-reset" event we listen for. -->
+    <kl-unl-masthead sim-id="synodiclag" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout sim-layout">
+
+      <!-- ================= ORBIT DIAGRAM PANEL (left) ================= -->
+      <section class="panel sim-diagram-panel" aria-labelledby="diagram-heading">
+        <h2 id="diagram-heading" class="panel__heading">Orbit Diagram</h2>
+
+        <div class="panel__canvas-wrap sim-stage">
+          <!-- Visual layer only. Original Flash stage coordinates are preserved
+               (sun at 150,150; orbital radius 125); CSS scales the element.
+               The text equivalent lives in #diagram-desc and the live region. -->
+          <canvas id="stage" width="300" height="300"
+                  role="img" aria-labelledby="diagram-desc"></canvas>
+
+          <!-- "angle to noon" readout, overlaid at the same spot the Flash sim
+               painted it (just below the sun, inside the orbit). Real HTML so it
+               zooms and so the degree symbol can be typeset by MathJax. -->
+          <div class="sim-readout" id="readout">
+            <span class="sim-readout__label">angle to noon</span>
+            <span class="sim-readout__value" id="angle-eqn" tabindex="-1"></span>
+          </div>
+        </div>
+
+        <!-- Text equivalent of the canvas for screen-reader users. -->
+        <p id="diagram-desc" class="sr-only"></p>
+        <p id="angle-eqn-sr" class="sr-only"></p>
+      </section>
+
+      <!-- ==================== CONTROLS PANEL (right) ==================== -->
+      <section class="panel sim-controls-panel" aria-labelledby="controls-heading">
+        <h2 id="controls-heading" class="panel__heading">Controls</h2>
+
+        <!-- ---- Actions (the three original push buttons, plus Pause) ---- -->
+        <fieldset class="control-fieldset sim-fieldset">
+          <legend class="control-fieldset__legend">actions</legend>
+          <div class="sim-button-stack">
+            <button type="button" class="button sim-button" id="btn-sidereal">one sidereal day</button>
+            <button type="button" class="button sim-button" id="btn-synodic">one solar day</button>
+            <button type="button" class="button sim-button" id="btn-noon">realign to noon</button>
+            <!-- Added for WCAG 2.2.2: the 1200-hour / slow run lasts well over
+                 five seconds, so the motion needs a pause control. -->
+            <button type="button" class="button sim-button sim-button--pause" id="btn-pause" disabled>Pause</button>
+          </div>
+        </fieldset>
+
+        <!-- ---- length of day ---- -->
+        <fieldset class="control-fieldset sim-fieldset" id="fs-length">
+          <legend class="control-fieldset__legend">length of day</legend>
+          <div class="sim-choice-list">
+            <div class="control-choice">
+              <input type="radio" name="factor" id="day-24" value="24">
+              <label for="day-24">24 hours</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" name="factor" id="day-240" value="240" checked>
+              <label for="day-240">240 hours</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" name="factor" id="day-1200" value="1200">
+              <label for="day-1200">1200 hours</label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- ---- animation ---- -->
+        <fieldset class="control-fieldset sim-fieldset">
+          <legend class="control-fieldset__legend">animation</legend>
+          <div class="sim-choice-list">
+            <div class="control-choice">
+              <input type="radio" name="delay" id="speed-fast" value="1" checked>
+              <label for="speed-fast">fast</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" name="delay" id="speed-slow" value="10">
+              <label for="speed-slow">slow</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" id="shadow" checked>
+              <label for="shadow">shadow</label>
+            </div>
+          </div>
+        </fieldset>
+
+        <p class="panel__help">
+          The shadow marks where Earth stood when the run began. A sidereal day is
+          one full rotation with respect to the stars; a solar day is one full
+          rotation with respect to the Sun.
+        </p>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

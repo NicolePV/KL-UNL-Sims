@@ -1,0 +1,1 @@
+This tool demonstrates antipodal points, which are points on opposite sides of the Earth from each other.Drag one of the points on the map or sphere and the other point will automatically move to the point furthest away on the globe — the antipodal point.

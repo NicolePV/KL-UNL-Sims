@@ -1,0 +1,39 @@
+This simulator is designed for teaching subjects like rising and 
+--- RECORDSEPARATOR ---
+setting times, time of day, and moon phases. The emphasis is 
+--- RECORDSEPARATOR ---
+on how these topics relate to the positions of the sun and 
+--- RECORDSEPARATOR ---
+moon in an observer's horizon diagram.
+--- RECORDSEPARATOR ---
+For demonstration purposes the sun and moon are restricted 
+--- RECORDSEPARATOR ---
+to eight evenly spaced numbered points on the celestial 
+--- RECORDSEPARATOR ---
+equator. Checking 
+--- RECORDSEPARATOR ---
+show position labels
+--- RECORDSEPARATOR ---
+ shows these points.
+--- RECORDSEPARATOR ---
+In this simulation we are ignoring the sun's seasonal changes 
+--- RECORDSEPARATOR ---
+in declination and the fact that the moon's orbit is tilted 
+--- RECORDSEPARATOR ---
+slightly from the ecliptic plane. The option 
+--- RECORDSEPARATOR ---
+show ecliptic 
+--- RECORDSEPARATOR ---
+band
+--- RECORDSEPARATOR ---
+ shows a band ±30° from the celestial equator, roughly 
+--- RECORDSEPARATOR ---
+indicating the minimum and maximum extent of the moon's 
+--- RECORDSEPARATOR ---
+range (as well as that of most planets). The sun is restricted 
+--- RECORDSEPARATOR ---
+to a region ±23.5° from the celestial equator.
+--- RECORDSEPARATOR ---
+Note that you can change the orientation of the horizon 
+--- RECORDSEPARATOR ---
+diagram by clicking and dragging it around.

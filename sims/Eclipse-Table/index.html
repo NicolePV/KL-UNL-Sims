@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eclipse Table</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (never editing it) -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- Title + Reset / Help / About + dialogs are all provided by this component.
+         Do NOT add a competing <h1>, masthead, or Reset button. -->
+    <kl-unl-masthead sim-id="eclipsetable" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main id="main-content" class="et-main">
+
+      <!-- Bypass block (WCAG 2.4.1): jump past the many plotted points -->
+      <a class="et-skip sr-only sr-only-focusable" href="#et-after-chart">Skip past the eclipse plot points</a>
+
+      <!-- ===================== CHART PANEL ===================== -->
+      <section class="panel et-chart-panel" aria-labelledby="et-chart-heading">
+        <h2 id="et-chart-heading" class="panel__heading">Eclipse plot, years 2000&ndash;2029</h2>
+
+        <p class="panel__help" id="et-chart-desc">
+          This plot shows <strong><span id="et-total-count">every</span> eclipse</strong>
+          from the year 2000 through 2029.
+          <span class="et-key-sun">Solar eclipses</span> are shown as orange dots
+          (<span id="et-solar-count">many</span>) and
+          <span class="et-key-moon">lunar eclipses</span> as grey dots
+          (<span id="et-lunar-count">many</span>).
+          The horizontal axis is the year and the vertical axis is the month, so the
+          diagonal bands of dots reveal the &ldquo;eclipse seasons&rdquo; that recur about
+          twice a year. Move the pointer over a dot &mdash; or press <kbd>Tab</kbd> to step
+          through the eclipses in date order &mdash; to read its date, type, Saros series,
+          duration, and where it is visible. A full list is also given in the
+          <a href="#et-table-heading">eclipse list</a> below.
+        </p>
+
+        <div class="panel__canvas-wrap et-canvas-wrap">
+          <!-- Scaling stage: fixed internal aspect ratio (700 x 550 original units).
+               The <canvas> draws only the grid background and the eclipse dots.
+               The overlay holds the accessible axis labels, logo, interactive
+               eclipse targets and the hover/focus info panel (all of which zoom
+               as real HTML). -->
+          <div class="et-stage" id="et-stage">
+            <canvas id="et-canvas" width="700" height="550"
+                    role="img"
+                    aria-describedby="et-chart-desc"
+                    aria-label="Scatter plot of solar and lunar eclipses by year and month."></canvas>
+
+            <div class="et-overlay" id="et-overlay">
+              <!-- axis labels, ClassAction logo, credit line, eclipse buttons and the
+                   info panel are all injected here by simulation.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <span id="et-after-chart" tabindex="-1"></span>
+
+      <!-- ===================== LEGEND PANEL ===================== -->
+      <section class="panel et-legend-panel" aria-labelledby="et-legend-heading">
+        <h2 id="et-legend-heading" class="panel__heading">Key</h2>
+        <div class="et-legend">
+          <p class="et-legend-group">
+            <span class="et-swatch et-swatch--solar" aria-hidden="true"></span>
+            <span><strong>Solar eclipse</strong> (orange dot) &mdash; types: Total,
+            Annular, Hybrid, Partial.</span>
+          </p>
+          <p class="et-legend-group">
+            <span class="et-swatch et-swatch--lunar" aria-hidden="true"></span>
+            <span><strong>Lunar eclipse</strong> (grey dot) &mdash; types: Total,
+            Penumbral, Partial.</span>
+          </p>
+          <p class="et-legend-note">
+            Shaded vertical bands mark the years 2000, 2005, 2010, 2015, 2020 and 2025.
+          </p>
+        </div>
+      </section>
+
+      <!-- ===================== DATA TABLE PANEL ===================== -->
+      <section class="panel et-table-panel" aria-labelledby="et-table-heading">
+        <h2 id="et-table-heading" class="panel__heading">Eclipse list</h2>
+        <p class="panel__help">
+          The same eclipses in date order. Point at a row to highlight it on the plot above.
+        </p>
+        <div class="et-table-scroll" tabindex="0" role="region" aria-labelledby="et-table-heading">
+          <table class="et-table">
+            <caption class="sr-only">
+              Solar and lunar eclipses from 2000 to 2029, with date, eclipse category,
+              type, Saros series number, duration and region of visibility.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Category</th>
+                <th scope="col">Type</th>
+                <th scope="col">Saros</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Visibility</th>
+              </tr>
+            </thead>
+            <tbody id="et-table-body">
+              <!-- rows injected by simulation.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Polite live region: announces the eclipse under the pointer for
+           assistive-technology users who also use a mouse. Keyboard users hear the
+           full description from each point's own accessible name on focus. -->
+      <p class="sr-only" id="et-live" aria-live="polite" aria-atomic="true"></p>
+
+    </main>
+  </div>
+
+  <!-- KL-UNL masthead custom element (title + Reset/Help/About + dialogs). -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <!-- Foundation equation/MathJax helper (no equations in this sim; loaded for
+       pipeline consistency). Then the sim logic. -->
+  <script src="foundation/kl-unl.js"></script>
+  <script src="simulation.js"></script>
+</body>
+</html>

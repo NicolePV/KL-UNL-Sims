@@ -1,0 +1,228 @@
+/* ----------------------------------------------------------------------------
+   Basketball Phases Simulator -- sim-specific styles only.
+
+   Shared palette, layout, controls, and focus handling come from
+   foundation/kl-unl.css, which is copied in unchanged and never edited.
+   Everything here uses relative units (rem / % / clamp) so the layout flexes
+   from desktop through iPad down to phone portrait and stays usable at 200%
+   zoom. Standard properties only -- no prefix-only declarations -- so Safari,
+   Firefox, Chrome and Edge all get the same result.
+---------------------------------------------------------------------------- */
+
+/* Body copy noticeably larger than the browser default, in rem so it tracks the
+   user's font setting (WCAG 1.4.4). Matches the sibling sims in this pipeline. */
+body { font-size: 1.125rem; }
+
+/* Panel headings line up with the masthead title (it pads content by 1.25rem). */
+.panel__heading           { font-size: 1.25rem; padding-left: 1.25rem; }
+.control-fieldset__legend { font-size: 1.1rem; }
+
+/* ---------------------------------------------------------------------------
+   Layout
+
+   The Flash stage is a wide diagram on the left with a narrow right column
+   stacking "View of Ball" over the controls. .app-layout supplies that grid,
+   but its default columns are 25rem / 1fr -- narrow left -- so this sim flips
+   the proportions. The foundation's own 56rem collapse is re-declared here at
+   equal specificity, because `.app-layout.sim-layout` (0,2,0) would otherwise
+   outrank the foundation's `.app-layout` (0,1,0) inside its media query.
+--------------------------------------------------------------------------- */
+.sim-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.app-layout.sim-layout {
+  grid-template-columns: minmax(0, 1fr) 21rem;
+  gap: 0.5rem;
+  padding-top: 0;
+}
+
+/* Right column stacks its two panels with the same gap as the columns. */
+.sim-layout__narrow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sim-panel { min-width: 0; }
+
+/* Foundation breakpoint: two columns -> one. Re-declared at matching
+   specificity so the sim's wider left column doesn't defeat the collapse. */
+@media (max-width: 56rem) {
+  .app-layout.sim-layout { grid-template-columns: 1fr; }
+}
+
+/* Phone portrait: everything already stacks by the rule above; below this the
+   right column stops being artificially narrow and the panels breathe less. */
+@media (max-width: 30rem) {
+  .sim-main            { gap: 0.4rem; }
+  .app-layout.sim-layout { gap: 0.4rem; }
+  .sim-canvas-wrap     { padding: 0.4rem 0.6rem 0.75rem; }
+  .control-fieldset    { padding: 0 0.75rem 0.5rem; }
+  .panel__heading      { padding-left: 0.75rem; }
+  .sim-readout         { padding: 0 0.75rem 0.75rem; }
+  .sim-button-row      { padding: 0 0.75rem 0.75rem; }
+}
+
+/* ---------------------------------------------------------------------------
+   Canvas stages
+
+   Both canvases keep their ORIGINAL Flash stage coordinates internally; CSS
+   scales the element to fit its panel. The width/height attributes give the
+   element an intrinsic aspect ratio, so `width:100%; height:auto` preserves
+   the shape even on engines without the aspect-ratio property.
+--------------------------------------------------------------------------- */
+.sim-canvas-wrap { line-height: 0; padding: 0.5rem 1.25rem 1rem; }
+
+.sim-stage {
+  position: relative;      /* anchors the "Light" label and the eye handle */
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* The ball view is small and square. The rotation frames are 175px bitmaps, so
+   cap the stage near the rotator's own 225-unit width to keep them crisp; it
+   still shrinks freely on narrow screens. */
+.sim-stage--ball { max-width: 14rem; }
+
+.sim-stage canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--background-color, #ffffff);
+  /* Dragging the eye must not scroll or zoom the page on touch devices. */
+  touch-action: none;
+  /* And must not select page text or raise the iOS callout menu. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#orbit-canvas { cursor: default; }
+
+/* ---------------------------------------------------------------------------
+   Overlays on the overhead view
+--------------------------------------------------------------------------- */
+
+/* "Light", sitting in the gap between the second and third light rays exactly
+   as in the original. Real HTML rather than canvas-baked text so it scales
+   with the user's font size and at 200% zoom. Positioned by JS in percentages
+   of the stage, so it follows the canvas as it scales. */
+.sim-light-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  font-size: 1.15rem;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--foreground-color, #1a1a1a);
+}
+
+/* Keyboard / assistive-tech proxy for the draggable eye. Transparent: the eye
+   itself is painted on the canvas, and this only needs to be a focus target
+   sitting on top of it. pointer-events:none keeps all hit-testing in one place
+   (the canvas handler), which focuses this element on pointerdown so that
+   click-to-focus and Tab-to-focus land identically. */
+.sim-eye-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -1.375rem 0 0 -1.375rem;   /* centre on the eye */
+  border-radius: 50%;
+  pointer-events: none;
+  background: transparent;
+}
+
+.sim-eye-handle:focus-visible {
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Viewing-angle readout (MathJax)
+--------------------------------------------------------------------------- */
+.sim-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1rem;
+}
+
+.sim-readout__label { font-weight: bold; }
+
+/* Typeset math is display-only: it must never become a tab stop. JS also sets
+   tabindex="-1" on the MathJax output as a belt-and-braces measure. */
+.sim-readout__math {
+  font-size: 1.15rem;
+  line-height: 1;
+  min-width: 5.5ch;        /* keeps the row from twitching as digits change */
+}
+.sim-readout__math mjx-container { outline: none; }
+
+/* ---------------------------------------------------------------------------
+   Controls
+--------------------------------------------------------------------------- */
+
+/* Consistent rhythm between the three control groups, matching the separator
+   rules the original draws between them. */
+.sim-panel--controls .control-fieldset { padding: 0.25rem 1.25rem 0.5rem; }
+
+.sim-rule {
+  border: 0;
+  border-top: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  margin: 0.5rem 1.25rem;
+}
+
+/* The foundation sizes the radio itself at 1.25rem, which is left alone so this
+   sim matches its siblings. Instead the whole row is given a 44px height and the
+   label is stretched across it, so the actual activatable target (label + input)
+   clears the minimum touch size without restyling the control. */
+.control-choice { min-height: 2.75rem; }
+.control-choice label {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  flex: 1 1 auto;
+}
+
+.sim-slider {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;                     /* >=44px touch target */
+  cursor: pointer;
+  accent-color: var(--button-background-color, #005a9c);
+}
+
+/* "Slow" / "Fast" pinned to the ends of the track, as in the original. */
+.sim-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+}
+
+.sim-button-row { padding: 0 1.25rem 1rem; }
+
+/* The Hide/Show label swaps between two lengths; a shared min-width stops the
+   button resizing as it toggles. */
+.sim-button { min-width: 11rem; }
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+
+   The sim starts in "Move Eye Manually", so nothing moves until the user asks
+   for it. When reduced motion is requested, simulation.js additionally keeps
+   "Animate Eye" from being pre-selected by a Reset. See ACCESSIBILITY.md.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .sim-stage canvas { scroll-behavior: auto; }
+}

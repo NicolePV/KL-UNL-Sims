@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eclipse Shadow Simulator</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (never editing it) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#diagram-heading">Skip to the shadow diagram</a>
+
+  <div class="app-shell">
+    <!-- Masthead component supplies the H1 title plus Reset / Help / About -->
+    <kl-unl-masthead sim-id="shadowsim" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout" id="main">
+
+      <!-- LEFT COLUMN: controls (keyboard-accessible path, added for a11y) -->
+      <div class="app-layout__left">
+        <section class="panel" aria-labelledby="controls-heading">
+          <h2 class="panel__heading" id="controls-heading">Controls</h2>
+
+          <p class="panel__help" id="controls-help">
+            Move the Earth or Moon disc by dragging it, or click a disc (or press
+            Tab to reach it) to focus it and then use the arrow keys &mdash; hold
+            Shift for larger steps. You can also use the sliders below. The shadow
+            each disc casts away from the Sun updates automatically; the Sun stays
+            fixed at the left.
+          </p>
+
+          <fieldset class="control-fieldset" aria-describedby="earth-readout">
+            <legend class="control-fieldset__legend">Earth (large blue disc)</legend>
+
+            <div class="control-row control-row--pos">
+              <label class="control-row__label" for="earthX">Horizontal</label>
+              <input class="control-row__slider sim-slider" type="range"
+                     id="earthX" min="0" max="900" step="1" value="311">
+              <output class="control-row__value" id="earthXval" for="earthX"></output>
+            </div>
+
+            <div class="control-row control-row--pos">
+              <label class="control-row__label" for="earthY">Vertical</label>
+              <input class="control-row__slider sim-slider" type="range"
+                     id="earthY" min="0" max="500" step="1" value="204">
+              <output class="control-row__value" id="earthYval" for="earthY"></output>
+            </div>
+
+            <p class="sim-readout" id="earth-readout"></p>
+          </fieldset>
+
+          <fieldset class="control-fieldset" aria-describedby="moon-readout">
+            <legend class="control-fieldset__legend">Moon (small gray disc)</legend>
+
+            <div class="control-row control-row--pos">
+              <label class="control-row__label" for="moonX">Horizontal</label>
+              <input class="control-row__slider sim-slider" type="range"
+                     id="moonX" min="0" max="900" step="1" value="328">
+              <output class="control-row__value" id="moonXval" for="moonX"></output>
+            </div>
+
+            <div class="control-row control-row--pos">
+              <label class="control-row__label" for="moonY">Vertical</label>
+              <input class="control-row__slider sim-slider" type="range"
+                     id="moonY" min="0" max="500" step="1" value="314">
+              <output class="control-row__value" id="moonYval" for="moonY"></output>
+            </div>
+
+            <p class="sim-readout" id="moon-readout"></p>
+          </fieldset>
+
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend">Shadow key</legend>
+            <ul class="sim-legend">
+              <li><span class="sim-swatch sim-swatch--umbra" aria-hidden="true"></span>
+                Umbra &mdash; the dark, total shadow cone (complete eclipse)</li>
+              <li><span class="sim-swatch sim-swatch--penumbra" aria-hidden="true"></span>
+                Penumbra &mdash; the faint, partial shadow that spreads outward</li>
+            </ul>
+          </fieldset>
+        </section>
+      </div>
+
+      <!-- RIGHT COLUMN: the simulation stage -->
+      <div class="app-layout__right">
+        <section class="panel panel--size" aria-labelledby="diagram-heading">
+          <h2 class="panel__heading" id="diagram-heading">Diagram</h2>
+          <div class="panel__canvas-wrap">
+            <div class="stage-wrap" id="stage-wrap">
+              <canvas id="stage" width="900" height="500"
+                      role="img"
+                      aria-label="Eclipse shadow diagram"
+                      aria-describedby="stage-desc"></canvas>
+              <!-- Focusable handles overlaid on each disc: Tab to reach them or
+                   click a disc to focus it, then move it with the arrow keys. -->
+              <button type="button" class="disc-handle" id="earth-handle"></button>
+              <button type="button" class="disc-handle" id="moon-handle"></button>
+            </div>
+          </div>
+          <p id="stage-desc" class="sr-only"></p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Polite live region: announces committed changes with units -->
+  <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Foundation JS (unchanged): masthead component + MathJax equation helper -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Sim logic -->
+  <script src="simulation.js"></script>
+</body>
+</html>

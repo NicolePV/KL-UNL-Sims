@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rotating Sky Explorer</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#location-heading">Skip to controls</a>
+
+  <div class="app-shell">
+
+    <!-- Title bar + Reset / Help / About all come from the shared masthead component. -->
+    <kl-unl-masthead sim-id="celhorcomp" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout sim-layout">
+
+      <!-- =================== CELESTIAL SPHERE VIEW =================== -->
+      <section class="panel sim-area-sphere1" aria-labelledby="sphere1-heading">
+        <h2 id="sphere1-heading" class="panel__heading">celestial sphere view</h2>
+
+        <div class="panel__canvas-wrap sim-canvas-wrap">
+          <canvas id="sphere1-canvas" class="sim-canvas" width="435" height="415"
+                  role="img" aria-label="Celestial sphere diagram"
+                  aria-describedby="sphere1-desc"></canvas>
+          <!-- Keyboard proxy for rotating this view. Pointer events pass through to
+               the canvas so the mouse drag path is unaffected. -->
+          <div id="sphere1-handle" class="sim-view-handle" tabindex="0" role="application"
+               aria-label="Celestial sphere view orientation. Use the arrow keys to rotate the view."></div>
+        </div>
+
+        <p id="sphere1-desc" class="sr-only"></p>
+
+        <!-- Selected-star equatorial coordinates. Hidden until a star is selected,
+             exactly as the original starLocation panel is. -->
+        <div class="sim-coord-strip" id="star-eq-strip" hidden>
+          <div class="sim-coord-row">
+            <label class="sim-coord-label" for="ra-field">right ascension:</label>
+            <input class="sim-coord-input" type="number" inputmode="decimal" autocomplete="off"
+                   id="ra-field" step="0.1" min="0" max="24"
+                   aria-label="Right ascension of the selected star, in hours">
+            <span class="sim-coord-unit" aria-hidden="true">\(\mathrm{h}\)</span>
+          </div>
+          <div class="sim-coord-row">
+            <label class="sim-coord-label" for="dec-field">declination:</label>
+            <input class="sim-coord-input" type="number" inputmode="decimal" autocomplete="off"
+                   id="dec-field" step="0.1" min="-90" max="90"
+                   aria-label="Declination of the selected star, in degrees">
+            <span class="sim-coord-unit" aria-hidden="true">\(^{\circ}\)</span>
+          </div>
+        </div>
+
+        <p class="panel__help sim-help">
+          Drag the sphere to rotate your view. <kbd>Shift</kbd>-click adds a star;
+          <kbd>Delete</kbd>-click removes one. Keyboard: <kbd>Tab</kbd> to the view and use
+          the <strong>arrow keys</strong> to rotate it.
+        </p>
+      </section>
+
+      <!-- =================== HORIZON DIAGRAM VIEW =================== -->
+      <section class="panel sim-area-sphere2" aria-labelledby="sphere2-heading">
+        <h2 id="sphere2-heading" class="panel__heading">horizon diagram view</h2>
+
+        <div class="panel__canvas-wrap sim-canvas-wrap">
+          <canvas id="sphere2-canvas" class="sim-canvas" width="435" height="415"
+                  role="img" aria-label="Horizon diagram"
+                  aria-describedby="sphere2-desc"></canvas>
+          <div id="sphere2-handle" class="sim-view-handle" tabindex="0" role="application"
+               aria-label="Horizon diagram view orientation. Use the arrow keys to rotate the view."></div>
+        </div>
+
+        <p id="sphere2-desc" class="sr-only"></p>
+
+        <div class="sim-coord-strip" id="star-hz-strip" hidden>
+          <div class="sim-coord-row">
+            <label class="sim-coord-label" for="az-field">azimuth:</label>
+            <input class="sim-coord-input" type="number" inputmode="decimal" autocomplete="off"
+                   id="az-field" step="0.1" min="0" max="360"
+                   aria-label="Azimuth of the selected star, in degrees">
+            <span class="sim-coord-unit" aria-hidden="true">\(^{\circ}\)</span>
+          </div>
+          <div class="sim-coord-row">
+            <label class="sim-coord-label" for="alt-field">altitude:</label>
+            <input class="sim-coord-input" type="number" inputmode="decimal" autocomplete="off"
+                   id="alt-field" step="0.1" min="-90" max="90"
+                   aria-label="Altitude of the selected star, in degrees">
+            <span class="sim-coord-unit" aria-hidden="true">\(^{\circ}\)</span>
+          </div>
+        </div>
+
+        <p class="panel__help sim-help">
+          Click a star to select it (click again to deselect). Select a star to read and edit
+          its coordinates in both systems.
+        </p>
+      </section>
+
+      <!-- =================== OBSERVER'S LOCATION =================== -->
+      <section class="panel sim-area-location" aria-labelledby="location-heading">
+        <h2 id="location-heading" class="panel__heading">Observer&rsquo;s Location</h2>
+
+        <fieldset class="control-fieldset">
+          <legend class="control-fieldset__legend sr-only">Observer latitude and longitude</legend>
+
+          <div class="control-row sim-latlon-row">
+            <label class="control-row__label" for="lat-field">latitude:</label>
+            <input class="control-row__input sim-num" type="number" inputmode="decimal" autocomplete="off"
+                   id="lat-field" step="0.1" min="0" max="90" value="40.8"
+                   aria-label="Observer latitude, degrees">
+            <select class="sim-select sim-dir" id="lat-dir" aria-label="Latitude hemisphere">
+              <option value="N" selected>&deg; N</option>
+              <option value="S">&deg; S</option>
+            </select>
+          </div>
+
+          <div class="control-row sim-latlon-row">
+            <label class="control-row__label" for="lon-field">longitude:</label>
+            <input class="control-row__input sim-num" type="number" inputmode="decimal" autocomplete="off"
+                   id="lon-field" step="0.1" min="0" max="180" value="96.7"
+                   aria-label="Observer longitude, degrees">
+            <select class="sim-select sim-dir" id="lon-dir" aria-label="Longitude hemisphere">
+              <option value="E">&deg; E</option>
+              <option value="W" selected>&deg; W</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <div class="sim-map-wrap">
+          <canvas id="map-canvas" class="sim-map" width="360" height="180"
+                  role="img" aria-label="World map showing the observer's location"
+                  aria-describedby="map-desc"></canvas>
+          <div id="map-handle" class="sim-map-handle" tabindex="0" role="application"
+               aria-label="Observer location on the world map. Use the arrow keys to move it."></div>
+        </div>
+        <p id="map-desc" class="sr-only"></p>
+
+        <p class="panel__help sim-help">
+          Click the map, edit the fields, or <kbd>Tab</kbd> to the map and use the
+          <strong>arrow keys</strong> to move the observer.
+        </p>
+      </section>
+
+      <!-- =================== ANIMATION CONTROLS =================== -->
+      <section class="panel sim-area-animation" aria-labelledby="animation-heading">
+        <h2 id="animation-heading" class="panel__heading">Animation Controls</h2>
+
+        <div class="button-row sim-btn-row">
+          <button type="button" class="button sim-btn" id="btn-animate">start animation</button>
+        </div>
+
+        <div class="control-row sim-inline-row">
+          <label class="control-row__label" for="animate-duration">animate</label>
+          <select class="sim-select" id="animate-duration" aria-label="Animation duration">
+            <option value="0" selected>continuously</option>
+            <option value="1">for 1 hour</option>
+            <option value="3">for 3 hours</option>
+            <option value="6">for 6 hours</option>
+            <option value="12">for 12 hours</option>
+          </select>
+        </div>
+
+        <div class="control-row sim-slider-row">
+          <label class="control-row__label sim-slider-label" for="rate-slider">animation rate:</label>
+          <input class="control-row__slider sim-slider" type="range" autocomplete="off"
+                 id="rate-slider" min="0" max="1000" step="1" value="500"
+                 aria-label="Animation rate">
+          <span class="sim-slider-ends" aria-hidden="true">
+            <span>slower</span><span>faster</span>
+          </span>
+        </div>
+      </section>
+
+      <!-- =================== APPEARANCE SETTINGS =================== -->
+      <section class="panel sim-area-appearance" aria-labelledby="appearance-heading">
+        <h2 id="appearance-heading" class="panel__heading">Appearance Settings</h2>
+
+        <fieldset class="control-fieldset">
+          <legend class="control-fieldset__legend sr-only">Diagram appearance options</legend>
+          <div class="sim-check-list">
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-labels">
+              <label for="cb-labels">show labels</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-zerohours" checked>
+              <label for="cb-zerohours">show <span aria-hidden="true">\(0^{\mathrm{h}}\)</span><span class="sr-only">zero hour</span> circle</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-celequator" checked>
+              <label for="cb-celequator">show celestial equator</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-showunder" checked>
+              <label for="cb-showunder">show underside of horizon diagram</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-neverrise">
+              <label for="cb-neverrise">show never rise region</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-riseset">
+              <label for="cb-riseset">show rise and set region</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-neverset">
+              <label for="cb-neverset">show circumpolar region</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-angle">
+              <label for="cb-angle">show the angle between the celestial equator and horizon</label>
+            </div>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- =================== STAR CONTROLS =================== -->
+      <section class="panel sim-area-stars" aria-labelledby="stars-heading">
+        <h2 id="stars-heading" class="panel__heading">Star Controls</h2>
+
+        <div class="button-row sim-btn-row sim-btn-col">
+          <button type="button" class="button sim-btn" id="btn-patterns"
+                  aria-expanded="false" aria-controls="patterns-menu">star patterns&hellip;</button>
+          <div class="sim-menu" id="patterns-menu" role="group" aria-label="Star patterns" hidden>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-bigDipper">
+              <label for="cb-bigDipper">Big Dipper</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-orion">
+              <label for="cb-orion">Orion</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" autocomplete="off" id="cb-southernCross">
+              <label for="cb-southernCross">Southern Cross</label>
+            </div>
+          </div>
+
+          <button type="button" class="button sim-btn" id="btn-addstar">add star randomly</button>
+          <button type="button" class="button sim-btn" id="btn-removestars">remove all stars</button>
+        </div>
+
+        <fieldset class="control-fieldset">
+          <legend class="control-fieldset__legend sr-only">Star trails</legend>
+          <div class="sim-check-list">
+            <div class="control-choice">
+              <input type="radio" autocomplete="off" name="trailType" id="rb-trail-none" value="none" checked>
+              <label for="rb-trail-none">no star trails</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" autocomplete="off" name="trailType" id="rb-trail-short" value="short">
+              <label for="rb-trail-short">short star trails</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" autocomplete="off" name="trailType" id="rb-trail-long" value="long">
+              <label for="rb-trail-long">long star trails</label>
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="button-row sim-btn-row">
+          <button type="button" class="button sim-btn" id="btn-resettrails">reset star trails</button>
+        </div>
+      </section>
+
+      <!-- Global status announcer (state changes announced on commit, not per tick). -->
+      <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+    </main>
+  </div>
+
+  <!-- Foundation equation helper (copied in unchanged) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Shared masthead custom element (copied in unchanged) -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- MathJax (vendored locally; SVG output, no CDN/fonts). Right-click any symbol ->
+       MathJax menu ("Show Math As" -> TeX / MathML). Menu is left enabled. -->
+  <script>
+    window.MathJax = {
+      loader: { failed: function (err) { console.warn('[MathJax] optional component not vendored:', err.message); } },
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'local' },
+      options: { enableMenu: true, menuOptions: { settings: { assistiveMml: false } } }
+    };
+  </script>
+  <script src="assets/mathjax/tex-mml-svg.js"></script>
+
+  <!-- Sim logic -->
+  <script src="simulation.js"></script>
+</body>
+</html>

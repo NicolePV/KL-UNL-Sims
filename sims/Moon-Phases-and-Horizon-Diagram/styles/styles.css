@@ -1,0 +1,184 @@
+/* ==========================================================================
+   Sim-specific styles for "Moon Phases and the Horizon Demonstrator".
+   Layered ON TOP of the KL-UNL foundation (foundation/kl-unl.css) which is
+   never edited. Only additional / sim-specific rules live here.
+   All sizing is in rem/em so it tracks the user's browser font size and
+   reflows cleanly at 200% zoom and down to phone-portrait widths.
+   ========================================================================== */
+
+/* Larger, comfortably-readable base type (foundation body is 0.9rem). */
+body {
+  font-size: 1.125rem;
+  line-height: 1.45;
+  /* Guard against a phantom horizontal scrollbar from the off-screen
+     .sr-only helpers (margin:-1px). All visible content genuinely fits. */
+  overflow-x: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Layout: diagram (large) on the left, control panels (narrow) on the right,
+   mirroring the original Flash layout. Overrides the foundation .app-layout
+   two-column template WITHOUT editing the foundation; the foundation's own
+   56rem single-column collapse is preserved below.
+   -------------------------------------------------------------------------- */
+.sim-layout {
+  grid-template-columns: minmax(0, 1fr) 24rem;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  align-items: start;
+}
+
+.sim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.sim-panel,
+.sim-diagram-panel {
+  border: 1px solid var(--border-color, #767676);
+}
+
+.panel__heading {
+  font-size: 1.05rem;
+  border-bottom: 1px solid #cfcfcf;
+}
+
+/* --------------------------------------------------------------------------
+   Diagram canvas: keep the original internal coordinate system (400x400
+   backing store, sphere centred). CSS scales it to fit while preserving the
+   square aspect ratio.
+   -------------------------------------------------------------------------- */
+.sim-canvas-wrap {
+  padding: 0.5rem 1rem 0.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.sim-canvas {
+  display: block;
+  width: 100%;
+  max-width: 30rem;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  background: #ffffff;
+  touch-action: none;            /* dragging must not scroll/zoom the page */
+  cursor: grab;
+}
+
+.sim-canvas:active { cursor: grabbing; }
+
+.sim-canvas:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+
+/* --------------------------------------------------------------------------
+   Controls
+   -------------------------------------------------------------------------- */
+.control-fieldset {
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.control-fieldset__legend {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sim-checkbox-grid {
+  grid-template-columns: 1fr;
+  gap: 0.4rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.control-choice {
+  min-height: 2rem;
+}
+
+.control-choice input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* A slider row: label + value on one line, the range spanning full width
+   beneath so the track is easy to reach on touch. */
+.sim-slider-row {
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.sim-slider-row .control-row__label { font-weight: normal; }
+
+.sim-slider {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+
+/* Numeric value readouts: equal-purpose fields share a consistent size and
+   are right-aligned so digits line up. */
+.sim-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 3.5rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sim-value--wide {
+  min-width: 8rem;
+}
+
+.sim-readout-row {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0.5rem;
+}
+
+/* Disabled-looking readouts (when their "show" checkbox is off) */
+.sim-value.is-dimmed {
+  color: #9a9a9a;
+}
+
+.sim-phase-row {
+  grid-template-columns: 1fr auto auto;
+}
+
+.sim-phase-disc {
+  width: 2.75rem;
+  height: 2.75rem;
+  grid-row: span 1;
+}
+
+/* --------------------------------------------------------------------------
+   Phone-portrait: single column. The foundation collapses .app-layout at
+   56rem; carry that through for this sim's overridden template too, and make
+   the controls full width in reading order below the diagram.
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .sim-layout {
+    grid-template-columns: 1fr;
+  }
+  .sim-canvas {
+    max-width: 26rem;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 30rem) {
+  body { font-size: 1.0625rem; }
+  .control-fieldset { padding: 0.5rem 0.75rem 0.75rem; }
+}
+
+/* Respect reduced-motion: the slider snap-tween is skipped in JS; nothing
+   here animates, but keep transitions off for safety. */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

@@ -1,0 +1,329 @@
+/* ==========================================================================
+   Sun's Position on Horizon -- simulation-specific styles.
+
+   Layered on top of foundation/kl-unl.css; the foundation files themselves are
+   byte-for-byte unchanged. Everything here is scoped to this sim's own classes
+   so it adds to the shared look rather than forking it.
+   ========================================================================== */
+
+/* The exported Flash typeface, self-hosted so the scene reads the same on
+   every OS. Fallbacks are script faces that ship with Windows/macOS/Linux. */
+@font-face {
+  font-family:      "HorizonScript";
+  src:              url("../assets/fonts/MonotypeCorsiva.ttf") format("truetype");
+  font-weight:      normal;
+  font-style:       normal;
+  font-display:     swap;
+}
+
+:root {
+  /* one spacing scale, so panels and rows breathe evenly */
+  --sim-gap-xs:     0.35rem;
+  --sim-gap-sm:     0.6rem;
+  --sim-gap-md:     1rem;
+  --sim-gap-lg:     1.5rem;
+  --sim-script:     "HorizonScript", "Monotype Corsiva", "Apple Chancery",
+                    "URW Chancery L", cursive, serif;
+}
+
+/* --------------------------------------------------------------------------
+   Type scale. kl-unl.css sets body to 0.9rem; this sim needs a larger,
+   zoom-friendly floor (>= 1.125rem) per the accessibility brief. All sizes are
+   rem/em so they track the reader's browser font setting.
+   -------------------------------------------------------------------------- */
+body {
+  font-size:        1.125rem;
+  line-height:      1.5;
+}
+
+.app-shell {
+  padding:          var(--sim-gap-md) var(--sim-gap-md) var(--sim-gap-lg);
+}
+
+.sim-panel .panel__heading {
+  font-size:        1.25rem;
+  padding:          var(--sim-gap-sm) var(--sim-gap-md);
+  border-bottom:    var(--border-width, 1px) var(--border-style, solid)
+                    var(--border-color, #767676);
+}
+
+/* --------------------------------------------------------------------------
+   Layout. The scene is a very wide banner (850 x 335), so both panels span the
+   full width of the foundation grid and stack vertically. The foundation's own
+   56rem collapse rule stays intact underneath.
+   -------------------------------------------------------------------------- */
+.app-layout {
+  gap:              var(--sim-gap-md);
+  padding-top:      var(--sim-gap-sm);
+}
+
+.sim-panel {
+  grid-column:      1 / -1;
+  min-width:        0;          /* let the panel shrink inside the grid track */
+}
+
+/* --------------------------------------------------------------------------
+   The scene
+   -------------------------------------------------------------------------- */
+.sim-caption {
+  margin:           0;
+  padding:          var(--sim-gap-sm) var(--sim-gap-md) var(--sim-gap-xs);
+  font-family:      var(--sim-script);
+  font-size:        1.5rem;
+  line-height:      1.3;
+  text-align:       center;
+  color:            var(--foreground-color, #1a1a1a);
+}
+
+.sim-stage-wrap {
+  padding:          0 var(--sim-gap-md) var(--sim-gap-md);
+}
+
+.sim-stage {
+  display:          block;
+  width:            100%;
+  height:           auto;       /* viewBox supplies the 850:335 aspect ratio */
+  max-width:        100%;
+  border:           var(--border-width, 1px) var(--border-style, solid)
+                    var(--border-color, #767676);
+}
+
+/* Direction labels painted over the sky. The original drew these in white,
+   which sits at roughly 2.2:1 against the pale sky gradient. The dark halo
+   below restores a compliant contrast boundary while keeping the original
+   look -- see ACCESSIBILITY.md. */
+.stage-label {
+  font-family:      var(--sim-script);
+  font-size:        24px;       /* stage units; scales with the viewBox */
+  fill:             #ffffff;
+  stroke:           #241a2e;
+  stroke-width:     2.5;
+  stroke-linejoin:  round;
+  paint-order:      stroke fill;
+}
+
+.stage-label--centre {
+  font-size:        48px;
+  stroke-width:     4;
+}
+
+/* The date rides with the sun. Black, as authored, over the pale part of the
+   sky; a light halo keeps it legible if it drifts over a darker band. */
+.stage-date {
+  font-family:      var(--sim-script);
+  font-size:        24px;
+  fill:             #000000;
+  stroke:           rgba(255, 255, 255, 0.85);
+  stroke-width:     2.5;
+  stroke-linejoin:  round;
+  paint-order:      stroke fill;
+}
+
+/* --------------------------------------------------------------------------
+   Controls. A single row of equally-weighted groups on wide screens; each
+   group keeps consistent internal padding so nothing looks cramped next to a
+   loose neighbour.
+   -------------------------------------------------------------------------- */
+.sim-controls {
+  display:          grid;
+  grid-template-columns: minmax(11rem, auto) minmax(14rem, 1fr) minmax(8rem, auto);
+  gap:              var(--sim-gap-md) var(--sim-gap-lg);
+  align-items:      start;
+  padding:          var(--sim-gap-md) var(--sim-gap-md) var(--sim-gap-sm);
+}
+
+.sim-control {
+  padding:          0;
+  min-width:        0;
+}
+
+.sim-control .control-fieldset__legend {
+  padding:          0 0 var(--sim-gap-sm);
+  font-size:        1.125rem;
+}
+
+.control-choice {
+  min-height:       2.75rem;    /* comfortable touch target */
+  gap:              var(--sim-gap-sm);
+}
+
+/* 1.5rem = 24px at the default root size, meeting WCAG 2.5.8 target size on
+   the control itself; the associated label extends the hit area further. */
+.control-choice input[type="radio"] {
+  width:            1.5rem;
+  height:           1.5rem;
+}
+
+.control-choice label {
+  font-size:        1.125rem;
+}
+
+/* Label and value share a baseline; the value is right-aligned in a
+   fixed-width box so the text does not shuffle as the date changes. */
+.sim-date-head {
+  display:          flex;
+  align-items:      baseline;
+  justify-content:  space-between;
+  gap:              var(--sim-gap-sm);
+  padding-bottom:   var(--sim-gap-sm);
+}
+
+.sim-readout {
+  min-width:        8.5ch;       /* fits the longest date, "September 30" */
+  text-align:       right;
+  font-variant-numeric: tabular-nums;
+  font-weight:      bold;
+  white-space:      nowrap;
+}
+
+.sim-slider {
+  width:            100%;
+  min-height:       2.75rem;
+  margin:           0;
+  cursor:           pointer;
+  accent-color:     var(--button-background-color, #005a9c);
+}
+
+/* Manual date entry. Month and day sit on a shared baseline with matching
+   control heights; widths are driven by content (a month name vs two digits)
+   and reused, rather than being picked per field. */
+.sim-date-fields {
+  display:          flex;
+  flex-wrap:        wrap;
+  align-items:      flex-end;
+  gap:              var(--sim-gap-sm) var(--sim-gap-md);
+  padding-top:      var(--sim-gap-sm);
+}
+
+.sim-field {
+  display:          flex;
+  flex-direction:   column;
+  gap:              0.25rem;
+  min-width:        0;
+}
+
+.sim-field__label {
+  font-size:        1rem;
+  font-weight:      normal;
+}
+
+.sim-field__input {
+  min-height:       2.75rem;
+  padding:          0.25rem 0.5rem;
+  font-size:        1.125rem;
+  font-family:      inherit;
+  color:            var(--foreground-color, #1a1a1a);
+  background:       var(--background-color, #ffffff);
+  border-width:     var(--border-width, 1px);
+  border-style:     var(--border-style, solid);
+  border-color:     var(--border-color, #767676);
+  border-radius:    3px;
+  box-sizing:       border-box;
+}
+
+.sim-field__input--month {
+  width:            11ch;
+}
+
+.sim-field__input--day {
+  width:            6ch;
+  text-align:       right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sim-control--action {
+  display:          flex;
+  flex-direction:   column;
+  align-items:      stretch;
+}
+
+.sim-play {
+  min-width:        7rem;
+  font-size:        1.125rem;
+  font-weight:      600;
+  color:            var(--button-foreground-color, #ffffff);
+  background-color: var(--button-background-color, #005a9c);
+  border-width:     var(--border-width, 1px);
+  border-style:     var(--border-style, solid);
+  border-color:     var(--border-color, #767676);
+  border-radius:    4px;
+}
+
+.sim-play:hover {
+  filter:           brightness(var(--button-hover-darken, 0.9));
+}
+
+.sim-help {
+  margin:           0;
+  padding:          0 var(--sim-gap-md) var(--sim-gap-md);
+  font-size:        1rem;
+}
+
+.sim-help summary {
+  cursor:           pointer;
+  padding:          var(--sim-gap-xs) 0;
+  min-height:       2.75rem;
+  display:          flex;
+  align-items:      center;
+  font-weight:      bold;
+}
+
+.sim-help ul {
+  margin:           var(--sim-gap-xs) 0 0;
+  padding-left:     1.25rem;
+}
+
+.sim-help li {
+  margin-bottom:    var(--sim-gap-xs);
+}
+
+/* --------------------------------------------------------------------------
+   Narrow / portrait widths. Carries the layout below the foundation's 56rem
+   breakpoint down to phone portrait: one column, full-width panels, no
+   horizontal scrolling.
+   -------------------------------------------------------------------------- */
+@media (max-width: 48rem) {
+  .sim-controls {
+    grid-template-columns: 1fr;
+    gap:            var(--sim-gap-md);
+  }
+
+  .sim-control--action .sim-play {
+    width:          100%;
+  }
+
+  .sim-caption {
+    font-size:      1.3rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .app-shell {
+    padding:        var(--sim-gap-sm) var(--sim-gap-sm) var(--sim-gap-md);
+  }
+
+  .sim-stage-wrap,
+  .sim-controls,
+  .sim-help {
+    padding-left:   var(--sim-gap-sm);
+    padding-right:  var(--sim-gap-sm);
+  }
+
+  .sim-caption {
+    font-size:      1.15rem;
+    padding-left:   var(--sim-gap-sm);
+    padding-right:  var(--sim-gap-sm);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: the animation is opt-in anyway (it starts paused), but if a
+   reader has asked for less motion we make the running state less insistent by
+   removing the transition polish. The sim still steps through the year.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .sim-play,
+  .sim-slider {
+    transition:     none;
+  }
+}

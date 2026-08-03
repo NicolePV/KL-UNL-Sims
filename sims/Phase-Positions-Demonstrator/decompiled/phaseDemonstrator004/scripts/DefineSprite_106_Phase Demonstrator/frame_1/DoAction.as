@@ -1,0 +1,2 @@
+this.updatePhases();
+this.updateOrbits();

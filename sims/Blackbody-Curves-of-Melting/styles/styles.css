@@ -1,0 +1,258 @@
+/* =====================================================================
+   Melted Nail Demonstration -- sim-specific styles.
+   Layered ON TOP of the KL-UNL foundation (foundation files never edited).
+   Uses foundation CSS variables and classes; adds only what the sim needs.
+   ===================================================================== */
+
+/* Comfortably large, zoomable type (rem/em so it tracks the browser setting).
+   Body copy floor ~1.125rem; headings/readouts scale up from there. */
+.sim-layout {
+  font-size: 1.125rem;
+  gap: 0.9rem;
+  padding: 0.6rem 0.75rem 1.25rem;
+  align-items: stretch;
+}
+
+.panel {
+  padding-bottom: 0.75rem;
+  border-radius: 4px;
+}
+
+.panel__heading {
+  font-size: 1.15rem;
+  border-bottom: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  margin-bottom: 0.5rem;
+}
+
+/* =====================================================================
+   NAIL DEMONSTRATION PANEL (left)
+   ===================================================================== */
+.nail-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 1rem;
+}
+
+.temp-readout {
+  margin: 0.25rem 0 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+}
+.temp-readout__label { font-weight: 600; }
+.temp-readout__value {
+  font-weight: 700;
+  min-width: 4.5ch;            /* keep width stable as the number changes */
+  text-align: left;
+}
+
+.nail-stage {
+  display: flex;
+  justify-content: center;
+  background: #000;
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.nail-video {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+  aspect-ratio: 240 / 192;    /* native video size; scale, don't reflow */
+}
+
+.nail-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+.play-btn {
+  align-self: center;
+  min-width: 8rem;
+  font-size: 1.05rem;
+  color: var(--button-foreground-color, #fff);
+  background: var(--button-background-color, #005a9c);
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 4px;
+  font-weight: 600;
+}
+.play-btn:hover, .play-btn:focus {
+  filter: brightness(var(--button-hover-darken, 0.9));
+}
+
+.scrub-row { width: 100%; }
+
+/* =====================================================================
+   CUSTOM SLIDER (separate component; foundation untouched).
+   Native <input type="range"> keeps full keyboard + touch support; we
+   only restyle it for a large, touch-friendly (>=44px) target.
+   ===================================================================== */
+.sim-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2.75rem;            /* >=44px touch target */
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.sim-slider:focus { outline: none; }
+.sim-slider:focus-visible { outline: 2px solid var(--outline-color, #005fcc); outline-offset: 3px; }
+
+/* track */
+.sim-slider::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background: #c9c9c9;
+  border: 1px solid var(--border-color, #767676);
+}
+.sim-slider::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background: #c9c9c9;
+  border: 1px solid var(--border-color, #767676);
+}
+/* thumb */
+.sim-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: -0.55rem;       /* center on the track */
+  border-radius: 50%;
+  background: var(--button-background-color, #005a9c);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--border-color, #767676);
+}
+.sim-slider::-moz-range-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--button-background-color, #005a9c);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--border-color, #767676);
+}
+
+/* =====================================================================
+   BLACKBODY CURVE PANEL (right)
+   ===================================================================== */
+.plot-panel .panel__canvas-wrap {
+  padding: 0 1rem;
+  line-height: normal;
+}
+
+.plot-stage {
+  --plot-pad-left: 1rem;      /* room for the rotated y-axis title; overlay stays in sync */
+  position: relative;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 0 0 var(--plot-pad-left);
+}
+
+#plot-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 420 / 290;
+}
+
+.plot-overlay,
+.inset-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;       /* labels are display-only */
+}
+.plot-overlay { left: var(--plot-pad-left); }   /* stays aligned with the padded canvas box */
+
+.tick {
+  position: absolute;
+  font-size: 0.8rem;
+  color: var(--foreground-color, #1a1a1a);
+  white-space: nowrap;
+  transform: translate(-50%, 0);  /* center under the tick */
+  line-height: 1;
+}
+.tick--inset { font-size: 0.62rem; }
+
+.axis-title {
+  position: absolute;
+  color: var(--foreground-color, #1a1a1a);
+  font-size: 0.9rem;
+}
+.axis-title--x {
+  left: 50%;
+  bottom: -0.2rem;
+  transform: translateX(-50%);
+}
+.axis-title--y {
+  left: 0.05rem;
+  top: 42%;
+  transform: rotate(-90deg);
+  transform-origin: left center;
+  white-space: nowrap;
+}
+
+/* Inset plot, upper-left of the main plot (as placed in the Flash sim). */
+.inset {
+  position: absolute;
+  top: 3%;
+  left: 8%;
+  width: 38%;
+  max-width: 10rem;
+}
+#inset-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 160 / 96;
+}
+
+/* Live physics readout (Wien's law with current peak wavelength). */
+.physics-readout {
+  margin: 0.6rem 1rem 0;
+  padding: 0.6rem 0.75rem;
+  border-top: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+}
+.wien-eqn {
+  font-size: 1.05rem;
+  overflow-x: auto;           /* scroll horizontally only if the equation is very wide */
+  overflow-y: hidden;         /* prevent a spurious vertical scrollbar (overflow-x:auto
+                                 would otherwise make overflow-y compute to auto) */
+}
+
+/* =====================================================================
+   RESPONSIVE  (desktop -> iPad -> phone portrait)
+   The foundation collapses .app-layout to one column at 56rem; below that
+   we keep panels full-width, stacked in reading order, no horizontal scroll.
+   ===================================================================== */
+@media (max-width: 56rem) {
+  .sim-layout { gap: 0.75rem; }
+  .nail-panel__body { align-items: center; }
+  .nail-video { max-width: 24rem; }
+  .plot-stage { max-width: 34rem; }
+}
+
+@media (max-width: 34rem) {
+  .sim-layout {
+    font-size: 1.05rem;
+    padding: 0.5rem 0.5rem 1rem;
+  }
+  .nail-panel__body { padding: 0 0.6rem; }
+  .plot-panel .panel__canvas-wrap { padding: 0 0.5rem; }
+  .plot-stage { --plot-pad-left: 0.85rem; }
+  .tick { font-size: 0.72rem; }
+  .tick--inset { font-size: 0.58rem; }
+}
+
+/* Respect reduced-motion: nothing auto-animates (motion is user-initiated
+   and pausable), but disable any incidental transitions for these users. */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Melted Nail Demonstration</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
+  <link rel="stylesheet" href="styles/styles.css?v=3" type="text/css" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") working on every symbol. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js?v=3"></script>
+</head>
+<body>
+  <!-- aria-live status region: announces state changes (on commit) with units/context -->
+  <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  <main class="app-shell">
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It renders the <h1> ("Melted Nail Demonstration"), reads text from
+         foundation/contents.json by sim-id, and dispatches a "sim-reset" event
+         that simulation.js listens for. -->
+    <kl-unl-masthead sim-id="meltednail" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout sim-layout">
+
+      <!-- ================= NAIL DEMONSTRATION PANEL (left) ================= -->
+      <section class="panel nail-panel" aria-labelledby="nail-heading">
+        <h2 id="nail-heading" class="panel__heading sr-only">Melted nail demonstration</h2>
+
+        <div class="nail-panel__body">
+
+          <!-- Temperature readout (MathJax-typeset value + unit) -->
+          <p class="temp-readout">
+            <span class="temp-readout__label">temperature:</span>
+            <span id="temp-value" class="temp-readout__value mj">\(300\ \mathrm{K}\)</span>
+          </p>
+
+          <!-- The nail footage is the reused exported asset (embedded VP6 video,
+               transcoded to MP4 + WebM). It is the visual layer only; the
+               description below and the live region convey it to assistive tech. -->
+          <div class="nail-stage">
+            <video id="nail-video" class="nail-video" aria-hidden="true"
+                   muted playsinline preload="auto" tabindex="-1"
+                   width="240" height="192">
+              <source src="assets/nail.webm" type="video/webm">
+              <source src="assets/nail.mp4" type="video/mp4">
+            </video>
+          </div>
+          <!-- Continuously-updated text description of the nail's current state. -->
+          <p id="nail-desc" class="sr-only"></p>
+
+          <!-- Playback controls: single toggle button + scrub slider,
+               mirroring the Flash animationButton + frameSlider exactly. -->
+          <div class="nail-controls">
+            <button type="button" id="play-btn" class="button play-btn">start</button>
+
+            <div class="scrub-row">
+              <label for="frame-slider" class="sr-only">Animation position</label>
+              <input type="range" id="frame-slider" class="sim-slider"
+                     min="1" max="849" step="1" value="1"
+                     aria-valuetext="Temperature 300 kelvin. Frame 1 of 849, start.">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= BLACKBODY CURVE PANEL (right) ================= -->
+      <section class="panel plot-panel" aria-labelledby="plot-heading">
+        <h2 id="plot-heading" class="panel__heading">Blackbody Curve</h2>
+
+        <div class="panel__canvas-wrap">
+          <div class="plot-stage" id="plot-stage">
+
+            <!-- Main plot: intensity vs wavelength, 300-800 nm (locked scale).
+                 Canvas is visual-only (aria-hidden); labels live in HTML. -->
+            <canvas id="plot-canvas" width="420" height="290" aria-hidden="true"></canvas>
+
+            <!-- Static axis titles (typeset where they carry math). -->
+            <div class="axis-title axis-title--y" aria-hidden="true">intensity</div>
+            <div class="axis-title axis-title--x" aria-hidden="true">wavelength</div>
+
+            <!-- Main-plot x-axis tick labels, injected as MathJax spans. -->
+            <div id="plot-overlay" class="plot-overlay" aria-hidden="true"></div>
+
+            <!-- Inset plot: full blackbody curve, 0-10 um (custom peak-height
+                 scale), sitting in the upper-left just as the Flash sim placed it. -->
+            <div class="inset" id="inset">
+              <canvas id="inset-canvas" width="160" height="96" aria-hidden="true"></canvas>
+              <div id="inset-overlay" class="inset-overlay" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <!-- Continuously-updated text description of what the plot shows. -->
+          <p id="plot-desc" class="sr-only"></p>
+        </div>
+
+        <!-- Live physics readout: Wien's displacement law with the current
+             peak wavelength (rendered via the foundation MathJax helper). -->
+        <div class="physics-readout">
+          <div id="wien-eqn" class="wien-eqn" aria-hidden="true"></div>
+          <p id="wien-sr" class="sr-only"></p>
+        </div>
+      </section>
+
+    </div><!-- /.app-layout -->
+  </main>
+</body>
+</html>

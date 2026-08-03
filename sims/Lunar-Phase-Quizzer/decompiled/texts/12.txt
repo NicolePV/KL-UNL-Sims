@@ -1,0 +1,21 @@
+The phase of the Moon that we see from Earth depends on the 
+--- RECORDSEPARATOR ---
+relative directions of the Sun and Moon. Knowing any two of 
+--- RECORDSEPARATOR ---
+these three properties (the Moon's phase, the direction of the 
+--- RECORDSEPARATOR ---
+Moon, and the direction of the Sun) allows you to infer the third.
+--- RECORDSEPARATOR ---
+In this simulator you can hide any one of these three properties 
+--- RECORDSEPARATOR ---
+so you can test your understanding of Moon phases.
+--- RECORDSEPARATOR ---
+Drag the sunlight arrows to change the direction of the Sun, and 
+--- RECORDSEPARATOR ---
+drag the Moon to move it around in its orbit. The Moon's phase 
+--- RECORDSEPARATOR ---
+can be adjusted using the slider.
+--- RECORDSEPARATOR ---
+Hold the shift key while dragging to snap the value to one of the 
+--- RECORDSEPARATOR ---
+eight primary values.

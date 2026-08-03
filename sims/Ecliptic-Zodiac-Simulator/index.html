@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ecliptic (Zodiac) Simulator</title>
+  <link rel="icon" href="foundation/klunl_favicon_32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="foundation/klunl_favicon_180.png">
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#date-heading">Skip to controls</a>
+
+  <div class="app-shell">
+
+    <!-- Title bar + Reset / Help / About all come from the shared masthead
+         component, which reads its text from foundation/contents.json. -->
+    <kl-unl-masthead sim-id="zodiac" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="sim-main">
+
+      <!-- ================= Diagram + timeline =================
+           Mirrors the original Flash layout: the celestial sphere fills the
+           frame with the year timeline directly beneath it. -->
+      <section class="panel sim-panel sim-diagram-panel" aria-labelledby="diagram-heading">
+        <h2 id="diagram-heading" class="panel__heading">Zodiac view</h2>
+
+        <div class="panel__canvas-wrap sim-canvas-wrap">
+          <!-- The sphere is drag-rotatable, so the stage is a real focus stop:
+               click or tab to it, then use the arrow keys. -->
+          <div class="sim-stage" id="stage" tabindex="0" role="application"
+               aria-label="Celestial sphere. Drag with the pointer, or use the left and right arrow keys to swing the view around the sphere and the up and down arrow keys to change the viewing elevation."
+               aria-describedby="stage-desc">
+            <canvas id="stage-canvas" aria-hidden="true"></canvas>
+          </div>
+        </div>
+
+        <!-- The year timeline. The visible red marker is the original
+             YearSliderGrabber artwork; the range input above it is transparent
+             and supplies all pointer and keyboard behaviour. -->
+        <div class="sim-control-body">
+          <div class="sim-timeline" id="timeline">
+            <label class="sim-timeline__label" for="day-range">Day of year</label>
+            <div class="sim-timeline__track">
+              <span class="sim-timeline__marker" aria-hidden="true"></span>
+              <div class="sim-timeline__months" id="timeline-months" aria-hidden="true"></div>
+              <input class="sim-timeline__input" type="range" id="day-range"
+                     min="0" max="365" step="1" value="0"
+                     aria-valuetext="Day 0 of the year, January 1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Text equivalent of the picture, and the running commentary. -->
+        <p id="stage-desc" class="sr-only"></p>
+        <p id="sim-status" class="sr-only" aria-live="polite"></p>
+      </section>
+
+      <!-- ================= Controls and readouts ================= -->
+      <div class="app-layout sim-controls-row">
+
+        <div class="app-layout__left">
+          <section class="panel sim-panel" aria-labelledby="date-heading">
+            <h2 id="date-heading" class="panel__heading">Date and view</h2>
+            <div class="sim-control-body">
+
+              <fieldset class="control-fieldset">
+                <legend class="control-fieldset__legend">Date</legend>
+
+                <div class="control-row sim-row">
+                  <label class="control-row__label" for="day-number">day of year</label>
+                  <div class="sim-field-group">
+                    <input class="sim-input" type="number" id="day-number"
+                           min="0" max="365" step="1" value="0"
+                           inputmode="numeric">
+                    <span class="sim-unit">days</span>
+                  </div>
+                </div>
+
+                <!-- Month and day are separate fields, and drive the same
+                     setMonthAndDay path the ActionScript defines. -->
+                <div class="control-row sim-row" role="group" aria-labelledby="date-label">
+                  <span class="control-row__label" id="date-label">calendar date</span>
+                  <div class="sim-field-group">
+                    <label class="sr-only" for="month-select">Month</label>
+                    <select class="sim-input sim-input--month" id="month-select">
+                      <option value="1">January</option>
+                      <option value="2">February</option>
+                      <option value="3">March</option>
+                      <option value="4">April</option>
+                      <option value="5">May</option>
+                      <option value="6">June</option>
+                      <option value="7">July</option>
+                      <option value="8">August</option>
+                      <option value="9">September</option>
+                      <option value="10">October</option>
+                      <option value="11">November</option>
+                      <option value="12">December</option>
+                    </select>
+                    <label class="sr-only" for="dom-number">Day of the month</label>
+                    <input class="sim-input sim-input--narrow" type="number" id="dom-number"
+                           min="1" max="31" step="1" value="1"
+                           inputmode="numeric">
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset class="control-fieldset">
+                <legend class="control-fieldset__legend">Viewing direction</legend>
+
+                <div class="control-row sim-slider-row">
+                  <label class="control-row__label" for="azimuth-number">azimuth</label>
+                  <!-- The typed field comes before the slider in source order so
+                       it lands in the shared field column; the slider then spans
+                       the full width of the row below. -->
+                  <div class="sim-field-group">
+                    <input class="sim-input" type="number" id="azimuth-number"
+                           min="0" max="360" step="1" value="154"
+                           inputmode="numeric">
+                    <span class="sim-unit">degrees</span>
+                  </div>
+                  <label class="sr-only" for="azimuth-range">Azimuth slider</label>
+                  <input class="sim-slider" type="range" id="azimuth-range"
+                         min="0" max="360" step="1" value="154"
+                         aria-valuetext="View azimuth 154 degrees">
+                </div>
+
+                <div class="control-row sim-slider-row">
+                  <label class="control-row__label" for="elevation-number">elevation</label>
+                  <div class="sim-field-group">
+                    <input class="sim-input" type="number" id="elevation-number"
+                           min="-90" max="50" step="1" value="30"
+                           inputmode="numeric">
+                    <span class="sim-unit">degrees</span>
+                  </div>
+                  <label class="sr-only" for="elevation-range">Elevation slider</label>
+                  <input class="sim-slider" type="range" id="elevation-range"
+                         min="-90" max="50" step="1" value="30"
+                         aria-valuetext="View elevation 30 degrees">
+                </div>
+              </fieldset>
+
+            </div>
+          </section>
+        </div><!-- /app-layout__left -->
+
+        <div class="app-layout__right">
+          <section class="panel sim-panel" aria-labelledby="sun-heading">
+            <h2 id="sun-heading" class="panel__heading">Position of the Sun</h2>
+            <div class="sim-control-body">
+
+              <!-- The rule the simulation uses to place the Earth and the Sun,
+                   typeset by MathJax through the foundation's kl-unl.js. -->
+              <div class="sim-equation">
+                <div id="sun-direction-eqn" class="sim-equation__math" tabindex="-1" aria-hidden="true"></div>
+                <p id="sun-direction-eqn-sr" class="sr-only"></p>
+                <p class="sim-equation__key">
+                  N is the day of the year, counted from 0 on 1 January.
+                </p>
+              </div>
+
+              <fieldset class="control-fieldset">
+                <legend class="control-fieldset__legend">Where the Sun lies on the band</legend>
+                <div class="control-row sim-row">
+                  <span class="control-row__label" id="sun-ra-label">right ascension</span>
+                  <output class="sim-value" id="sun-ra-readout"
+                          aria-labelledby="sun-ra-label">18 hours 46 minutes</output>
+                </div>
+                <div class="control-row sim-row">
+                  <span class="control-row__label" id="sun-dec-label">declination</span>
+                  <output class="sim-value" id="sun-dec-readout"
+                          aria-labelledby="sun-dec-label">minus 23.1 degrees</output>
+                </div>
+                <div class="control-row sim-row">
+                  <span class="control-row__label" id="sun-near-label">nearest label</span>
+                  <output class="sim-value" id="sun-near-readout"
+                          aria-labelledby="sun-near-label">Sagittarius</output>
+                </div>
+                <div class="control-row sim-row">
+                  <span class="control-row__label" id="sun-sep-label">angle from it</span>
+                  <output class="sim-value" id="sun-sep-readout"
+                          aria-labelledby="sun-sep-label">7 degrees</output>
+                </div>
+              </fieldset>
+
+              <p class="panel__help">
+                Drag the sphere (or focus it and use the arrow keys) to look at
+                the zodiac band from a different direction. Move through the
+                year to watch the Sun travel around the band, passing in front
+                of each zodiac constellation in turn.
+              </p>
+
+            </div>
+          </section>
+        </div><!-- /app-layout__right -->
+
+      </div><!-- /app-layout -->
+
+    </main>
+  </div>
+
+  <!-- Foundation equation helper (copied in unchanged) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Shared masthead custom element (copied in unchanged) -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- MathJax, vendored locally: SVG output, no CDN, context menu left enabled -->
+  <script>
+    window.MathJax = {
+      loader: { failed: function (err) { console.warn('[MathJax] optional component not vendored:', err.message); } },
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'local' },
+      options: { enableMenu: true, menuOptions: { settings: { assistiveMml: false } } }
+    };
+  </script>
+  <script src="assets/mathjax/tex-mml-svg.js"></script>
+
+  <!-- Star positions and coastlines, extracted verbatim from the AS source -->
+  <script src="assets/sim-data.js"></script>
+  <!-- Sim logic -->
+  <script src="simulation.js"></script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!--
+  Planetary Configurations Simulator — Accessible HTML5 port
+  Built on the KL-UNL foundation. Served over HTTP (see README.md); the masthead
+  fetches foundation/contents.json, which browsers block over file://.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planetary Configurations Simulator</title>
+
+<link rel="stylesheet" href="foundation/kl-unl.css">
+<link rel="stylesheet" href="styles/styles.css">
+
+<a class="sr-only sr-only-focusable" href="#main-content">Skip to main content</a>
+
+<div class="app-shell">
+  <kl-unl-masthead sim-id="configurationssimulator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+  <main id="main-content" class="app-layout">
+
+    <!-- ================= LEFT COLUMN ================= -->
+    <div class="app-layout__left">
+
+      <!-- Diagram panel -->
+      <section class="panel sim-panel" aria-labelledby="diagram-heading">
+        <h2 class="panel__heading" id="diagram-heading">Diagram</h2>
+        <div class="panel__canvas-wrap sim-canvas-wrap">
+          <canvas id="diagram-canvas" width="450" height="450"
+                  aria-describedby="diagram-desc"></canvas>
+          <!-- Keyboard/pointer focusable handles for the two draggable planets -->
+          <div id="planet1-handle" class="planet-handle" tabindex="0" role="slider"
+               aria-label="Observer's planet position"
+               aria-valuemin="0" aria-valuemax="360" aria-valuenow="0"></div>
+          <div id="planet2-handle" class="planet-handle" tabindex="0" role="slider"
+               aria-label="Target planet position"
+               aria-valuemin="0" aria-valuemax="360" aria-valuenow="0"></div>
+        </div>
+        <p id="diagram-desc" class="sr-only" aria-live="off"></p>
+        <fieldset class="control-fieldset sim-options">
+          <legend class="sr-only">Diagram display options</legend>
+          <div class="control-choice">
+            <input type="checkbox" id="opt-label-orbits" checked>
+            <label for="opt-label-orbits">label orbits</label>
+          </div>
+          <div class="control-choice">
+            <input type="checkbox" id="opt-elongation">
+            <label for="opt-elongation">show elongation angle</label>
+          </div>
+          <div class="control-choice">
+            <input type="checkbox" id="opt-snap" checked>
+            <label for="opt-snap">snap to events when dragging planets</label>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Zodiac Strip panel -->
+      <section class="panel sim-panel zodiac-panel" aria-labelledby="zodiac-heading">
+        <h2 class="panel__heading" id="zodiac-heading">Zodiac Strip</h2>
+        <div class="zodiac-layout">
+          <span class="zodiac-edge" aria-hidden="true">east</span>
+          <div class="panel__canvas-wrap sim-canvas-wrap zodiac-canvas-wrap">
+            <canvas id="zodiac-canvas" width="400" height="135"
+                    tabindex="0" role="slider"
+                    aria-label="Zodiac strip horizontal pan"
+                    aria-valuemin="0" aria-valuemax="360" aria-valuenow="0"
+                    aria-describedby="zodiac-desc"></canvas>
+          </div>
+          <span class="zodiac-edge" aria-hidden="true">west</span>
+        </div>
+        <p id="zodiac-desc" class="sr-only" aria-live="off"></p>
+      </section>
+    </div>
+
+    <!-- ================= RIGHT COLUMN ================= -->
+    <div class="app-layout__right">
+
+      <!-- Orbit Sizes panel -->
+      <section class="panel sim-panel" aria-labelledby="orbit-heading">
+        <h2 class="panel__heading" id="orbit-heading">Orbit Sizes</h2>
+
+        <fieldset class="control-fieldset orbit-fieldset">
+          <legend class="control-fieldset__legend">
+            <span class="orbit-dot orbit-dot--observer" aria-hidden="true"></span>
+            radius of observer&rsquo;s planet&rsquo;s orbit:
+          </legend>
+          <div class="orbit-row">
+            <input type="text" inputmode="decimal" id="a1-field" class="control-row__input orbit-field"
+                   maxlength="5" aria-label="Radius of observer's planet's orbit, in astronomical units" value="1.00">
+            <span class="orbit-unit" aria-hidden="true">AU</span>
+            <input type="range" id="a1-slider" class="control-row__slider orbit-slider"
+                   min="0.25" max="10" step="0.01" value="1"
+                   aria-label="Radius of observer's planet's orbit">
+            <label class="orbit-preset-label" for="a1-preset">presets for observer&rsquo;s planet</label>
+            <select id="a1-preset" class="orbit-preset"></select>
+          </div>
+        </fieldset>
+
+        <fieldset class="control-fieldset orbit-fieldset">
+          <legend class="control-fieldset__legend">
+            <span class="orbit-dot orbit-dot--target" aria-hidden="true"></span>
+            radius of target planet&rsquo;s orbit:
+          </legend>
+          <div class="orbit-row">
+            <input type="text" inputmode="decimal" id="a2-field" class="control-row__input orbit-field"
+                   maxlength="5" aria-label="Radius of target planet's orbit, in astronomical units" value="2.40">
+            <span class="orbit-unit" aria-hidden="true">AU</span>
+            <input type="range" id="a2-slider" class="control-row__slider orbit-slider"
+                   min="0.25" max="10" step="0.01" value="2.4"
+                   aria-label="Radius of target planet's orbit">
+            <label class="orbit-preset-label" for="a2-preset">presets for target planet</label>
+            <select id="a2-preset" class="orbit-preset"></select>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Animation Controls panel -->
+      <section class="panel sim-panel" aria-labelledby="anim-heading">
+        <h2 class="panel__heading" id="anim-heading">Animation Controls</h2>
+
+        <div class="control-fieldset anim-top">
+          <div class="anim-speed-row">
+            <label for="speed-slider" class="anim-speed-label">speed:</label>
+            <input type="range" id="speed-slider" class="control-row__slider"
+                   min="0" max="0.006" step="0.00001" value="0.001"
+                   aria-label="Animation speed">
+          </div>
+          <button type="button" id="animate-btn" class="button anim-btn">start animation</button>
+        </div>
+
+        <fieldset class="control-fieldset anim-events">
+          <legend class="control-fieldset__legend">when an event occurs&hellip;</legend>
+          <div class="anim-events-row">
+            <div class="control-choice">
+              <input type="radio" name="event-action" id="ea-stop" value="stop">
+              <label for="ea-stop">stop</label>
+            </div>
+            <div class="control-choice">
+              <input type="radio" name="event-action" id="ea-run" value="run" checked>
+              <label for="ea-run">keep going</label>
+            </div>
+            <div class="control-choice anim-pause-choice">
+              <input type="radio" name="event-action" id="ea-pause" value="pause">
+              <label for="ea-pause">pause for</label>
+              <input type="text" inputmode="numeric" id="pause-field" class="control-row__input pause-field"
+                     maxlength="2" value="5"
+                     aria-label="Pause duration when an event occurs, in seconds">
+              <span aria-hidden="true">seconds</span>
+            </div>
+          </div>
+          <p id="countdown-field" class="anim-countdown" aria-hidden="true"></p>
+        </fieldset>
+      </section>
+
+      <!-- Timeline panel -->
+      <section class="panel sim-panel" aria-labelledby="timeline-heading">
+        <h2 class="panel__heading" id="timeline-heading">Timeline</h2>
+        <div class="panel__canvas-wrap sim-canvas-wrap timeline-canvas-wrap">
+          <canvas id="timeline-canvas" width="260" height="200"
+                  tabindex="0" role="slider"
+                  aria-label="Timeline. Drag or use arrow keys to move through time; Page Up and Page Down jump to the previous or next event."
+                  aria-valuenow="0"
+                  aria-describedby="timeline-desc"></canvas>
+        </div>
+        <p id="timeline-desc" class="sr-only" aria-live="off"></p>
+        <p class="timeline-counter">counter: <output id="counter-field">0.000 years</output></p>
+        <div class="timeline-btn-row">
+          <button type="button" id="zero-counter-btn" class="button">zero counter</button>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Screen-reader live status region: announces state changes on commit -->
+<div id="sr-status" class="sr-only" aria-live="polite" role="status"></div>
+
+<script src="foundation/kl-unl-masthead.js" defer></script>
+<script src="foundation/kl-unl.js" defer></script>
+<script src="assets/constellations.js" defer></script>
+<script src="simulation.js" defer></script>

@@ -1,0 +1,388 @@
+/* ===========================================================================
+   Ecliptic (Zodiac) Simulator -- sim-specific styles ONLY.
+   The shared palette, panels, control rows, focus ring and the 56rem column
+   collapse all come from foundation/kl-unl.css, which is never edited. Every
+   rule here is additive: it either sizes something the foundation leaves open,
+   or builds a component the foundation does not provide (the year timeline).
+   =========================================================================== */
+
+/* --- Type scale ---------------------------------------------------------
+   Comfortably large body copy, sized in rem so it tracks the browser's own
+   font setting and reflows rather than clips at 200% zoom. */
+body {
+  font-size:      1.125rem;
+  line-height:    1.5;
+}
+
+/* --- Spacing scale ------------------------------------------------------
+   One gap value drives the space between panels (both directions) and the
+   padding inside them, so nothing is cramped next to something loose. */
+:root {
+  --sim-gap:      1rem;
+  --sim-gap-half: 0.5rem;
+}
+
+.sim-main {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sim-gap);
+  padding:        var(--sim-gap) 0;
+}
+
+.sim-panel .panel__heading {
+  font-size:      1.25rem;
+  padding:        var(--sim-gap-half) var(--sim-gap);
+}
+
+.sim-control-body {
+  padding:        var(--sim-gap-half) var(--sim-gap) var(--sim-gap);
+}
+
+/* The two lower panels: equal width, the same gap as everywhere else, and
+   stretched to a common height so their bottom edges line up. */
+.sim-controls-row {
+  grid-template-columns: 1fr 1fr;
+  gap:            var(--sim-gap);
+  align-items:    stretch;
+  padding-top:    0;
+}
+
+.sim-controls-row .panel {
+  display:        flex;
+  flex-direction: column;
+  height:         100%;
+}
+
+/* The last block in a panel absorbs the leftover height, so the panels can be
+   equal height without stretching the gaps between their rows. */
+.sim-controls-row .sim-control-body {
+  flex:           1 1 auto;
+}
+
+.control-fieldset__legend {
+  font-size:      1.0625rem;
+}
+
+.panel__help {
+  font-size:      1rem;
+  margin:         0.75rem 0 0;
+}
+
+/* --- The celestial-sphere stage -----------------------------------------
+   The canvas keeps the original Flash internal coordinates (620 x 620 stage
+   pixels) and is scaled by CSS, so none of the ported geometry ever sees the
+   on-screen size. */
+.sim-canvas-wrap {
+  padding:        0 1rem;
+}
+
+.sim-stage {
+  position:       relative;
+  display:        block;
+  width:          100%;
+  max-width:      38.75rem;      /* 620px at the default root size */
+  margin:         0 auto;
+  aspect-ratio:   1 / 1;
+  background:     #000000;
+  /* Dragging must rotate the sphere, not pan the page, on touch devices. */
+  touch-action:   none;
+  cursor:         grab;
+}
+
+.sim-stage:active {
+  cursor:         grabbing;
+}
+
+.sim-stage canvas {
+  display:        block;
+  width:          100%;
+  height:         100%;
+}
+
+/* Safari does not honour aspect-ratio on some older versions; the canvas
+   element's own intrinsic ratio keeps the box square there as well. */
+@supports not (aspect-ratio: 1 / 1) {
+  .sim-stage { height: auto; }
+  .sim-stage canvas { height: auto; }
+}
+
+/* --- The year timeline ---------------------------------------------------
+   A separate component layered on top of a native <input type="range">: the
+   input carries every pointer and keyboard behaviour (arrows, Page, Home,
+   End) and stays transparent, while the visible marker is the original
+   YearSliderGrabber vector art from the Flash export. */
+.sim-timeline {
+  --marker-position: 0%;
+  --tick-color:   #767676;
+  margin:         0 auto;
+  max-width:      38.75rem;
+}
+
+.sim-timeline__label {
+  display:        block;
+  margin-bottom:  0.25rem;
+  font-weight:    bold;
+}
+
+.sim-timeline__track {
+  position:       relative;
+  height:         4.5rem;
+}
+
+.sim-timeline__months {
+  position:       absolute;
+  left:           0;
+  right:          0;
+  top:            2.5rem;
+  height:         1.5rem;
+  /* The right-hand edge of December: the original draws a tick at day 365. */
+  border-right:   1px solid var(--tick-color, #767676);
+}
+
+.sim-timeline__month {
+  position:       absolute;
+  top:            0;
+  height:         100%;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  border-left:    1px solid var(--tick-color, #767676);
+  font-size:      0.9375rem;
+  line-height:    1;
+  white-space:    nowrap;
+  overflow:       hidden;
+}
+
+/* The grabber: 14.85 x 44.65 px of exported art, expressed in rem so it
+   scales with the user's font size. Its own origin sits 27.65px down, which
+   is what lines the triangle up with the month row. */
+.sim-timeline__marker {
+  position:       absolute;
+  left:           var(--marker-position, 0%);
+  top:            calc(2.5rem + 0.75rem - 1.728rem);
+  width:          0.928rem;
+  height:         2.791rem;
+  margin-left:    -0.464rem;
+  background:     url("../assets/shape-13.svg") no-repeat center / 100% 100%;
+  pointer-events: none;
+}
+
+/* The real control: full-size hit area, invisible chrome. */
+.sim-timeline__input {
+  position:       absolute;
+  left:           0;
+  top:            1.75rem;
+  width:          100%;
+  height:         2.75rem;       /* >= 44px touch target */
+  margin:         0;
+  background:     transparent;
+  -webkit-appearance: none;
+  appearance:     none;
+  cursor:         pointer;
+  touch-action:   none;
+}
+
+.sim-timeline__input::-webkit-slider-runnable-track {
+  height:         2.75rem;
+  background:     transparent;
+  border:         0;
+}
+
+.sim-timeline__input::-moz-range-track {
+  height:         2.75rem;
+  background:     transparent;
+  border:         0;
+}
+
+/* A hairline thumb so the value maps across the full track width and the
+   visible marker above stays exactly on the month ticks. */
+.sim-timeline__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance:     none;
+  width:          2px;
+  height:         2.75rem;
+  background:     transparent;
+  border:         0;
+}
+
+.sim-timeline__input::-moz-range-thumb {
+  width:          2px;
+  height:         2.75rem;
+  background:     transparent;
+  border:         0;
+}
+
+/* The focus ring belongs around the whole timeline, not the invisible thumb. */
+.sim-timeline__input:focus-visible {
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+
+/* --- Control rows --------------------------------------------------------
+   One shared grid so every label, slider and value line up down the panel:
+   a fixed label column, a flexible middle, and a fixed value column with
+   right-aligned numbers. */
+/* A fieldset's UA default min-inline-size is min-content, which stops these
+   panels shrinking on narrow screens and forces the page to scroll sideways.
+   Grid children default to min-width:auto for the same reason. */
+.control-fieldset {
+  min-inline-size: 0;
+}
+
+.app-layout__left,
+.app-layout__right {
+  min-width:      0;
+}
+
+/* Every row is the same two-column grid -- a fixed label column and a fixed
+   readout column -- so labels line up down the left edge of a panel and every
+   readout box lines up down the right. Sliders always take the full width of
+   the row underneath their label, which keeps them usable in the narrow
+   column and keeps the readout column unbroken. */
+.sim-row,
+.sim-slider-row {
+  grid-template-columns: 9rem minmax(0, 1fr);
+  align-items:    center;
+  gap:            var(--sim-gap-half) 0.75rem;
+  margin-bottom:  var(--sim-gap-half);
+}
+
+.sim-row > *,
+.sim-slider-row > * {
+  min-width:      0;
+}
+
+.sim-slider-row .sim-slider {
+  grid-column:    1 / -1;
+}
+
+/* A row's controls sit in one group so their left edges line up down the
+   column whether the row holds one field or two. */
+.sim-field-group {
+  display:        flex;
+  align-items:    center;
+  gap:            0.5rem;
+  flex-wrap:      wrap;
+}
+
+/* Equal-purpose fields share one size, so the column reads as a column:
+   every small numeric entry is the same box, every readout is the same box. */
+.sim-input,
+.sim-value {
+  box-sizing:     border-box;
+  height:         2.375rem;
+  padding:        0.25rem 0.5rem;
+  font-family:    inherit;
+  font-size:      1rem;
+  font-variant-numeric: tabular-nums;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width, 1px);
+  border-style:   var(--border-style, solid);
+  border-color:   var(--border-color, #767676);
+}
+
+.sim-input {
+  width:          5rem;
+}
+
+.sim-input--narrow {
+  width:          4rem;
+}
+
+.sim-input--month {
+  width:          8.5rem;
+}
+
+.sim-value {
+  display:        block;
+  width:          13rem;
+  line-height:    1.75rem;
+  text-align:     left;
+}
+
+.sim-unit {
+  font-size:      1rem;
+}
+
+.sim-slider {
+  display:        block;
+  width:          100%;
+  min-height:     2.75rem;
+  cursor:         pointer;
+}
+
+/* --- Equation block ------------------------------------------------------ */
+.sim-equation {
+  margin-bottom:  1rem;
+  padding:        0.5rem 0;
+  overflow-x:     auto;          /* wide maths scrolls itself, never the page */
+}
+
+.sim-equation__math {
+  font-size:      1.0625rem;
+}
+
+.sim-equation__key {
+  margin:         0.25rem 0 0;
+  font-size:      1rem;
+}
+
+/* MathJax output is display-only: never a tab stop. */
+.sim-equation__math mjx-container,
+.sim-equation__math svg {
+  outline:        none;
+}
+
+/* --- Responsive ----------------------------------------------------------
+   The foundation's own 56rem rule collapses .app-layout to one column; the
+   two-column override above has to follow it down. These rules then carry the
+   layout the rest of the way to phone portrait. The foundation is untouched. */
+@media (max-width: 56rem) {
+  .sim-controls-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 34rem) {
+  body {
+    font-size:    1.0625rem;
+  }
+  :root {
+    --sim-gap:    0.75rem;
+  }
+  .sim-canvas-wrap {
+    padding:      0 0.5rem;
+  }
+  /* Phone portrait: the field column can no longer sit beside a 9rem label
+     column, so each label sits above its own controls. */
+  .sim-row,
+  .sim-slider-row {
+    grid-template-columns: 1fr;
+    gap:          0.15rem;
+  }
+  .sim-value {
+    width:        100%;
+  }
+  .sim-input--month {
+    width:        7.5rem;
+  }
+  /* Three-letter month labels stop fitting long before this width, so the
+     ticks stay as the scale and the labels step down in size. */
+  .sim-timeline__month {
+    font-size:    0.8125rem;
+  }
+}
+
+/* --- Reduced motion ------------------------------------------------------
+   The simulation has no self-running animation: every change of the picture
+   is the direct result of a user action, so there is nothing to suppress.
+   This keeps any incidental transition out of the way all the same. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

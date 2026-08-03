@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planet Formation Temperatures Plot</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <!-- Shared KL-UNL foundation (copied in unchanged; never edited) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles layered on top of the foundation -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") available on every symbol. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#main-content">Skip to main content</a>
+
+  <main class="app-shell" id="main-content">
+
+    <!-- Title + Reset / About come from the shared masthead component. It renders
+         the <h1>, reads its text from foundation/contents.json by sim-id, and
+         dispatches a "sim-reset" event that simulation.js listens for. -->
+    <kl-unl-masthead sim-id="formationtemps" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout ft-layout">
+
+      <!-- ===================== TEMPERATURE / DISTANCE PLOT ===================== -->
+      <section class="panel ft-panel ft-panel--plot" aria-labelledby="plot-heading">
+        <h2 class="panel__heading" id="plot-heading">Formation Temperature and Distance</h2>
+
+        <div class="panel__canvas-wrap ft-plot">
+          <!-- The stage keeps the original Flash graph coordinate system. The
+               <canvas> carries the reused exported artwork (axes, planet
+               bitmaps, marker circle) and the code-drawn trend line; every
+               piece of text sits in the HTML layers above it so that it zooms
+               with the page and can be typeset by MathJax. -->
+          <div class="ft-stage" id="plot-stage">
+            <canvas class="ft-stage__canvas" id="plot-canvas" width="495" height="440" aria-hidden="true"></canvas>
+
+            <!-- Axis tick values and axis titles. Display-only, so aria-hidden:
+                 the plot is described in #plot-desc instead. -->
+            <div class="ft-stage__labels" aria-hidden="true">
+              <span class="ft-tick ft-tick--y" data-temp="2000">\(2000\)</span>
+              <span class="ft-tick ft-tick--y" data-temp="1000">\(1000\)</span>
+              <span class="ft-tick ft-tick--y" data-temp="500">\(500\)</span>
+              <span class="ft-tick ft-tick--y" data-temp="200">\(200\)</span>
+              <span class="ft-tick ft-tick--y" data-temp="100">\(100\)</span>
+              <span class="ft-tick ft-tick--y" data-temp="50">\(50\)</span>
+              <span class="ft-tick ft-tick--y" data-temp="20">\(20\)</span>
+
+              <span class="ft-tick ft-tick--x" data-dist="0.1">\(0.1\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="0.2">\(0.2\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="0.5">\(0.5\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="1">\(1.0\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="2">\(2.0\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="5">\(5.0\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="10">\(10\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="20">\(20\)</span>
+              <span class="ft-tick ft-tick--x" data-dist="50">\(50\)</span>
+
+              <span class="ft-axis-title ft-axis-title--y" id="axis-title-y">Temperature (Kelvin)</span>
+              <span class="ft-axis-title ft-axis-title--x" id="axis-title-x">Distance from the Sun (\(\mathrm{AU}\))</span>
+            </div>
+
+            <!-- One focusable button per plotted object. These reproduce the
+                 original roll-over readouts and add the keyboard path: tabbing
+                 to a planet shows the same readout and announces it. -->
+            <div class="ft-stage__hits" id="plot-hits"></div>
+
+            <!-- The roll-over readout box (reused exported artwork as its
+                 background); its two values are typeset by MathJax. -->
+            <div class="ft-readout" id="plot-readout" hidden aria-hidden="true">
+              <span class="ft-readout__line" id="readout-temp"></span>
+              <span class="ft-readout__line" id="readout-dist"></span>
+            </div>
+          </div>
+
+          <p id="plot-desc" class="sr-only"></p>
+        </div>
+
+        <!-- The temperature control lives in this same panel, directly under the
+             graph, as the slider does in the original sim. The fieldset legend
+             names the group, so no extra heading is introduced. -->
+        <p class="panel__help ft-help">
+          Set a formation temperature. The red circle moves along the trend line
+          to the distance at which the disk reached that temperature, and the
+          boundary between the solid and gas regions moves to match.
+        </p>
+
+        <fieldset class="control-fieldset ft-fieldset">
+          <legend class="control-fieldset__legend">Formation temperature</legend>
+
+          <div class="control-row ft-row">
+            <label class="control-row__label" for="temp-number">Temperature</label>
+            <span class="ft-field">
+              <input class="control-row__input ft-number" id="temp-number" type="number"
+                     min="35" max="1520" step="1" value="600"
+                     inputmode="numeric" autocomplete="off" spellcheck="false">
+              <span class="ft-unit" id="unit-kelvin" aria-hidden="true">\(\mathrm{K}\)</span>
+              <span class="sr-only" id="temp-number-unit">kelvin</span>
+            </span>
+            <label class="sr-only" for="temp-slider">Temperature slider</label>
+            <input class="control-row__slider ft-slider" id="temp-slider" type="range"
+                   min="0" max="1000" step="1" value="754">
+          </div>
+
+          <p class="ft-current">
+            <span class="ft-current__label">Distance from the Sun:</span>
+            <span class="ft-current__value" id="current-dist" aria-hidden="true"></span>
+            <span class="sr-only" id="current-dist-sr"></span>
+          </p>
+        </fieldset>
+      </section>
+
+      <!-- ====================== CONDENSATION TEMPERATURES ====================== -->
+      <section class="panel ft-panel ft-panel--states" aria-labelledby="states-heading">
+        <h2 class="panel__heading" id="states-heading">Condensation Temperatures</h2>
+
+        <div class="panel__canvas-wrap ft-states">
+          <div class="ft-band" id="state-band">
+            <!-- Reused exported artwork from the original overlay symbol: the
+                 green "solid" band, the blue "gas" band and the red boundary
+                 line, each stretched to the current panel size. -->
+            <img class="ft-band__region ft-band__region--solid" id="band-solid"
+                 src="assets/solid-band.svg" alt="">
+            <img class="ft-band__region ft-band__region--gas" id="band-gas"
+                 src="assets/gas-band.svg" alt="">
+
+            <!-- Rail ticks mark each substance at its exact condensation
+                 temperature; the leader segments join a tick to its label when
+                 the label had to be nudged clear of a crowded neighbour. -->
+            <svg class="ft-band__art" id="band-art" viewBox="0 0 100 100"
+                 preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <g id="band-leaders" fill="none" stroke="#46576d" stroke-width="1"
+                 vector-effect="non-scaling-stroke"></g>
+            </svg>
+
+            <img class="ft-band__divider" id="band-divider"
+                 src="assets/state-divider.svg" alt="">
+
+            <span class="ft-band__side ft-band__side--solid" id="side-solid" aria-hidden="true">Solid</span>
+            <span class="ft-band__side ft-band__side--gas" id="side-gas" aria-hidden="true">Gas</span>
+
+            <!-- Substance labels, verbatim from the original sim. Each is
+                 positioned at its condensation temperature (see the tick on the
+                 rail) and typeset by MathJax. -->
+            <div class="ft-band__labels" aria-hidden="true">
+              <span class="ft-substance" data-temp="1500">Metal Oxides (\(1500\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="1300">Metallic Fe/Ni (\(1300\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="1200">Silicates (\(1200\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="1000">Feldspars (\(1000\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="680">Troilite (FeS) (\(680\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="175">Water (\(175\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="150">Ammonia (\(150\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="120">Methane (\(120\ \mathrm{K}\))</span>
+              <span class="ft-substance" data-temp="65">Argon - Neon (\(65\ \mathrm{K}\))</span>
+            </div>
+          </div>
+
+          <p id="states-desc" class="sr-only"></p>
+        </div>
+      </section>
+
+    </div><!-- /.app-layout -->
+
+    <!-- Screen-reader status: announces the temperature, the matching distance
+         and which substances are solid, once a change has settled. -->
+    <p id="sr-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  </main>
+</body>
+</html>

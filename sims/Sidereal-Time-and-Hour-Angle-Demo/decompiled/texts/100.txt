@@ -1,0 +1,41 @@
+This simulator models the interaction of a hydrogen atom with light, 
+--- RECORDSEPARATOR ---
+demonstrating the quantum nature of absorption and emission.
+--- RECORDSEPARATOR ---
+Use the 
+--- RECORDSEPARATOR ---
+Photon Selection
+--- RECORDSEPARATOR ---
+ panel to fire a photon at the atom. Pressing 
+--- RECORDSEPARATOR ---
+the 
+--- RECORDSEPARATOR ---
+fire photon
+--- RECORDSEPARATOR ---
+ button will fire a photon with the energy selected by the 
+--- RECORDSEPARATOR ---
+slider. Pressing one of the other preset buttons will fire a photon with the 
+--- RECORDSEPARATOR ---
+energy corresponding to that particular transition.
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+Energy Level Diagram
+--- RECORDSEPARATOR ---
+ panel provides an alternate representation of 
+--- RECORDSEPARATOR ---
+the atom's state, showing how the energy needed to ionize the atom 
+--- RECORDSEPARATOR ---
+depends on which level the electron is in.
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+Event Log
+--- RECORDSEPARATOR ---
+ provides a history of the events in the simulator. The 
+--- RECORDSEPARATOR ---
+most recent entries are added at the bottom.
+--- RECORDSEPARATOR ---
+For demonstration purposes you can drag the electron between levels. 
+--- RECORDSEPARATOR ---
+Doing this clears the log, however.

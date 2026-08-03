@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Obliquity Simulator</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css?v=5" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#controls-heading">Skip to controls</a>
+
+  <div class="app-shell">
+
+    <!-- Title bar + Reset / Help / About come from the shared masthead component,
+         which reads its text from foundation/contents.json by sim-id. -->
+    <kl-unl-masthead sim-id="obliquity" json-url="foundation/contents.json?v=3"></kl-unl-masthead>
+
+    <main class="app-layout sim-layout">
+
+      <!-- ===================== DIAGRAM ===================== -->
+      <section class="panel sim-area-diagram" aria-labelledby="diagram-heading">
+        <h2 id="diagram-heading" class="panel__heading">Diagram</h2>
+
+        <div class="panel__canvas-wrap sim-canvas-wrap">
+          <!-- .sim-stage matches the displayed canvas size so the HTML label
+               overlays can be positioned in percentages and track any resize. -->
+          <div class="sim-stage">
+            <canvas id="ob-canvas" class="sim-canvas" width="600" height="400"
+                    role="img" aria-label="Diagram of the earth's obliquity"
+                    aria-describedby="ob-desc"></canvas>
+
+            <!-- Tilt angle read-out, typeset by MathJax, positioned over the diagram
+                 at the same place as the original Flash degree label. -->
+            <div class="sim-overlay sim-degree-label" id="degree-label" aria-hidden="true"></div>
+
+            <!-- Static "ecliptic plane" label, sitting just above the horizontal
+                 dashed ecliptic line (kept within the figure so the black margins
+                 stay equal on both sides). -->
+            <div class="sim-overlay sim-ecliptic-label" aria-hidden="true">ecliptic plane</div>
+          </div>
+        </div>
+
+        <!-- Persistent screen-reader description of what the canvas currently shows
+             (the canvas's aria-describedby target). Updated from state so it is
+             always current when navigated to; NOT a live region (the dedicated
+             #sr-status region below does the announcing, avoiding double speech). -->
+        <p id="ob-desc" class="sr-only"></p>
+      </section>
+
+      <!-- ===================== CONTROLS ===================== -->
+      <section class="panel sim-area-controls" aria-labelledby="controls-heading">
+        <h2 id="controls-heading" class="panel__heading">Obliquity Control</h2>
+
+        <fieldset class="control-fieldset">
+          <legend class="control-fieldset__legend sr-only">Obliquity setting</legend>
+
+          <div class="control-row sim-slider-row">
+            <!-- Editable value above the slider bar: type a number (0-180) and
+                 press Enter, or use the slider. The ° unit beside the field is a
+                 MathJax symbol. Field and slider drive the same state. -->
+            <span class="sim-field-wrap">
+              <input class="control-row__input sim-field" type="text" inputmode="decimal"
+                     autocomplete="off" id="ob-field" value="23.5" maxlength="5"
+                     aria-label="obliquity, degrees">
+              <span class="sim-units" aria-hidden="true">\(^{\circ}\)</span>
+            </span>
+            <input class="control-row__slider sim-slider" type="range" autocomplete="off"
+                   id="ob-range" min="0" max="180" step="0.1" value="23.5"
+                   aria-label="obliquity">
+            <div class="sim-slider-ticks" aria-hidden="true">
+              <span id="tick-min">\(0^{\circ}\)</span>
+              <span id="tick-max">\(180^{\circ}\)</span>
+            </div>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Live status announcer: speaks the new state (with units) on commit /
+           reset, not on every drag tick, so audio users hear what changed. -->
+      <p id="sr-status" class="sr-only" aria-live="polite" role="status"></p>
+
+    </main>
+  </div>
+
+  <!-- Foundation equation helper (copied in unchanged) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Shared masthead custom element (copied in unchanged) -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- MathJax (vendored locally; SVG output, no CDN/fonts). Right-click any symbol ->
+       MathJax menu ("Show Math As" -> TeX / MathML). Menu is left enabled. -->
+  <script>
+    window.MathJax = {
+      loader: { failed: function (err) { console.warn('[MathJax] optional component not vendored:', err.message); } },
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'local' },
+      options: { enableMenu: true, menuOptions: { settings: { assistiveMml: false } } }
+    };
+  </script>
+  <script src="assets/mathjax/tex-mml-svg.js"></script>
+
+  <!-- Sim logic (?v query = cache-busting so edits are always picked up) -->
+  <script src="simulation.js?v=5"></script>
+</body>
+</html>
