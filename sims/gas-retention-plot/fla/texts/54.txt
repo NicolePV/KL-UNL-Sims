@@ -1,0 +1,75 @@
+This interactive plot shows how the molecular mass, temperature, and escape 
+--- RECORDSEPARATOR ---
+speed determine whether a gas will remain gravitationally bound to a planet.
+--- RECORDSEPARATOR ---
+As a general rule one can say that a planet whose escape speed is greater than ten 
+--- RECORDSEPARATOR ---
+times the average molecular speed of a gas will retain that gas indefinitely (for 
+--- RECORDSEPARATOR ---
+billions of years, at least). If the escape speed is less than 10×V
+--- RECORDSEPARATOR ---
+avg
+--- RECORDSEPARATOR ---
+ the gas may 
+--- RECORDSEPARATOR ---
+still be retained but for shorter periods of time. When the escape speed is less than 
+--- RECORDSEPARATOR ---
+6×V
+--- RECORDSEPARATOR ---
+avg
+--- RECORDSEPARATOR ---
+ we can say that the planet will quickly lose the gas to space ('quickly' in an 
+--- RECORDSEPARATOR ---
+astronomical sense, it still may take a few million years).
+--- RECORDSEPARATOR ---
+Selecting a gas in the 
+--- RECORDSEPARATOR ---
+Gases
+--- RECORDSEPARATOR ---
+ panel shows a dashed line and shaded region in the 
+--- RECORDSEPARATOR ---
+plot. The dashed line corresponds to 10×V
+--- RECORDSEPARATOR ---
+avg
+--- RECORDSEPARATOR ---
+ for that gas. The line rises to the 
+--- RECORDSEPARATOR ---
+right since V
+--- RECORDSEPARATOR ---
+avg
+--- RECORDSEPARATOR ---
+ increases as the temperature increases. The shaded region 
+--- RECORDSEPARATOR ---
+indicates where on the plot a planet that retained the gas would be. The shading 
+--- RECORDSEPARATOR ---
+stops at 6×V
+--- RECORDSEPARATOR ---
+avg
+--- RECORDSEPARATOR ---
+.
+--- RECORDSEPARATOR ---
+Use the checkboxes in the 
+--- RECORDSEPARATOR ---
+Plot Options
+--- RECORDSEPARATOR ---
+ panel to show where familiar solar system 
+--- RECORDSEPARATOR ---
+objects appear on the plot.
+--- RECORDSEPARATOR ---
+There is a red draggable dot in the plot window. The sliders in the 
+--- RECORDSEPARATOR ---
+Custom Object 
+--- RECORDSEPARATOR ---
+Properties
+--- RECORDSEPARATOR ---
+ panel can be used to adjust and read off the values corresponding to 
+--- RECORDSEPARATOR ---
+this dot. Note that the escape speed depends on the body's density and radius, 
+--- RECORDSEPARATOR ---
+and different combinations of these properties can yield the same escape speed. 
+--- RECORDSEPARATOR ---
+However, dragging the red dot near a planet's dot will cause the draggable dot to 
+--- RECORDSEPARATOR ---
+snap to that location and to take the same density and radius values as the planet. 
+--- RECORDSEPARATOR ---
+The planet's label will turn red when this happens.

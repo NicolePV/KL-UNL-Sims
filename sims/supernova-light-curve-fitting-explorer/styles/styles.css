@@ -1,0 +1,326 @@
+/* =====================================================================
+   Supernova Light Curve Fitting Explorer — sim-specific styles.
+   Layered ON TOP of the shared foundation (foundation/kl-unl.css), which
+   is never edited. Only additive rules and this sim's own components live
+   here. Colours meaningful to the physics are exposed as custom properties.
+   ===================================================================== */
+
+:root {
+  /* Data colours carried over from the original Flash sim.
+     Red  = absolute-magnitude scale + theoretical light curve (AS 13643824).
+     Blue = apparent-magnitude scale + observation points     (AS 1924851).
+     Both are also labelled in text — colour is never the only signal. */
+  --sn-red:  #d02c30;   /* absolute magnitude  (contrast ~5.0:1 on white) */
+  --sn-blue: #1d5ef3;   /* apparent magnitude  (contrast ~5.3:1 on white) */
+  --sn-axis: #1a1a1a;   /* time axis, plot border                          */
+  --sn-plot-bg: #ffffff;
+
+  /* Uniform spacing scale so panels/rows breathe evenly. */
+  --sn-gap: 0.75rem;
+}
+
+/* Comfortably large, zoomable body copy (rem-based, tracks browser font). */
+body {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+/* ---- Overall layout -------------------------------------------------- */
+/* Cap the sim to a compact single-column width. Wide enough that the masthead
+   title "Supernova Light Curve Fitting Explorer" plus the Reset / Help / About
+   buttons sit on one line, but still narrow enough that the plot stays a
+   moderate size and the plot + calculator fit on one screen (not ballooning to
+   full page width). Higher specificity than the foundation's .app-shell max. */
+.app-shell.sn-shell {
+  max-width: 48rem;
+}
+
+/* The original sim is ONE column: plot panel above, calculator below.
+   Override the foundation's two-column grid (its 56rem collapse rule then
+   changes nothing, which keeps the foundation behaviour intact). */
+.sn-layout {
+  grid-template-columns: 1fr;
+  gap: var(--sn-gap);
+}
+
+.sn-panel {
+  margin-bottom: 0;
+}
+
+.panel__heading {
+  font-size: 1.2rem;
+}
+
+/* ---- Plot-panel controls row (checkbox + supernova selector) --------- */
+.sn-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding: 0.25rem 1.5rem 0.5rem;
+}
+
+.sn-choice {
+  min-height: 2.75rem;
+  gap: 0.5rem;
+}
+.sn-choice input[type="checkbox"] { width: 1.4rem; height: 1.4rem; }
+/* "show horizontal bar" label a touch smaller than the body copy. */
+.sn-choice label { font-size: 0.95rem; }
+
+.sn-row-select {
+  grid-template-columns: 1fr;
+  margin-bottom: 0;
+}
+.sn-select {
+  min-width: 14rem;
+  min-height: 2.75rem;
+  font-size: 1rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--foreground-color, #1a1a1a);
+  background: var(--background-color, #fff);
+  border: 1px solid var(--border-color, #767676);
+}
+
+/* ---- Light-curve plot area ------------------------------------------ */
+/* Padding reserves room around the plot for the MathJax tick labels and
+   the rotated axis titles, which live in HTML (they zoom and are
+   screen-reader / right-click accessible) rather than on the canvas. */
+.sn-plot {
+  position: relative;
+  padding: 0.5rem 4.75rem 3.9rem 4.75rem;
+}
+
+/* The plot box == the bordered plot region. Tick labels and interaction
+   proxies are positioned relative to THIS box, so they stay aligned at any
+   size (the canvas scales; fractions are constant). Internal coordinates
+   stay the original Flash stage units: 460 x 325. */
+.sn-plotbox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 460 / 325;
+  background: var(--sn-plot-bg);
+  touch-action: none;               /* dragging never scrolls the page  */
+}
+
+/* The canvas is oversized by 12 logical px on every edge so the original's
+   OUTWARD-pointing tick marks can be drawn outside the plot border.
+   12/460 = 2.6087% horizontally, 12/325 = 3.6923% vertically. */
+.sn-canvas {
+  position: absolute;
+  left:   -2.6087%;
+  right:  -2.6087%;
+  top:    -3.6923%;
+  bottom: -3.6923%;
+  width:  105.2174%;
+  height: 107.3846%;
+  display: block;
+}
+
+/* Fit proxy: covers the whole plot; both pointer drag and keyboard operate
+   it (2-D: time shift + distance modulus). Cursor mirrors the original's
+   open/closed grabber hands. */
+.sn-drag {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+  z-index: 2;
+}
+.sn-drag:active,
+.sn-drag.sn-dragging {
+  cursor: grabbing;
+}
+.sn-drag:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: -0.25rem;
+}
+
+/* ---- Tick-label overlay (MathJax numbers) --------------------------- */
+.sn-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sn-tick {
+  position: absolute;
+  font-size: 0.85rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* The gap clears the outward-pointing tick marks (drawn ~7 logical px beyond
+   the plot edge) so the numbers never touch the ticks at the capped size. */
+.sn-tick--left   { color: var(--sn-red);  transform: translate(-100%, -50%); padding-right: 0.9rem; }
+.sn-tick--right  { color: var(--sn-blue); transform: translate(0, -50%);     padding-left: 0.9rem;  }
+.sn-tick--bottom { color: var(--sn-axis); transform: translate(-50%, 0);     padding-top: 0.72rem;  }
+
+/* ---- Axis titles (rotated); variables are MathJax -------------------- */
+.sn-axis-title {
+  position: absolute;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.sn-axis-title--left {
+  left: 0.6rem;
+  top: 0.5rem;
+  bottom: 3.9rem;
+  width: 1.4rem;
+  color: var(--sn-red);
+}
+/* Left axis reads bottom-to-top (AS _rotation = -90). */
+.sn-axis-title--left span { transform: rotate(-90deg); white-space: nowrap; }
+.sn-axis-title--right {
+  right: 0.6rem;
+  top: 0.5rem;
+  bottom: 3.9rem;
+  width: 1.4rem;
+  color: var(--sn-blue);
+}
+/* Right axis reads top-to-bottom (AS _rotation = +90). */
+.sn-axis-title--right span { transform: rotate(90deg); white-space: nowrap; }
+.sn-axis-title--bottom {
+  left: 4.75rem;
+  right: 4.75rem;
+  bottom: 0.5rem;
+  height: 1.4rem;
+  color: var(--sn-axis);
+}
+
+/* ---- Movable horizontal reference bar ------------------------------- */
+.sn-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.75rem;                  /* generous hit / touch target */
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  cursor: grab;
+  touch-action: none;
+  z-index: 3;
+}
+/* The `hidden` attribute must win over display:flex, or the bar (and its
+   readouts) would render and take the tab order even when switched off. */
+.sn-bar[hidden] { display: none; }
+.sn-bar:active { cursor: grabbing; }
+/* Idle: 2px #606060; hover/focus: 3px #404040 (the original's active bar). */
+.sn-bar__line {
+  position: absolute;
+  left: -0.4rem;                    /* the original bar overhangs 3px each side */
+  right: -0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 0;
+  border-top: 2px solid #606060;
+  z-index: 1;
+}
+.sn-bar:hover .sn-bar__line,
+.sn-bar:focus-visible .sn-bar__line {
+  border-top-width: 3px;
+  border-top-color: #404040;
+}
+.sn-bar:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+/* Bordered value tags (like the original "HRHB Value" boxes: white fill,
+   grey border, red/blue text). Same width so the boxes match. */
+.sn-bar__value {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  line-height: 1;
+  background: #ffffff;
+  border: 1px solid #808080;
+  padding: 0.15rem 0.25rem;
+  min-width: 2.6rem;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 2;
+}
+/* Wide screens place the readouts OUTSIDE the plot (as in the original);
+   the base rules keep them just inside so phones never overflow. */
+.sn-bar__value--left  { left:  0.15rem; right: auto; color: var(--sn-red);  }
+.sn-bar__value--right { right: 0.15rem; left:  auto; color: var(--sn-blue); }
+
+/* ---- Distance modulus calculator ------------------------------------ */
+.sn-calc {
+  padding: 0.75rem 1.5rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-around;
+  gap: 1rem 2.5rem;
+}
+/* Formula (row 1) and inputs (row 2) share these columns, so the input
+   boxes sit directly under the m and M of the formula (as in the original). */
+.sn-calc__grid {
+  display: grid;
+  grid-template-columns: 3.6rem auto 3.6rem auto;
+  align-items: center;
+  justify-items: center;
+  gap: 0.7rem 0.4rem;
+  width: max-content;
+  font-size: 1.1rem;
+}
+.sn-calc__rhs { justify-self: start; white-space: nowrap; }
+.sn-calc__input {
+  width: 3.4rem;
+  min-height: 2.4rem;
+  font-size: 1rem;
+  text-align: center;
+}
+/* The evaluated equation: (m-M) = -5 + 5 log10 (distance). */
+.sn-calc__result {
+  font-size: 1.1rem;
+  white-space: nowrap;
+  min-height: 1.6em;
+}
+
+/* MathJax output is display-only: never a tab stop, never overflowing. */
+.sn-mj mjx-container,
+.sn-tick mjx-container,
+.sn-calc mjx-container { margin: 0 !important; }
+mjx-container[jax="SVG"] > svg { vertical-align: middle; }
+mjx-container:focus { outline: none; }
+
+/* ---- Responsive: phone portrait (single column, stacked) ------------- */
+@media (max-width: 40rem) {
+  body { font-size: 1.0625rem; }
+  /* Symmetric side room for the rotated axis titles + the outermost tick
+     numbers, so neither overlaps and nothing spills past the viewport. The
+     axis-title inset is smaller than on desktop (space is tighter here) but
+     still keeps a clear margin off the panel border. */
+  .sn-plot { padding: 0.5rem 4.5rem 3.7rem 4.5rem; }
+  .sn-axis-title--left { left: 0.4rem; bottom: 3.7rem; }
+  .sn-axis-title--right { right: 0.4rem; bottom: 3.7rem; }
+  .sn-axis-title--bottom { left: 4.5rem; right: 4.5rem; }
+  .sn-controls { justify-content: center; padding-left: 1rem; padding-right: 1rem; }
+  .sn-select { width: 100%; min-width: 0; }
+  .sn-row-select { flex: 1 1 100%; }
+}
+
+@media (max-width: 26rem) {
+  .sn-plot { padding: 0.5rem 3.7rem 3.8rem 3.7rem; }
+  .sn-tick { font-size: 0.75rem; }
+  .sn-tick--left, .sn-tick--right { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .sn-axis-title--left { left: 0.3rem; bottom: 3.8rem; }
+  .sn-axis-title--right { right: 0.3rem; bottom: 3.8rem; }
+  .sn-axis-title--bottom { left: 3.7rem; right: 3.7rem; }
+  .sn-bar__value { min-width: 2.2rem; font-size: 0.75rem; }
+}
+
+/* ---- Reduced motion: the sim has no idle animation, but keep any
+   incidental transitions instantaneous when requested. ----------------- */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+}

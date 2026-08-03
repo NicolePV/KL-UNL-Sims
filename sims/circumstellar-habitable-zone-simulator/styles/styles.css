@@ -1,0 +1,567 @@
+/* ==========================================================================
+   Circumstellar Habitable Zone Simulator - sim-specific styles.
+
+   Everything here is ADDITIVE and layered on top of the shared KL-UNL
+   foundation. foundation/kl-unl.css and foundation/kl-unl.js are never edited
+   and never overridden wholesale; this file only supplies what the foundation
+   does not provide (the sim's panel rhythm, the four canvas stages and their
+   HTML overlays, the two custom sliders' polish, and the sim breakpoints that
+   carry the layout below the foundation's 56rem collapse down to phone
+   portrait).
+   ========================================================================== */
+
+.shz-shell {
+  /* One spacing scale for the whole sim so every panel, fieldset and row
+     breathes equally (no cramped row beside a loose one). */
+  --shz-space-1: 0.25rem;
+  --shz-space-2: 0.5rem;
+  --shz-space-3: 0.75rem;
+  --shz-space-4: 1rem;
+  --shz-space-5: 1.5rem;
+
+  /* Equal-purpose numeric fields share one width/height so they never look
+     jumbled; the height doubles as the 2.75rem (44px) minimum touch target.
+     Kept snug (fits the longest value, e.g. "0.0100") so the sliders get more
+     room. */
+  --shz-field-w: 4rem;
+  --shz-field-h: 2.5rem;
+
+  /* Simulation art colours carried over from the ActionScript / exported art
+     because they are pedagogically meaningful. They are never the ONLY signal:
+     every state also carries a text label and an ARIA description. */
+  --shz-zone:      #6080d0;   /* AS habitable-zone fill 6324432          */
+  --shz-hot:       #f19538;   /* AS "too hot" label 15832376             */
+  --shz-cold:      #658ade;   /* AS "too cold" label 6654686             */
+  --shz-cursor:    #e03030;   /* AS red timeline/plot cursor 14692400    */
+
+  /* Body copy noticeably larger than the browser default, in rem so it tracks
+     the user's own font-size setting (foundation body is 0.9rem). */
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+.shz-shell input,
+.shz-shell select,
+.shz-shell button,
+.shz-shell legend,
+.shz-shell label {
+  font-family: inherit;
+  font-size:   1rem;      /* = 1.125rem of the shell, inherited */
+}
+
+/* Typeset math inherits the surrounding font weight, so the MathJax output
+   always matches the plain-text fallback that shows for a moment while a slider
+   is dragged (no weight flip between "dragging" and "settled"). */
+.shz-shell mjx-container,
+.shz-shell mjx-container * {
+  font-weight: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   Layout. The diagram and timeline panels span both foundation columns; the
+   General Settings panel sits in the 25rem left track and the Star & Planet
+   panel in the 1fr right track. A small gap gives the panels air; the
+   foundation's own 56rem collapse to one column is inherited unchanged.
+   -------------------------------------------------------------------------- */
+.shz-layout {
+  /* Narrower left column than the foundation's 25rem: General Settings only
+     holds two checkboxes, so it is sized just to fit them (no wasted
+     horizontal space) and the freed width goes to the Star & Planet panel,
+     giving its sliders room to be a usable length. */
+  grid-template-columns: 15rem 1fr;
+  gap: var(--shz-space-3);
+  padding: var(--shz-space-1) 0 var(--shz-space-4);
+  /* Stretch grid items so General Settings and Star & Planet (same row) share
+     the row height and their bottom edges line up. */
+  align-items: stretch;
+}
+
+.shz-panel--diagram,
+.shz-panel--timeline {
+  grid-column: 1 / -1;
+}
+
+.shz-panel {
+  min-width: 0;           /* let canvases shrink inside the grid track */
+  display: flex;
+  flex-direction: column;
+}
+
+.shz-canvas-wrap {
+  padding: var(--shz-space-3) var(--shz-space-4) var(--shz-space-4);
+}
+
+.shz-fieldset {
+  padding-top: var(--shz-space-3);
+}
+
+.shz-fieldset .control-choice {
+  min-height: 2.25rem;    /* comfortable touch spacing */
+  margin-bottom: var(--shz-space-1);
+}
+
+/* --------------------------------------------------------------------------
+   Diagram stage. Original internal coordinates are 966 x 250; the canvas keeps
+   that backing resolution and CSS scales it to the panel width, aspect
+   preserved. Overlays are positioned in per-cent of the stage by JS so they
+   track the scaled canvas exactly.
+   -------------------------------------------------------------------------- */
+.shz-stage {
+  position: relative;
+  width: 100%;
+}
+
+.shz-stage--diagram {
+  aspect-ratio: 966 / 250;
+  background: #000;
+  border: 1px solid #9aa0ab;
+}
+
+.shz-stage--diagram canvas,
+.shz-stage--timeline canvas,
+.shz-stage--plot canvas,
+.shz-stage--history canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.shz-zone-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  color: #cfe0ff;
+  font-weight: bold;
+  font-size: 0.8rem;
+  /* The foundation's .panel__canvas-wrap sets line-height:0, which would
+     collapse this inline span to a zero-height box — the arrow placement maths
+     measures this element, so give it a real line box. */
+  display: inline-block;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+
+/* Zone indicator arrow (reused exported art). Centred on the point JS computes
+   and rotated in place; --rot is set per frame. */
+.shz-zone-arrow {
+  position: absolute;
+  width: 14px;
+  height: 10px;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+  pointer-events: none;
+  image-rendering: auto;
+}
+.shz-zone-arrow[hidden] { display: none; }
+
+/* Transparent proxies over the canvas. touch-action:none so a drag never
+   scrolls the page. The zoom proxy fills the stage; the planet handle sits on
+   top so pointer-downs on the planet drag it and everywhere else zooms. */
+.shz-drag-proxy {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: ew-resize;
+  background: transparent;
+}
+
+.shz-planet-handle {
+  position: absolute;
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  cursor: grab;
+  border-radius: 50%;
+  background: transparent;
+}
+.shz-planet-handle:active { cursor: grabbing; }
+
+/* Visible focus ring for the canvas draggables (the foundation supplies
+   :focus-visible colour; give these a rounded ring that reads on black). */
+.shz-drag-proxy:focus-visible,
+.shz-planet-handle:focus-visible,
+.shz-time-cursor:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+  box-shadow: 0 0 0 0.125rem #fff;
+}
+
+/* --------------------------------------------------------------------------
+   Star and Planet Settings and Properties. Three parts side by side on wide
+   screens: system selector + note | sliders + readouts | H-R diagram.
+   -------------------------------------------------------------------------- */
+.shz-star-grid {
+  display: grid;
+  grid-template-columns: minmax(9rem, 10rem) minmax(0, 1fr) auto;
+  gap: var(--shz-space-2) var(--shz-space-3);
+  padding: var(--shz-space-2) var(--shz-space-4) var(--shz-space-3);
+  align-items: start;
+}
+
+.shz-inline-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: var(--shz-space-1);
+}
+
+.shz-select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.4rem;
+  color: var(--foreground-color, #1a1a1a);
+  background: var(--background-color, #fff);
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+}
+
+.shz-note {
+  margin: var(--shz-space-3) 0 0;
+  font-style: italic;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* Two columns: right-aligned labels | the matching control-or-value block.
+   `align-items: center` makes "star properties now:" sit centred against its
+   four property lines, and the four labels share one right edge — mirroring the
+   original layout. Slightly smaller type keeps the panel compact. */
+.shz-star-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--shz-space-3);
+  row-gap: var(--shz-space-2);
+  align-items: center;
+  font-size: 0.95rem;
+}
+.shz-sc-label {
+  text-align: right;
+  white-space: nowrap;
+  font-weight: normal;
+  font-size: 0.95rem;
+}
+/* the <label> rows would otherwise pick up the foundation's .shz-shell label
+   size (1rem); this keeps every label in the block at the same compact size */
+.shz-star-controls label.shz-sc-label { font-size: 0.95rem; }
+/* number field + slider on one line; identical field width in both rows so the
+   two fields line up down a column */
+.shz-sc-inline {
+  display: grid;
+  grid-template-columns: var(--shz-field-w) minmax(4rem, 1fr);
+  column-gap: var(--shz-space-2);
+  align-items: center;
+}
+/* star-properties block: right-aligned keys, left-aligned values */
+.shz-sc-props {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  column-gap: var(--shz-space-2);
+  row-gap: 0.1rem;
+  align-items: center;
+}
+.shz-sc-key { text-align: right; line-height: 1.5rem; }
+/* Fixed height keeps the readout from changing size (so it never jumps while a
+   slider is dragged), while line-height (not flexbox) does the vertical
+   centring so the content stays in inline flow and the fallback's <sub> is
+   actually lowered like MathJax's subscript. */
+.shz-sc-val {
+  min-width: 6.5rem;
+  height: 1.5rem;
+  line-height: 1.5rem;
+  white-space: nowrap;
+}
+/* the pre-typeset fallback's solar subscript, sized to sit like MathJax's */
+.shz-sc-val sub { font-size: 0.7em; }
+
+.shz-num {
+  width: var(--shz-field-w);
+  min-height: var(--shz-field-h);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* H-R diagram: 130x140 plot box, axis labels around it. */
+.shz-hr {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "ylabel box"
+    ".      xlabel";
+  gap: var(--shz-space-1);
+  align-items: center;
+  justify-items: center;
+}
+.shz-hr-box {
+  grid-area: box;
+  width: 130px;
+  max-width: 40vw;
+  aspect-ratio: 130 / 140;
+  border: 1px solid #808080;
+  background: #fff;
+}
+.shz-hr-box canvas { display: block; width: 100%; height: 100%; }
+/* Arrow is a separate, NON-rotated element (points up, toward higher
+   luminosity); only the word "Luminosity" is rotated vertical. */
+.shz-hr-ylabel {
+  grid-area: ylabel;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+.shz-hr-ytext {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-weight: bold;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.shz-hr-xlabel {
+  grid-area: xlabel;
+  font-weight: bold;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.shz-hr-arrow {
+  color: var(--foreground-color, #1a1a1a);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Timeline and Simulation Controls.
+   -------------------------------------------------------------------------- */
+.shz-timeline-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shz-space-3);
+  padding: var(--shz-space-3) var(--shz-space-4) 0;
+}
+.shz-time-line { margin: 0; }
+.shz-time-label { }
+.shz-time-value { margin-left: 0.35rem; }
+
+.shz-run-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--shz-space-3);
+}
+.shz-rate-label { font-weight: normal; }
+.shz-button { min-width: 5rem; }
+
+.shz-timeline-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shz-space-4);
+}
+
+.shz-stage--timeline { padding-bottom: 2rem; }   /* reserve room for the scale labels below the ticks */
+.shz-stage--timeline canvas { background: #fff; }
+
+/* Labels sit inside the reserved padding (just under the tick marks) rather than
+   overflowing past the stage, so they stay clear of the plot below. */
+.shz-tl-labels {
+  position: absolute;
+  left: 0; right: 0;
+  top: auto;
+  bottom: 0.5rem;
+  height: 1.4rem;
+  pointer-events: none;
+}
+/* Fixed-height, vertically centred box so a label sits on the same line
+   whether its content is the plain-text fallback or the (differently sized)
+   MathJax output — it never jumps up and down. */
+.shz-tl-label {
+  position: absolute;
+  top: 0;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  line-height: 1;
+  color: #504f4f;
+  white-space: nowrap;
+}
+
+/* Red draggable time cursor: a downward triangle with a transparent 44px hit
+   pad around it for touch. */
+.shz-time-cursor {
+  position: absolute;
+  top: -0.55rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: translateX(-50%);
+  touch-action: none;
+  cursor: ew-resize;
+  background: transparent;
+}
+.shz-time-cursor::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.15rem;
+  transform: translateX(-50%);
+  border-left: 0.45rem solid transparent;
+  border-right: 0.45rem solid transparent;
+  border-top: 0.6rem solid #3a3a3a;
+}
+.shz-time-cursor::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.7rem;
+  width: 1px;
+  height: 1.35rem;
+  transform: translateX(-50%);
+  background: var(--shz-cursor);
+  opacity: 0.6;
+}
+
+.shz-stage--plot { aspect-ratio: 870 / 50; }
+.shz-plot-label {
+  position: absolute;
+  right: var(--shz-space-2);
+  font-size: 0.7rem;
+  line-height: 1;
+  font-style: italic;
+  font-weight: bold;
+  pointer-events: none;
+}
+.shz-plot-label--hot  { top: 0.2rem; color: var(--shz-hot); }
+.shz-plot-label--cold { bottom: 0.2rem; color: var(--shz-cold); }
+
+.shz-stage--history {
+  height: 0.5rem;
+  margin-top: 3.5rem;      /* room for the "above" tags */
+  margin-bottom: 3.5rem;   /* room for the "below" tags */
+  overflow: visible;
+}
+.shz-history-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.shz-history-tag {
+  position: absolute;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 8rem;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  color: #303030;
+}
+.shz-history-tag--above { bottom: 100%; margin-bottom: 0.3rem; }
+.shz-history-tag--below { top: 100%; margin-top: 0.3rem; }
+.shz-history-tag .shz-tag-arrow {
+  display: block;
+  color: #303030;
+}
+.shz-history-tag--above .shz-tag-arrow { order: 2; }
+
+/* --------------------------------------------------------------------------
+   Custom slider polish. These are native <input type=range> (so every
+   keyboard behaviour - arrows, PageUp/Down, Home/End - comes for free and
+   works identically across browsers); only the visual thumb/track are styled
+   here, additively, never by editing the foundation. Standard properties are
+   given first with -webkit-/-moz- as additive fallbacks.
+   -------------------------------------------------------------------------- */
+.shz-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 1.5rem;
+  background: transparent;
+  cursor: pointer;
+}
+.shz-slider:focus { outline: none; }
+.shz-slider:focus-visible { outline: 0.125rem solid var(--outline-color, #005fcc); outline-offset: 0.25rem; }
+
+.shz-slider::-webkit-slider-runnable-track {
+  height: 0.4rem;
+  border-radius: 0.2rem;
+  background: #c4c9d2;
+  border: 1px solid #9aa0ab;
+}
+.shz-slider::-moz-range-track {
+  height: 0.4rem;
+  border-radius: 0.2rem;
+  background: #c4c9d2;
+  border: 1px solid #9aa0ab;
+}
+.shz-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: -0.42rem;
+  border-radius: 50%;
+  background: var(--button-background-color, #005a9c);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #5a5a5a;
+}
+.shz-slider::-moz-range-thumb {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--button-background-color, #005a9c);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #5a5a5a;
+}
+.shz-slider:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* --------------------------------------------------------------------------
+   Responsiveness below the foundation's 56rem collapse, down to phone
+   portrait: everything is already one column by then; here the Star & Planet
+   internals stack and the readouts stay aligned.
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .shz-layout {
+    grid-template-columns: 1fr;   /* single column on narrow screens */
+  }
+  .shz-star-grid {
+    grid-template-columns: 1fr;
+  }
+  /* stack each label above its control block when the panel is full-width */
+  .shz-star-controls {
+    grid-template-columns: 1fr;
+    row-gap: var(--shz-space-1);
+  }
+  .shz-sc-label {
+    text-align: left;
+    margin-top: var(--shz-space-2);
+  }
+  .shz-hr {
+    justify-items: start;
+  }
+  .shz-timeline-top {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 34rem) {
+  .shz-shell { font-size: 1.06rem; }
+  .shz-run-controls { flex-wrap: wrap; }
+  .shz-slider--rate { width: 8rem; }
+  .shz-hr-box { max-width: 60vw; width: 160px; }
+}
+
+/* Respect reduced-motion: the zoom easing and any transition become instant.
+   The run animation itself stays available (it is user-started and pausable),
+   but is not auto-started, so nothing moves without an explicit action. */
+@media (prefers-reduced-motion: reduce) {
+  .shz-shell * {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+}
+
+/* Windows High-Contrast / forced-colors: keep focus rings and art visible. */
+@media (forced-colors: active) {
+  .shz-slider::-webkit-slider-thumb { background: ButtonText; }
+  .shz-slider::-moz-range-thumb { background: ButtonText; }
+  .shz-time-cursor::before { border-top-color: ButtonText; }
+}

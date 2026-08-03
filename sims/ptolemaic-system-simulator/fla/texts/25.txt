@@ -1,0 +1,61 @@
+This simulator demonstrates how Ptolemy's geocentric model accounts for the movements of 
+--- RECORDSEPARATOR ---
+the planets. In this model the sun, moon, and planets orbit the stationary earth. A planet's 
+--- RECORDSEPARATOR ---
+path is described by a circle-on-circle construction: a planet moves on a circle called the 
+--- RECORDSEPARATOR ---
+epicycle
+--- RECORDSEPARATOR ---
+ which in turn moves on larger circle called the 
+--- RECORDSEPARATOR ---
+deferent
+--- RECORDSEPARATOR ---
+.
+--- RECORDSEPARATOR ---
+The key motivating idea behind Ptolemy's model is the idea that uniform circular motion is 
+--- RECORDSEPARATOR ---
+sufficient to account for the planets' motions. Nevertheless, some complications were required 
+--- RECORDSEPARATOR ---
+to achieve the desired accuracy. The first is that the deferent does not have to be exactly 
+--- RECORDSEPARATOR ---
+centered on the earth. The second is that the center of uniform motion of the epicycle – the 
+--- RECORDSEPARATOR ---
+equant
+--- RECORDSEPARATOR ---
+ point – doesn't have to be at the center of the deferent. In practice Ptolemy placed 
+--- RECORDSEPARATOR ---
+the equant point at twice the distance from earth as the center of the deferent.
+--- RECORDSEPARATOR ---
+This model is shown in the 
+--- RECORDSEPARATOR ---
+Orbit View 
+--- RECORDSEPARATOR ---
+panel. The 
+--- RECORDSEPARATOR ---
+Zodiac Strip
+--- RECORDSEPARATOR ---
+ panel below shows where the 
+--- RECORDSEPARATOR ---
+sun and planet would appear along the zodiac from an earth observer's point of view. The 
+--- RECORDSEPARATOR ---
+zodiac is the part of the sky where the sun and planets are found. The zodiac constellations 
+--- RECORDSEPARATOR ---
+are represented by their traditional symbols.
+--- RECORDSEPARATOR ---
+The model can be adjusted with the sliders in the 
+--- RECORDSEPARATOR ---
+Planetary Parameters
+--- RECORDSEPARATOR ---
+ panel. There's also 
+--- RECORDSEPARATOR ---
+the capability to load Ptolemy's own values for the planets (Mercury is left out since it has 
+--- RECORDSEPARATOR ---
+additional complications to account for it's precession).
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+Controls and Settings
+--- RECORDSEPARATOR ---
+ panel lets you set the model in motion as well as control the 
+--- RECORDSEPARATOR ---
+appearance of the features shown.

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Galactic Redshift Simulator</title>
+
+  <!-- Shared KL-UNL foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles (layered on top of the foundation, never editing it) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax renders ALL mathematics in this sim: the redshift definition
+    equation, the z variable wherever it appears, the wavelength axis tick
+    labels, the Flux / Wavelength axis titles and the U B V R filter labels.
+    It is self-hosted at foundation/mathjax/tex-mml-chtml.js -- no CDN
+    (self-contained requirement). The MathJax contextual menu is intentionally
+    left enabled (not overridden): right-clicking any typeset math opens
+    "Show Math As -> TeX / MathML".
+  -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      chtml: { mtextInheritFont: true, merrorInheritFont: true },
+      startup: {
+        pageReady: function () {
+          return MathJax.startup.defaultPageReady().then(function () {
+            // Typeset math is display-only: keep it out of the Tab order
+            // (the MathJax context menu still works with tabindex="-1").
+            document.querySelectorAll('mjx-container').forEach(function (el) {
+              el.setAttribute('tabindex', '-1');
+            });
+            if (window.klunlInitEqn) { window.klunlInitEqn(); }
+          });
+        }
+      }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <script src="foundation/kl-unl.js" defer></script>
+  <script src="assets/spectrum-data.js" defer></script>
+  <script src="simulation.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It reads its text from foundation/contents.json by sim-id and
+         dispatches a "sim-reset" event the sim listens for. -->
+    <kl-unl-masthead sim-id="galacticredshift" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout grs-layout">
+
+      <!-- ==================== TOP LEFT: introductory text ==================== -->
+      <section class="panel grs-panel grs-panel--intro" aria-labelledby="hdgIntro">
+        <h2 class="panel__heading" id="hdgIntro">About Redshift</h2>
+        <div class="grs-panel__body">
+          <!-- The bracketed z is held together with nowrap: a MathJax container is
+               a break opportunity, so "(z)" would otherwise split across lines
+               and orphan the closing bracket. -->
+          <p class="grs-prose">The spectrum for a galaxy is shown below. As the redshift
+            <span class="grs-nowrap">(<span aria-hidden="true">\(z\)</span><span class="sr-only">z</span>)</span>
+            increases more of the galaxy's light is observed in the infrared and longer
+            wavelengths. Due to the expansion of the universe more distant galaxies have
+            greater redshifts.</p>
+        </div>
+      </section>
+
+      <!-- ==================== TOP CENTRE: the z control ====================== -->
+      <section class="panel grs-panel grs-panel--control" aria-labelledby="hdgControl">
+        <h2 class="panel__heading" id="hdgControl">Redshift Control</h2>
+        <div class="grs-panel__body">
+          <fieldset class="control-fieldset grs-fieldset">
+            <legend class="sr-only">Redshift</legend>
+
+            <div class="control-row grs-row--z">
+              <!-- The visible label is MathJax-typeset, so it is hidden from the
+                   accessibility tree and the plain-text twin (#zLabelText) is
+                   the single source of the field's accessible name. Without the
+                   explicit aria-labelledby both spans would be concatenated and
+                   the label would be announced twice. -->
+              <label class="control-row__label grs-z-label" for="zInput">
+                <span aria-hidden="true">\(z\) (redshift):</span>
+                <span class="sr-only" id="zLabelText">z (redshift):</span>
+              </label>
+              <input class="control-row__input grs-z-input" id="zInput" type="text"
+                     inputmode="decimal" autocomplete="off" spellcheck="false"
+                     value="0.00" aria-labelledby="zLabelText" aria-describedby="zInputHint">
+              <p class="sr-only" id="zInputHint">Type a redshift between 0 and 1 and press Enter.</p>
+              <input class="control-row__slider grs-z-slider" id="zSlider" type="range"
+                     min="0" max="1" step="0.01" value="0"
+                     aria-label="Redshift z" aria-valuetext="Redshift z equals 0.00">
+            </div>
+          </fieldset>
+
+          <!-- Redshift definition, typeset by MathJax through kl-unl.js -->
+          <div class="grs-eqn" id="eqnRedshift" aria-describedby="eqnRedshiftSR"></div>
+          <p class="sr-only" id="eqnRedshiftSR"></p>
+        </div>
+      </section>
+
+      <!-- ==================== TOP RIGHT: filters ============================= -->
+      <section class="panel grs-panel grs-panel--filters" aria-labelledby="hdgFilters">
+        <h2 class="panel__heading" id="hdgFilters">Filters</h2>
+        <div class="grs-panel__body">
+          <p class="grs-prose">Astronomers observe objects through various filters. As the
+            galaxy's light is redshifted the relative brightness observed through the filters
+            changes.</p>
+
+          <div class="grs-filters-row">
+            <!-- Filter strengths chart: four bars whose heights track the flux
+                 measured through each filter. role="img" -> screen readers get
+                 the text equivalent in #filterChartDesc instead of the bars. -->
+            <div class="grs-chart" id="filterChart" role="img" aria-labelledby="filterChartDesc">
+              <div class="grs-chart__col">
+                <div class="grs-chart__track"><div class="grs-chart__bar grs-chart__bar--u" id="barU"></div></div>
+                <div class="grs-chart__lab" aria-hidden="true">\(U\)</div>
+              </div>
+              <div class="grs-chart__col">
+                <div class="grs-chart__track"><div class="grs-chart__bar grs-chart__bar--b" id="barB"></div></div>
+                <div class="grs-chart__lab" aria-hidden="true">\(B\)</div>
+              </div>
+              <div class="grs-chart__col">
+                <div class="grs-chart__track"><div class="grs-chart__bar grs-chart__bar--v" id="barV"></div></div>
+                <div class="grs-chart__lab" aria-hidden="true">\(V\)</div>
+              </div>
+              <div class="grs-chart__col">
+                <div class="grs-chart__track"><div class="grs-chart__bar grs-chart__bar--r" id="barR"></div></div>
+                <div class="grs-chart__lab" aria-hidden="true">\(R\)</div>
+              </div>
+            </div>
+            <p class="sr-only" id="filterChartDesc"></p>
+
+            <div class="button-row grs-button-row">
+              <button type="button" class="button grs-button" id="showHideFiltersButton"
+                      aria-pressed="false">show filter details</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== FULL WIDTH: the spectrum stage ================= -->
+      <section class="panel grs-panel grs-panel--stage" aria-labelledby="hdgStage">
+        <h2 class="panel__heading" id="hdgStage">Galaxy Spectrum</h2>
+
+        <div class="panel__canvas-wrap grs-stage">
+
+          <!-- Left gutter: Flux axis title. The arrow is a SEPARATE, unrotated
+               element above the word, exactly as in the original. Keeping it
+               out of the rotated span is what guarantees it points up on
+               screen: the rotation that makes "Flux" read bottom-to-top turns
+               a glyph by 90 degrees, so an \uparrow placed inside it would
+               render as a left arrow. -->
+          <div class="grs-flux-axis" aria-hidden="true">
+            <svg class="grs-axis-arrow grs-axis-arrow--up" viewBox="0 0 100 220"
+                 focusable="false" aria-hidden="true">
+              <path d="M50 0 L100 72 L68 72 L68 220 L32 220 L32 72 L0 72 Z" fill="currentColor"/>
+            </svg>
+            <span class="grs-flux-axis__text"><span class="grs-flux-axis__text-rot">\(\textsf{Flux}\)</span></span>
+          </div>
+
+          <div class="grs-plot-col">
+
+            <!-- Visible-spectrum strip. It spans 400-700 nm, i.e. the middle
+                 42.857% of the 250-950 nm plot, and is aligned to it. -->
+            <div class="grs-vis">
+              <p class="grs-vis__title">Visible Spectrum</p>
+              <canvas class="grs-vis__canvas" id="visCanvas" width="300" height="30"
+                      role="img" aria-describedby="visDesc"
+                      aria-label="Visible-light appearance of the galaxy spectrum from 400 to 700 nanometers"></canvas>
+              <p class="sr-only" id="visDesc"></p>
+            </div>
+
+            <!-- Main flux-versus-wavelength graph -->
+            <canvas class="grs-graph__canvas" id="graphCanvas" width="702" height="302"
+                    role="img" aria-describedby="graphDesc"
+                    aria-label="Graph of galaxy flux against observed wavelength"></canvas>
+            <p class="sr-only" id="graphDesc"></p>
+
+            <!-- Wavelength tick marks and labels live in HTML (not on the
+                 canvas) so they zoom with the page and are MathJax-typeset. -->
+            <div class="grs-ticks" id="tickStrip" aria-hidden="true"></div>
+
+            <p class="grs-wl-axis" aria-hidden="true">
+              <span class="grs-wl-axis__text">\(\textsf{Wavelength}\)</span>
+              <svg class="grs-axis-arrow grs-axis-arrow--right" viewBox="0 0 220 100"
+                   focusable="false" aria-hidden="true">
+                <path d="M220 50 L148 100 L148 68 L0 68 L0 32 L148 32 L148 0 Z" fill="currentColor"/>
+              </svg>
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Polite live region: state changes are announced here on commit. -->
+    <p class="sr-only" id="liveStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+  </div>
+</body>
+</html>

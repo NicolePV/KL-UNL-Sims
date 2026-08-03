@@ -1,0 +1,41 @@
+This simulator models the motions of two stars in orbit around each other. When such a 
+--- RECORDSEPARATOR ---
+system is aligned properly the stars will eclipse one another, causing a change in 
+--- RECORDSEPARATOR ---
+brightness (as seen from earth) that allows astronomers to determine the properties of 
+--- RECORDSEPARATOR ---
+the stars.
+--- RECORDSEPARATOR ---
+The upper left panel shows the binary system visualization. If if the 
+--- RECORDSEPARATOR ---
+lock on 
+--- RECORDSEPARATOR ---
+perspective from earth
+--- RECORDSEPARATOR ---
+ checkbox is selected (found in the lower left corner) the 
+--- RECORDSEPARATOR ---
+system is shown as it would be seen from earth with a sufficiently powerful telescope. If 
+--- RECORDSEPARATOR ---
+the perspective is unlocked one can drag the visualization around, and a red arrow is 
+--- RECORDSEPARATOR ---
+shown indicating the direction to the earth.
+--- RECORDSEPARATOR ---
+In practice eclipsing binary stars are so close together that astronomers see just a 
+--- RECORDSEPARATOR ---
+single combined 'star'. The plot in the upper right shows the combined brightness of the 
+--- RECORDSEPARATOR ---
+system. Dips in the lightcurve correspond to the eclipses as seen from earth.
+--- RECORDSEPARATOR ---
+The panel in the lower right controls the properties of the stars. Note that as you adjust 
+--- RECORDSEPARATOR ---
+one slider the range of the other sliders may change (indicated by the dark shading) to 
+--- RECORDSEPARATOR ---
+prevent the stars from physically overlapping. The longitude and inclination properties 
+--- RECORDSEPARATOR ---
+in the left panel control the orientation of the system with respect to earth.
+--- RECORDSEPARATOR ---
+You can also load presets from the presets drop-down box. With some presets observed 
+--- RECORDSEPARATOR ---
+data will be shown in the lightcurve panel. This data comes from the CALEB catalog, and 
+--- RECORDSEPARATOR ---
+when selected a button to load the associated CALEB webpage will be enabled.

@@ -1,0 +1,19 @@
+The spectrum for a galaxy is 
+--- RECORDSEPARATOR ---
+shown below. As the redshift (
+--- RECORDSEPARATOR ---
+z
+--- RECORDSEPARATOR ---
+) 
+--- RECORDSEPARATOR ---
+increases more of the galaxy's 
+--- RECORDSEPARATOR ---
+light is observed in the infrared 
+--- RECORDSEPARATOR ---
+and longer wavelengths. Due to 
+--- RECORDSEPARATOR ---
+the expansion of the universe 
+--- RECORDSEPARATOR ---
+more distant galaxies have 
+--- RECORDSEPARATOR ---
+greater redshifts.

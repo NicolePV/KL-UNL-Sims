@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supernova Light Curve Fitting Explorer</title>
+
+  <!-- Shared KL-UNL foundation styles (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles, layered on top of the foundation -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!-- MathJax: configured before the (locally vendored) library loads.
+       All mathematics in this sim is typeset by MathJax so it is selectable,
+       zoomable, screen-reader exposed, and offers the "Show Math As" menu. -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      },
+      chtml: {
+        // \text{...} content inherits the surrounding page font, so plot numbers
+        // and the axis variables render in the same sans-serif as the other
+        // labels (while staying MathJax — the right-click menu still works).
+        mtextInheritFont: true
+      },
+      options: {
+        enableMenu: true          // keep the MathJax "Show Math As" context menu
+      },
+      startup: {
+        typeset: false            // simulation.js typesets once content is in place
+      }
+    };
+  </script>
+  <script src="assets/mathjax/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+
+<body>
+  <div class="app-shell sn-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title bar + Reset / About + dialog, all from the foundation component.
+         It reads its text from foundation/contents.json by sim-id and renders
+         the single <h1>. Do not add a competing masthead/h1. -->
+    <kl-unl-masthead sim-id="snCurveExplorer"
+                     json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <!-- The original sim is a single column: the Light Curve Plot panel on top
+         and the Distance Modulus Calculator beneath it. -->
+    <main class="app-layout sn-layout">
+
+      <!-- ========================= LIGHT CURVE PLOT ====================== -->
+      <section class="panel sn-panel" aria-labelledby="sn-plot-heading">
+        <h2 class="panel__heading" id="sn-plot-heading">Light Curve Plot</h2>
+
+        <!-- Controls row: checkbox at left, supernova selector at right,
+             mirroring the original layout above the plot. -->
+        <fieldset class="control-fieldset sn-controls">
+          <legend class="sr-only">Plot controls</legend>
+          <div class="control-choice sn-choice">
+            <input type="checkbox" id="sn-showbar">
+            <label for="sn-showbar">show horizontal bar</label>
+          </div>
+          <div class="control-row sn-row-select">
+            <label class="sr-only" for="sn-select">Select a supernova</label>
+            <select id="sn-select" class="sn-select"></select>
+          </div>
+        </fieldset>
+
+        <div class="panel__canvas-wrap sn-plot">
+          <!-- Axis titles live in HTML (they zoom, and their variables are
+               MathJax-typeset) rather than being baked into the canvas. -->
+          <div class="sn-axis-title sn-axis-title--left" aria-hidden="true">
+            <span>Absolute Magnitude (<span class="sn-mj" data-tex="\text{M}_{\text{B}}"></span>)</span>
+          </div>
+          <div class="sn-axis-title sn-axis-title--right" aria-hidden="true">
+            <span>Apparent Magnitude (<span class="sn-mj" data-tex="\text{m}_{\text{B}}"></span>)</span>
+          </div>
+          <div class="sn-axis-title sn-axis-title--bottom" aria-hidden="true">
+            <span>Days From Peak</span>
+          </div>
+
+          <!-- Plot area box: canvas + interaction proxies + label overlay.
+               The canvas is the visual layer only (aria-hidden); the text
+               equivalent is provided through the live region + descriptions. -->
+          <div class="sn-plotbox" id="sn-plotbox">
+            <canvas id="sn-canvas" class="sn-canvas" aria-hidden="true"></canvas>
+
+            <!-- Light-curve fit: drag the supernova data anywhere on the plot
+                 (or focus + arrow keys). Horizontal = time shift, vertical =
+                 distance modulus, exactly like the original's Draggable Area. -->
+            <div class="sn-drag" id="sn-drag"
+                 role="application" tabindex="0"
+                 aria-roledescription="draggable supernova data"
+                 aria-label="Supernova data. Drag, or use the arrow keys, to shift the observations and fit them to the theoretical light curve."
+                 aria-describedby="sn-drag-help"></div>
+            <p class="sr-only" id="sn-drag-help">
+              Left and Right arrow keys shift the observations in time by one day
+              (hold Shift for ten days; Home and End jump to the smallest and
+              largest time shift). Up and Down arrow keys move the observations
+              vertically by 0.1 magnitudes of distance modulus (hold Shift, or
+              use Page Up and Page Down, for 1 magnitude). The vertical shift is
+              the distance modulus, apparent minus absolute magnitude.
+            </p>
+
+            <!-- Movable horizontal reference bar (shown via the checkbox). -->
+            <div class="sn-bar" id="sn-bar" hidden
+                 role="slider" tabindex="0"
+                 aria-orientation="vertical"
+                 aria-label="Horizontal reference bar. Move up or down with the arrow keys to read matching absolute and apparent magnitudes."
+                 aria-valuemin="-22" aria-valuemax="-10" aria-valuenow="-16"
+                 aria-valuetext="Reference bar. Absolute magnitude minus 16.0, apparent magnitude minus 16.0">
+              <span class="sn-bar__value sn-bar__value--left" id="sn-bar-left"></span>
+              <span class="sn-bar__line" aria-hidden="true"></span>
+              <span class="sn-bar__value sn-bar__value--right" id="sn-bar-right"></span>
+            </div>
+
+            <!-- Tick-mark numeric labels (MathJax), positioned over the plot. -->
+            <div class="sn-overlay" id="sn-overlay" aria-hidden="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== DISTANCE MODULUS CALCULATOR ================ -->
+      <section class="panel sn-panel" aria-labelledby="sn-calc-heading">
+        <h2 class="panel__heading" id="sn-calc-heading">Distance Modulus Calculator</h2>
+        <div class="sn-calc">
+          <!-- Left block: the formula with the m / M input boxes directly
+               beneath the m and M symbols (as in the original). -->
+          <div class="sn-calc__grid">
+            <!-- Row 1: formula. Every token is wrapped in \text{} so MathJax
+                 renders it in the page sans-serif font (via mtextInheritFont),
+                 matching the rest of the UI. It is still MathJax output, so the
+                 "Show Math As" right-click menu still works. -->
+            <span class="sn-mj" data-tex="\text{m}" aria-hidden="true"></span>
+            <span class="sn-mj" data-tex="\text{−}" aria-hidden="true"></span>
+            <span class="sn-mj" data-tex="\text{M}" aria-hidden="true"></span>
+            <span class="sn-mj sn-calc__rhs" data-tex="\text{= −5 + 5 log}_{\text{10}}\text{ d}" aria-hidden="true"></span>
+
+            <!-- Row 2: inputs -->
+            <input type="text" id="sn-app" class="control-row__input sn-calc__input"
+                   inputmode="decimal" autocomplete="off" spellcheck="false"
+                   aria-label="m, apparent magnitude">
+            <span class="sn-mj" data-tex="\text{−}" aria-hidden="true"></span>
+            <input type="text" id="sn-abs" class="control-row__input sn-calc__input"
+                   inputmode="decimal" autocomplete="off" spellcheck="false"
+                   aria-label="M, absolute magnitude">
+            <span aria-hidden="true"></span>
+          </div>
+
+          <!-- Right block: the evaluated equation,
+               (m - M) = -5 + 5 log10 (distance), with "..." placeholders. -->
+          <div class="sn-calc__result">
+            <span id="sn-calc-res" aria-hidden="true"></span>
+          </div>
+
+          <p class="sr-only" id="sn-calc-formula-sr">
+            The distance modulus formula: apparent magnitude m minus absolute
+            magnitude M equals negative 5 plus 5 times the base-10 logarithm of
+            the distance d in parsecs.
+          </p>
+          <p class="sr-only" id="sn-calc-result-sr" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Polite announcements of state changes (units always spoken). -->
+  <div class="sr-only" id="sn-live" role="status" aria-live="polite"></div>
+  <!-- Continuously-updated description of what the plot currently shows. -->
+  <div class="sr-only" id="sn-plot-desc"></div>
+
+  <!-- Foundation helpers + supernova data + sim logic (all local, no CDN). -->
+  <script src="foundation/kl-unl.js"></script>
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <script src="assets/snData.js" defer></script>
+  <script src="simulation.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+Select two stars to compare by clicking 
+--- RECORDSEPARATOR ---
+on them in the star field at left.

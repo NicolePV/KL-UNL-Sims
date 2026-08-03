@@ -1,0 +1,37 @@
+{
+  "_comment": "Per-sim copy for the Gas Retention Simulator. The masthead resolves its title/Help/About by sim-id. This sim's entry is verbatim from the shared KL-UNL contents.json; see ../../CONVERSION_NOTES.md for why a per-sim copy is shipped (the shared file is not valid JSON). Keep entries in alphabetical order by key.",
+
+  "gasRetentionSimulator": {
+    "meta": {
+      "title": "Gas Retention Simulator",
+      "version": "2.0"
+    },
+    "masthead": {
+      "help": {
+        "title": "Help and Instructions",
+        "content": "<p>This simulator demonstrates how gases of different molecular masses behave when maintained at thermodynamic equilibrium in a chamber. The chamber can be set to allow particles that exceed a certain speed to escape, providing an analogy for the bleeding off of a planet’s atmosphere into space.</p><p>To begin select a gas from the drop-down menu in the <em>Gases</em> panel. You can add up to three gases at a time. Click the <em>start simulation</em> button in the <em>Chamber Properties</em> panel to see the particles in motion. When the simulation is running the sliders and most other options are disabled, so you will need to stop the simulation to make changes.</p><p>Note that in this simulation the particles in the chamber are meant to be interpreted as tracer particles &ndash; each particle shown represents a great many more particles.</p><p>The bar chart at the right side of the <em>Gases</em> panel indicates the absolute amount of each gas in the chamber. The relative amounts are given as percentages in the gases list. You can drag the buttons to adjust their percentages, or you can click the <em>reset proportions</em> button to restore all the gases to equal amounts.</p><p>One caveat: phase changes are ignored in this simulator. That is, we assume that the particles in the chamber stay in a gaseous state regardless of the temperature or pressure in the chamber.</p>"
+      },
+      "about": {
+        "title": "About this Simulator",
+        "content": "<p>This simulator is part of the Atmospheric Retention Module of the <a href=\"https://astro.unl.edu/naap/\">Nebraska Astronomy Applet Project</a>. Supporting materials and additional astronomy education resources can be found there.</p><p>This simulator has been modernized by the AAS Applet Task Force to meet modern web accessibility standards (WCAG 2.1 AA).</p><p>Initial funding for this work was provided by NSF grants #0231270 and/or #0404988.</p><p>Copyright 2026 The Board of Regents of the University of Nebraska</p><p>Licensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at</p><p><a href=\"http://www.apache.org/licenses/LICENSE-2.0\">http://www.apache.org/licenses/LICENSE-2.0</a></p><p>Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.</p>"
+      }
+    }
+  },
+
+  "newSim": {
+    "meta": {
+      "title": "Simulation Title",
+      "version": "2.0"
+    },
+    "masthead": {
+      "help": {
+        "title": "Help and Instructions",
+        "content": "<p>Leave this string completely blank for no Help button.</p>"
+      },
+      "about": {
+        "title": "About this Demonstrator",
+        "content": "<p>For additional astronomy education materials please visit <a href=\"https://astro.unl.edu/\">Astronomy Education</a> at the University of Nebraska-Lincoln.</p><p>This demonstrator has been modernized by the AAS Applet Task Force to meet modern web accessibility standards (WCAG 2.1 AA).</p><p>Initial funding for this work was provided by NSF grants #0231270 and/or #0404988.</p><p>Permission is granted to use these files for noncommercial purposes as long as they remain unmodified.</p>"
+      }
+    }
+  }
+}

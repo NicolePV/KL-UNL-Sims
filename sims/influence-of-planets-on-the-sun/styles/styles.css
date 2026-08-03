@@ -1,0 +1,360 @@
+/* =====================================================================
+   Influence of Planets on the Sun Explorer -- sim-specific styles.
+
+   Layered ON TOP of the KL-UNL foundation (foundation/kl-unl.css); the
+   foundation files themselves are never edited and no override <style>
+   block lives in index.html.  Everything here is sized in rem/%/fr so the
+   page tracks the reader's browser font size, survives 200% zoom, and
+   reflows desktop -> iPad -> phone portrait.  Base copy is 1.125rem.
+   ===================================================================== */
+
+/* --------------------------------------------------------------------
+   1. Shell and type scale
+   -------------------------------------------------------------------- */
+.ips-shell {
+  /* Keeps the stage close to the original Flash on-screen scale (the 540 px
+     wide canvas viewport renders at roughly 540-620 CSS px here) while the
+     narrow planet column keeps the original's ~70 / 30 split. */
+  max-width:       60rem;
+  padding:         0 0.5rem 1rem;
+}
+
+/* Body copy noticeably larger than the browser default (WCAG 1.4.4 /
+   1.4.12).  Applied to this sim's own elements, not to the foundation. */
+.ips-panel,
+.ips-panel label,
+.ips-panel input,
+.ips-panel button,
+.ips-panel dt,
+.ips-panel dd,
+.ips-panel p,
+.ips-panel li {
+  font-size:       1.125rem;
+  line-height:     1.45;
+}
+
+.ips-panel .panel__heading {
+  font-size:       1.25rem;
+  line-height:     1.3;
+}
+
+.ips-panel .panel__help {
+  font-size:       1rem;
+  line-height:     1.5;
+  margin:          0.75rem 1rem 1rem;
+}
+
+/* The shared masthead lays its title and its Reset / Help / About buttons
+   out in a non-wrapping flex row, so below about 23rem that bar is wider
+   than the viewport.  Letting the bar itself scroll keeps the PAGE free of
+   horizontal scrolling at the 320 CSS px reflow width (WCAG 1.4.10).  The
+   foundation component is not modified -- this styles only the host element
+   from the sim's own stylesheet. */
+kl-unl-masthead {
+  display:         block;
+  max-width:       100%;
+  overflow-x:      auto;
+}
+
+/* --------------------------------------------------------------------
+   2. Layout.
+
+   Row 1: the stage (wide, left) beside the planet list (narrow, right),
+          mirroring the original Flash arrangement.
+   Row 2: the animation-speed panel, spanning the full width so its right
+          edge lines up with the planet panel's.
+
+   The foundation .app-layout is a 25rem/1fr grid; the proportions are
+   swapped here -- in this stylesheet, not in kl-unl.css.  The single-column
+   collapse is reproduced at the foundation's own 56rem breakpoint so the
+   two stay in step.
+   -------------------------------------------------------------------- */
+.ips-layout {
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap:             0.75rem;
+  padding:         0.75rem 0 0;
+  /* stretch, not start: the two row-1 panels take the same height so their
+     bottom edges line up. */
+  align-items:     stretch;
+}
+
+.ips-panel {
+  padding-bottom:  0.75rem;
+  box-sizing:      border-box;
+  min-width:       0;
+}
+
+.ips-panel--viz     { grid-column: 1; }
+.ips-panel--planets { grid-column: 2; }
+.ips-panel--speed   { grid-column: 1 / -1; }
+
+.ips-fieldset {
+  padding:         0 1rem 0.25rem;
+}
+
+/* --------------------------------------------------------------------
+   3. "Years Elapsed" status line above the stage
+   -------------------------------------------------------------------- */
+.ips-status {
+  display:         flex;
+  flex-wrap:       wrap;
+  align-items:     baseline;
+  gap:             0.5rem;
+  margin:          0 1rem 0.5rem;
+  font-size:       1.125rem;
+}
+
+.ips-status__label {
+  font-weight:     bold;
+}
+
+/* Every number in this sim is ordinary sans-serif body text -- the font is
+   stated explicitly (rather than merely inherited) so a changing value can
+   never pick up a different typeface as it updates.  tabular-nums keeps the
+   digits from shuffling sideways while the counter runs. */
+.ips-status__value,
+.ips-planet-au,
+.ips-value-field {
+  font-family:     inherit;
+  font-style:      normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.ips-status__value {
+  min-width:       4.5ch;          /* keeps the number from jittering */
+  text-align:      left;
+}
+
+/* --------------------------------------------------------------------
+   4. The stage canvas.
+
+   The canvas keeps the ORIGINAL Flash stage coordinate system (540 x 420
+   of the 780 x 420 stage) in its width/height attributes.  CSS only
+   scales the element; width:100% + height:auto preserves the aspect
+   ratio in every browser (no reliance on aspect-ratio support).
+   -------------------------------------------------------------------- */
+.ips-canvas-wrap {
+  padding:         0 1rem;
+}
+
+.ips-canvas {
+  display:         block;
+  width:           100%;
+  height:          auto;
+  /* Never blow the stage up much past its original on-screen scale, so the
+     picture stays the same size whether the layout is one or two columns. */
+  max-width:       38rem;
+  margin:          0 auto;
+  background:      #000000;
+  /* Nothing on this canvas is draggable, so normal page scrolling and
+     pinch-zoom over the picture are left untouched. */
+  touch-action:    auto;
+}
+
+/* --------------------------------------------------------------------
+   5. Diagram key (shape + word, never colour alone)
+   -------------------------------------------------------------------- */
+.ips-legend {
+  display:         flex;
+  flex-wrap:       wrap;
+  gap:             0.35rem 1.25rem;
+  margin:          0.6rem 1rem 0;
+  padding:         0;
+  list-style:      none;
+}
+
+.ips-legend__item {
+  display:         flex;
+  align-items:     center;
+  gap:             0.4rem;
+  font-size:       1rem;
+}
+
+.ips-legend__swatch {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  width:           1.15rem;
+  height:          1.15rem;
+  flex-shrink:     0;
+  background:      #000000;
+  border-width:    var(--border-width, 1px);
+  border-style:    var(--border-style, solid);
+  border-color:    var(--border-color, #767676);
+}
+
+.ips-legend__swatch--sun {
+  background:      radial-gradient(circle, #fecb00 0%, #fea000 70%, #fe9100 100%);
+}
+
+.ips-legend__swatch--com {
+  color:           #00ff00;
+  font-weight:     bold;
+  line-height:     1;
+}
+
+.ips-legend__swatch--path {
+  background:
+    linear-gradient(to bottom,
+                    #000000 0,        #000000 45%,
+                    #ffffff 45%,      #ffffff 60%,
+                    #000000 60%,      #000000 100%);
+}
+
+/* --------------------------------------------------------------------
+   6. Animation-speed row: label, value field, slider, Pause button, all on
+      one baseline.  The slider takes whatever width is left over.
+   -------------------------------------------------------------------- */
+.ips-slider-row {
+  grid-template-columns: auto 6.5rem minmax(0, 1fr) auto;
+  align-items:     center;
+  gap:             0.5rem 0.75rem;
+  margin-bottom:   0.75rem;
+}
+
+.ips-slider-row .control-row__label {
+  font-weight:     normal;
+  justify-self:    start;
+}
+
+.ips-value-field {
+  width:           6.5rem;
+  min-height:      2.75rem;         /* comfortable touch target */
+  box-sizing:      border-box;
+  padding:         0.25rem 0.5rem;
+  font-size:       1.125rem;
+  text-align:      right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ips-slider {
+  width:           100%;
+  min-height:      2.75rem;
+  cursor:          pointer;
+  /* Standards-based sizing only; no vendor-prefix-only declarations. */
+}
+
+.ips-button {
+  min-width:       8rem;
+  color:           var(--button-foreground-color, #ffffff);
+  background-color: var(--button-background-color, #005a9c);
+  border-width:    var(--border-width, 1px);
+  border-style:    var(--border-style, solid);
+  border-color:    var(--border-color, #767676);
+  border-radius:   4px;
+  font-weight:     600;
+}
+
+.ips-button:hover {
+  filter:          brightness(var(--button-hover-darken, 0.9));
+}
+
+/* --------------------------------------------------------------------
+   7. Planet list: checkbox + name in one column, distance right-aligned
+      in the next, so every row shares the same edges and baseline.
+   -------------------------------------------------------------------- */
+.ips-planet-list {
+  display:         grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items:     center;
+  gap:             0 1rem;
+  /* Keeps the AU column next to its planet instead of being pushed to the
+     far edge when the panel goes full-width in the stacked layout. */
+  max-width:       26rem;
+}
+
+.ips-planet-choice {
+  display:         flex;
+  align-items:     center;
+  gap:             0.6rem;
+  min-height:      2.75rem;         /* >= 44px touch target */
+}
+
+.ips-planet-choice input[type="checkbox"] {
+  width:           1.5rem;
+  height:          1.5rem;
+  flex-shrink:     0;
+  margin:          0;
+}
+
+.ips-planet-choice label {
+  cursor:          pointer;
+  font-weight:     normal;
+  /* Grow the clickable area to the full row height. */
+  display:         flex;
+  align-items:     center;
+  min-height:      2.75rem;
+  flex:            1 1 auto;
+}
+
+.ips-planet-distance {
+  text-align:      right;
+  white-space:     nowrap;
+  min-height:      2.75rem;
+  display:         flex;
+  align-items:     center;
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------
+   8. Responsive: iPad, then phone portrait.
+   -------------------------------------------------------------------- */
+
+/* Tablet / narrow desktop: give the planet column a little less room. */
+@media (max-width: 64rem) {
+  .ips-layout { grid-template-columns: minmax(0, 1fr) 17rem; }
+}
+
+/* The foundation collapses .app-layout to a single column at 56rem; keep
+   this sim in step and stack the panels in reading order. */
+@media (max-width: 56rem) {
+  .ips-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ips-panel--viz,
+  .ips-panel--planets,
+  .ips-panel--speed { grid-column: 1; }
+}
+
+/* Below this the slider has no useful room left beside the button, so the
+   row breaks into label + value, then the slider, then the button. */
+@media (max-width: 46rem) {
+  .ips-slider-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ips-slider-row .control-row__slider { grid-column: 1 / -1; }
+
+  /* Own row, left-aligned on the same edge as the label above it, and the
+     same width it has on desktop. */
+  .ips-button { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* Phone portrait: everything full width, controls wrap, nothing clipped. */
+@media (max-width: 34rem) {
+  .ips-shell { padding: 0 0.25rem 1rem; }
+
+  .ips-layout { gap: 0.5rem; padding-top: 0.5rem; }
+
+  .ips-canvas-wrap { padding: 0 0.5rem; }
+
+  .ips-fieldset { padding: 0 0.75rem 0.25rem; }
+
+  .ips-status,
+  .ips-legend { margin-left: 0.75rem; margin-right: 0.75rem; }
+
+  .ips-panel .panel__help { margin-left: 0.75rem; margin-right: 0.75rem; }
+
+  /* Same field width as on desktop so equal-purpose boxes stay equal. */
+  .ips-value-field { width: 6.5rem; justify-self: start; }
+}
+
+/* --------------------------------------------------------------------
+   11. Reduced motion: the trail is still drawn, but the animation does
+       not start by itself (simulation.js starts paused and says so).
+   -------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ips-button { transition: none; }
+}

@@ -1,0 +1,7 @@
+Click and drag on the plot to 
+--- RECORDSEPARATOR ---
+create a custom zoom 
+--- RECORDSEPARATOR ---
+window. Click on the window 
+--- RECORDSEPARATOR ---
+to complete the zoom.

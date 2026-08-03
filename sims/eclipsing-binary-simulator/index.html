@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eclipsing Binary Simulator</title>
+
+  <!-- Shared KL-UNL foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles (layered on top of the foundation, never editing it) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax renders ALL mathematics in this sim: the solar-unit symbols on the
+    property sliders and readouts, the kelvin and degree unit symbols, and the
+    HR-diagram axis titles and mass labels. It is self-hosted at
+    foundation/mathjax/tex-mml-chtml.js - no CDN (self-contained requirement).
+    The MathJax contextual menu is intentionally left enabled (not overridden):
+    right-clicking any typeset math opens "Show Math As -> TeX / MathML".
+  -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      chtml: {
+        mtextInheritFont: true,
+        merrorInheritFont: true,
+        // MathJax scales math up to match the surrounding x-height by
+        // default, which renders the unit symbols noticeably larger than the
+        // labels beside them. Off = symbols match the text size exactly.
+        matchFontHeight: false
+      },
+      startup: {
+        pageReady: function () {
+          return MathJax.startup.defaultPageReady().then(function () {
+            // Typeset math is display-only: keep it out of the Tab order
+            // (the MathJax context menu still works with tabindex="-1").
+            document.querySelectorAll('mjx-container').forEach(function (el) {
+              el.setAttribute('tabindex', '-1');
+            });
+            if (window.klunlInitEqn) { window.klunlInitEqn(); }
+          });
+        }
+      }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <script src="foundation/kl-unl.js" defer></script>
+  <script src="simulation.js" defer></script>
+</head>
+<body>
+  <div class="app-shell ebs-shell">
+
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It reads its text from foundation/contents.json by sim-id and
+         dispatches a "sim-reset" event the sim listens for. -->
+    <kl-unl-masthead sim-id="eclipsingbinarysim" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout ebs-layout">
+
+      <!-- ===================== LEFT COLUMN ================================= -->
+      <div class="ebs-col">
+
+      <!-- ================= TOP LEFT: binary system visualization ============ -->
+      <section class="panel ebs-panel ebs-vis-panel" aria-labelledby="hdgVis">
+        <h2 class="sr-only" id="hdgVis">Binary System Visualization</h2>
+        <div class="panel__canvas-wrap ebs-vis-wrap" id="visWrap">
+          <canvas id="visCanvas" width="400" height="400"></canvas>
+          <p class="ebs-vis-title" id="visTitleField" aria-hidden="true">perspective from earth</p>
+          <p class="ebs-vis-period" id="systemPeriodField" aria-hidden="true"></p>
+          <!-- Focusable proxy: rotates the view with arrow keys when the
+               perspective is unlocked. Pointer drags map to the same state. -->
+          <div id="visDragProxy" role="application" tabindex="-1"
+               aria-roledescription="rotatable view"
+               aria-label="Perspective view. Use arrow keys to rotate the view. Left and right change the viewing direction, up and down change the viewing height."
+               hidden></div>
+          <!-- Continuously updated text equivalent of the visualization -->
+          <p class="sr-only" id="visDesc" aria-hidden="false"></p>
+        </div>
+      </section>
+
+      <!-- ================= BOTTOM LEFT: orientation + animation ============= -->
+      <!-- One panel holding both control groups, as in the original: the
+           group names are fieldset legends. -->
+      <section class="panel ebs-panel ebs-controls-panel" aria-labelledby="hdgLeftControls">
+        <h2 class="sr-only" id="hdgLeftControls">Orientation and animation controls</h2>
+
+        <fieldset class="control-fieldset ebs-fieldset">
+          <legend class="ebs-legend">System Orientation</legend>
+          <div id="longitudeSlider" class="ebs-slider-mount"></div>
+          <div id="inclinationSlider" class="ebs-slider-mount"></div>
+        </fieldset>
+
+        <fieldset class="control-fieldset ebs-fieldset">
+          <legend class="ebs-legend">Animation and Visualization Controls</legend>
+
+            <div class="ebs-anim-row">
+              <button type="button" class="button ebs-button" id="animationButton">start animation</button>
+              <div class="ebs-speed">
+                <div id="animationSpeedSlider" class="ebs-slider-mount"></div>
+                <div class="ebs-speed-labels" aria-hidden="true">
+                  <span>slow</span><span>fast</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="phaseSlider" class="ebs-slider-mount"></div>
+
+            <div class="ebs-checks-row">
+              <div class="ebs-checks-col">
+                <div class="control-choice">
+                  <input type="checkbox" id="perspectiveLockCheck" checked>
+                  <label for="perspectiveLockCheck">lock on perspective from earth</label>
+                </div>
+                <div class="control-choice">
+                  <input type="checkbox" id="showOrbitalPathsCheck" checked>
+                  <label for="showOrbitalPathsCheck">show orbital paths</label>
+                </div>
+                <div class="control-choice">
+                  <input type="checkbox" id="showOrbitalPlaneCheck" checked>
+                  <label for="showOrbitalPlaneCheck">show orbital plane</label>
+                </div>
+              </div>
+              <div class="ebs-checks-btn">
+                <button type="button" class="button ebs-button" id="showHRDiagramButton"
+                        aria-haspopup="dialog">show HR diagram</button>
+              </div>
+            </div>
+        </fieldset>
+      </section>
+
+      </div><!-- /left column -->
+
+      <!-- ===================== RIGHT COLUMN ================================ -->
+      <div class="ebs-col">
+
+      <!-- ================= TOP RIGHT: lightcurve ============================ -->
+      <section class="panel ebs-panel ebs-lc-panel" aria-labelledby="hdgLc">
+        <h2 class="sr-only" id="hdgLc">Light curve</h2>
+
+        <div class="ebs-lc-grid">
+          <div class="ebs-lc-ylabel" aria-hidden="true">Normalized Visual Flux</div>
+          <div class="ebs-lc-yticks" id="lcYTicks" aria-hidden="true">
+            <span style="top:7.66%">1.0</span>
+            <span style="top:30.18%">0.75</span>
+            <span style="top:52.70%">0.5</span>
+            <span style="top:75.23%">0.25</span>
+            <span style="top:97.75%">0.0</span>
+          </div>
+
+          <div class="ebs-lc-plotwrap" id="lcPlotWrap">
+            <canvas id="lcCanvas" width="322" height="222"></canvas>
+            <!-- Focusable keyboard proxy for the draggable phase cursor -->
+            <div id="lcCursorProxy" role="slider" tabindex="0"
+                 aria-label="Light curve phase cursor"
+                 aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.7"
+                 aria-orientation="horizontal"></div>
+            <p class="sr-only" id="lcDesc" aria-hidden="false"></p>
+          </div>
+
+          <!-- Phase tick labels move with the phase-axis offset; dragging the
+               plot background (or using arrow keys here) scrolls the axis. -->
+          <div class="ebs-lc-xticks-row">
+            <div class="ebs-lc-xticks" id="lcXTicks" role="slider" tabindex="0"
+                 aria-label="Phase axis offset. Left and right arrow keys scroll the phase axis."
+                 aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.5"
+                 aria-orientation="horizontal"></div>
+          </div>
+
+          <div class="ebs-lc-xlabel-row">
+            <p class="ebs-lc-xlabel" id="lcXLabel">Phase</p>
+            <div class="control-choice ebs-lc-check">
+              <input type="checkbox" id="showLightcurveCheck" checked>
+              <label for="showLightcurveCheck">show light curve</label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= BOTTOM RIGHT: presets + properties =============== -->
+      <!-- Single panel with four fieldset groups, matching the original. -->
+      <section class="panel ebs-panel ebs-controls-panel" aria-labelledby="hdgRightControls">
+        <h2 class="sr-only" id="hdgRightControls">Preset and star property controls</h2>
+
+        <fieldset class="control-fieldset ebs-fieldset">
+          <legend class="ebs-legend">Presets</legend>
+          <!-- Drop-down and its button share one row to keep the panel short.
+               The comment line below is empty until a preset is chosen. -->
+          <div class="ebs-presets-row">
+            <label class="sr-only" for="systemsList">Preset system</label>
+            <select id="systemsList" class="ebs-select"></select>
+            <button type="button" class="button ebs-button" id="setParametersToMatchButton" disabled>reset parameters to match</button>
+          </div>
+          <p class="ebs-comment" id="commentField"></p>
+        </fieldset>
+
+        <fieldset class="control-fieldset ebs-fieldset">
+          <legend class="ebs-legend">Star 1 Properties</legend>
+          <div class="control-choice ebs-restrict-check">
+            <input type="checkbox" id="restrict1Check">
+            <label for="restrict1Check">restrict star 1 to main sequence</label>
+          </div>
+          <div id="mass1Slider" class="ebs-slider-mount"></div>
+          <div id="radius1Slider" class="ebs-slider-mount"></div>
+          <div id="temp1Slider" class="ebs-slider-mount"></div>
+        </fieldset>
+
+        <fieldset class="control-fieldset ebs-fieldset">
+          <legend class="ebs-legend">Star 2 Properties</legend>
+          <div class="control-choice ebs-restrict-check">
+            <input type="checkbox" id="restrict2Check">
+            <label for="restrict2Check">restrict star 2 to main sequence</label>
+          </div>
+          <div id="mass2Slider" class="ebs-slider-mount"></div>
+          <div id="radius2Slider" class="ebs-slider-mount"></div>
+          <div id="temp2Slider" class="ebs-slider-mount"></div>
+        </fieldset>
+
+        <fieldset class="control-fieldset ebs-fieldset">
+          <legend class="ebs-legend">System Properties</legend>
+          <div id="separationSlider" class="ebs-slider-mount"></div>
+          <div id="eccentricitySlider" class="ebs-slider-mount"></div>
+        </fieldset>
+      </section>
+
+      </div><!-- /right column -->
+
+    </main>
+
+    <!-- ================= HR DIAGRAM floating window ======================= -->
+    <div class="ebs-hr-window" id="hrDiagramWindow" role="dialog" aria-modal="false"
+         aria-labelledby="hrWindowTitle" hidden>
+      <div class="ebs-hr-titlebar" id="hrDragBar">
+        <p class="ebs-hr-title" id="hrWindowTitle">HR Diagram</p>
+        <button type="button" class="ebs-hr-close" id="hrCloseButton" aria-label="Close HR diagram window">&times;</button>
+      </div>
+      <div class="ebs-hr-body">
+        <div class="ebs-hr-plot-grid">
+          <div class="ebs-hr-ylabel" aria-hidden="true">Luminosity (\(L_\odot\))</div>
+          <!-- Tick label positions are percentages of the 305 x 205 canvas
+               box, whose plot area runs x 4.5-304.5 and y 0.5-200.5 (the
+               extra margin holds the outward tick marks, as in shape 224). -->
+          <div class="ebs-hr-yticks" aria-hidden="true">
+            <span style="top:0.24%">1000000</span>
+            <span style="top:11.08%">100000</span>
+            <span style="top:21.92%">10000</span>
+            <span style="top:32.76%">1000</span>
+            <span style="top:43.60%">100</span>
+            <span style="top:54.44%">10</span>
+            <span style="top:65.28%">1</span>
+            <span style="top:76.13%">0.1</span>
+            <span style="top:86.96%">0.01</span>
+            <span style="top:97.80%">0.001</span>
+          </div>
+          <div class="ebs-hr-plotwrap" id="hrPlotWrap">
+            <canvas id="hrCanvas" width="305" height="205"></canvas>
+            <!-- Mass labels of the reused main-sequence track (MathJax-typeset) -->
+            <div class="ebs-hr-mslabels" id="hrMSLabels" aria-hidden="true" hidden></div>
+            <!-- Focusable draggable HR points: arrow keys change temperature
+                 (left/right) and luminosity (up/down). -->
+            <div class="ebs-hr-point" id="hrPoint1" role="application" tabindex="0"
+                 aria-roledescription="draggable point"
+                 aria-label="Star 1 point on the HR diagram. Left and right arrow keys change temperature, up and down arrow keys change luminosity."><span aria-hidden="true">1</span></div>
+            <div class="ebs-hr-point" id="hrPoint2" role="application" tabindex="0"
+                 aria-roledescription="draggable point"
+                 aria-label="Star 2 point on the HR diagram. Left and right arrow keys change temperature, up and down arrow keys change luminosity."><span aria-hidden="true">2</span></div>
+          </div>
+          <div class="ebs-hr-xticks" aria-hidden="true">
+            <span style="left:1.48%">45000</span>
+            <span style="left:30.92%">20000</span>
+            <span style="left:56.10%">10000</span>
+            <span style="left:81.28%">5000</span>
+            <span style="left:99.84%">3000</span>
+          </div>
+          <div class="ebs-hr-xlabel" aria-hidden="true">Temperature (K)</div>
+        </div>
+        <div class="control-choice ebs-hr-check">
+          <input type="checkbox" id="showMainSequenceCheck">
+          <label for="showMainSequenceCheck">show main sequence track</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Polite live region: state changes are announced here on commit. -->
+    <p class="sr-only" id="liveStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+  </div>
+</body>
+</html>

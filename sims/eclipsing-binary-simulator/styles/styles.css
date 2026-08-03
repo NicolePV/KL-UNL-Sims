@@ -1,0 +1,655 @@
+/* ==========================================================================
+   Eclipsing Binary Simulator - sim-specific styles.
+   Layered on top of the KL-UNL foundation (kl-unl.css); the foundation files
+   are never edited. Uses the foundation palette variables throughout.
+   ========================================================================== */
+
+/* Body copy is sized in rem, so it still tracks the browser's font setting */
+.ebs-shell {
+  /* One text size for everything except the group titles, matching the
+     checkbox labels. */
+  font-size: 1rem;
+  /* Narrower than before so the two canvases are not blown up far past their
+     native size (400x400 and 322x222); this is what keeps the page short
+     enough to read without scrolling. */
+  max-width: 62rem;
+
+  /* One spacing scale for the whole sim. Every gap, margin and padding below
+     uses one of these four steps, so the vertical rhythm stays even across
+     panels instead of drifting per component. */
+  --ebs-s1: 0.25rem;              /* inside a row                            */
+  --ebs-s2: 0.5rem;               /* between rows of one group               */
+  --ebs-s3: 0.75rem;              /* between blocks / panel padding          */
+  --ebs-s4: 0.875rem;             /* between control groups                  */
+}
+
+/* --------------------------------------------------------------------------
+   Layout: two equal columns (visualization + orientation/animation controls |
+   lightcurve + presets/properties), mirroring the original arrangement and
+   reading order. Each column's controls live in ONE panel whose groups are
+   fieldsets, exactly as the original drew them.
+   -------------------------------------------------------------------------- */
+.ebs-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--ebs-s3);
+  padding: var(--ebs-s3) var(--ebs-s2);
+  align-items: stretch;
+}
+
+.ebs-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ebs-s3);
+  min-width: 0;
+}
+
+.ebs-panel { margin-bottom: 0; }
+
+/* The control panels keep their natural size so their internal rhythm is the
+   same in both columns; the visualization panel (whose background is the
+   black sky) takes up any slack, which is what keeps the two columns level. */
+.ebs-vis-panel {
+  line-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+}
+
+.ebs-controls-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ebs-s4);             /* one even gap between control groups     */
+  /* the last row must not sit on the panel border, so the bottom is roomier
+     than the top (where the bold group title already carries its own space) */
+  padding: 0.375rem 0 var(--ebs-s3);
+}
+
+/* Group title: bold, no rule and no underline. */
+.ebs-legend {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0 0 0.4375rem;          /* a little air under every group title    */
+  font-weight: bold;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.ebs-fieldset { padding: 0 1rem; }
+
+/* --------------------------------------------------------------------------
+   Binary system visualization panel (canvas keeps its original 400 x 400
+   internal coordinates; CSS scales it to the panel width).
+   -------------------------------------------------------------------------- */
+.ebs-vis-wrap {
+  position: relative;
+  background: #000000;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;            /* extra height becomes more black sky     */
+}
+
+#visCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;             /* perspective drag must not scroll page  */
+}
+
+.ebs-vis-title,
+.ebs-vis-period {
+  position: absolute;
+  margin: 0;
+  color: #ffffff;
+  font-style: italic;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.ebs-vis-title  { top: 0.5rem;    left: 0.75rem; }
+.ebs-vis-period { bottom: 0.5rem; right: 0.75rem; }
+
+#visDragProxy {
+  position: absolute;
+  inset: 0;
+}
+
+#visDragProxy:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--outline-color, #005fcc);
+  outline-offset: -0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   Lightcurve panel
+   -------------------------------------------------------------------------- */
+/* Even padding all round, and the bottom value matches the gap above the
+   Phase row, so that row sits with equal space above and below it. */
+.ebs-lc-panel { padding: var(--ebs-s2); }
+
+/* Capped and centred so the 322 x 222 plot is not scaled far past its native
+   size; the whole assembly (axis title, tick labels, canvas) scales together,
+   which keeps the HTML tick overlays aligned with the canvas. */
+.ebs-lc-grid {
+  max-width: 27rem;               /* wider = less dead space beside the plot */
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "ylabel yticks plot"
+    ".      .      xticks"
+    ".      .      xlabel";
+  align-items: stretch;
+}
+
+.ebs-lc-ylabel {
+  grid-area: ylabel;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.ebs-lc-yticks {
+  grid-area: yticks;
+  position: relative;
+  width: 2.6rem;
+}
+
+.ebs-lc-yticks span {
+  position: absolute;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  font-size: 1rem;
+}
+
+.ebs-lc-plotwrap {
+  grid-area: plot;
+  position: relative;
+  line-height: 0;
+}
+
+#lcCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;             /* cursor / axis drags must not scroll    */
+}
+
+/* Invisible but focusable cursor proxy: a thin vertical hit strip that the
+   script keeps aligned with the red cursor line. */
+#lcCursorProxy {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.25rem;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+#lcCursorProxy:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--outline-color, #005fcc);
+}
+
+.ebs-lc-xticks-row { grid-area: xticks; }
+
+.ebs-lc-xticks {
+  position: relative;
+  height: 1.3rem;
+  font-size: 1rem;
+  cursor: grab;
+}
+
+.ebs-lc-xticks span {
+  position: absolute;
+  top: 0.2rem;
+  transform: translateX(-50%);
+}
+
+.ebs-lc-xlabel-row {
+  grid-area: xlabel;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ebs-s2);
+  flex-wrap: wrap;
+  margin-top: var(--ebs-s2);
+}
+
+.ebs-lc-xlabel {
+  margin: 0;
+  font-weight: bold;
+  font-size: 1rem;
+  flex: 1;
+  text-align: center;
+}
+
+.ebs-lc-check label { font-size: 1rem; }
+
+/* --------------------------------------------------------------------------
+   Custom accessible slider (separate component; foundation untouched).
+   Row layout matches the original: label | value field | unit | track.
+   Equal-purpose fields share the same width and align down each panel.
+   -------------------------------------------------------------------------- */
+.ebs-slider {
+  display: grid;
+  grid-template-columns: 6.5rem 4.5rem 2rem minmax(4rem, 1fr);
+  align-items: center;
+  gap: var(--ebs-s1) var(--ebs-s2);
+  margin-bottom: var(--ebs-s1);
+}
+
+/* the mount is the fieldset's child, so trim the last row's margin there */
+.ebs-slider-mount:last-child .ebs-slider { margin-bottom: 0; }
+
+.ebs-slider--nofield {
+  grid-template-columns: minmax(4rem, 1fr);
+}
+
+.ebs-slider__label {
+  text-align: right;
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.ebs-slider__field {
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 1.9rem;
+  padding: 0.15rem 0.35rem;
+  text-align: center;
+  color: var(--foreground-color, #1a1a1a);
+  background: var(--background-color, #ffffff);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+}
+
+.ebs-slider__units {
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* 32 px rows with a mouse: the grabbable thumb is still 27 px tall, above the
+   24 px WCAG 2.2 target minimum, and eleven of these rows are what decide the
+   page height. Touch devices get the full 44 px target back (below). */
+.ebs-slider__track {
+  position: relative;
+  height: 2rem;
+  touch-action: none;
+  cursor: pointer;
+  min-width: 4rem;
+}
+
+@media (pointer: coarse) {
+  .ebs-slider__track { height: 2.75rem; }
+  .ebs-button,
+  .ebs-select { min-height: 2.75rem; }
+  .ebs-shell .control-choice input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+/* the visible bar */
+.ebs-slider__track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 0.4rem;
+  transform: translateY(-50%);
+  border-radius: 0.2rem;
+  background: #d9d9d9;
+  border: 1px solid var(--border-color, #767676);
+}
+
+/* dark shading marking the excluded parts of the range (original behavior:
+   "the range of the other sliders may change (indicated by the dark
+   shading)"). Purely visual, exactly like the original; the physics
+   handlers clamp values. A hatched pattern supplements the darker color so
+   the excluded region is not signaled by color alone. */
+.ebs-slider__shade {
+  position: absolute;
+  top: 50%;
+  height: 0.4rem;
+  transform: translateY(-50%);
+  border-radius: 0.2rem;
+  background: repeating-linear-gradient(
+    45deg, #6e6e6e 0, #6e6e6e 3px, #8a8a8a 3px, #8a8a8a 6px);
+  pointer-events: none;
+}
+
+.ebs-slider__thumb {
+  position: absolute;
+  top: 50%;
+  width: 0.9rem;
+  height: 1.7rem;
+  transform: translate(-50%, -50%);
+  border-radius: 0.45rem;
+  background: #f2f2f2;
+  border: 1px solid var(--border-color, #767676);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  cursor: ew-resize;
+}
+
+.ebs-slider--disabled .ebs-slider__thumb { background: #cccccc; }
+.ebs-slider--disabled { opacity: 0.6; }
+
+/* --------------------------------------------------------------------------
+   Animation panel
+   -------------------------------------------------------------------------- */
+.ebs-anim-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ebs-s3);
+  align-items: center;
+  margin-bottom: var(--ebs-s2);
+}
+
+/* Buttons and checkboxes scaled to match the smaller text. Touch devices get
+   the roomier sizes back further down. The label is part of a checkbox's
+   click target, so the effective target stays the full row. */
+.ebs-button {
+  font: inherit;                  /* form controls do not inherit by default */
+  min-height: 2.25rem;
+  min-width: 0;
+  padding: 0.25rem 0.7rem;
+}
+
+#animationButton { min-width: 9.5rem; }    /* fits both labels, no reflow */
+
+.ebs-shell .control-choice {
+  min-height: 0;
+  gap: 0.4rem;
+}
+
+.ebs-shell .control-choice input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* The slider track is 2.75rem tall with its bar centred, so it carries about
+   0.6rem of empty space below the bar. Pulling the slow/fast captions up by
+   that much keeps their optical gap equal to every other row gap. */
+.ebs-speed-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+  margin-top: -0.6rem;
+}
+
+.ebs-checks-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ebs-s2) var(--ebs-s3);
+  align-items: end;
+  margin-top: var(--ebs-s2);
+}
+
+.ebs-checks-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ebs-s2);
+}
+
+/* --------------------------------------------------------------------------
+   Presets panel
+   -------------------------------------------------------------------------- */
+/* Drop-down and its button on one row, so the group stays two lines tall. */
+.ebs-presets-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ebs-s2);
+  flex-wrap: wrap;
+}
+
+.ebs-select {
+  font: inherit;
+  flex: 1 1 14rem;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 0.25rem;
+  color: var(--foreground-color, #1a1a1a);
+  background: var(--background-color, #ffffff);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+}
+
+.ebs-presets-row .button {
+  flex: 0 0 auto;
+}
+
+.ebs-presets-row .button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Only takes up space once a preset supplies a comment. */
+.ebs-comment {
+  margin: var(--ebs-s2) 0 0;
+  font-size: 1rem;
+  line-height: 1.3;
+  text-align: center;
+  white-space: pre-line;
+}
+
+.ebs-comment:empty { display: none; }
+
+.ebs-restrict-check { margin-bottom: var(--ebs-s1); }
+.ebs-restrict-check label { font-size: 1rem; }
+
+/* --------------------------------------------------------------------------
+   HR Diagram floating window
+   -------------------------------------------------------------------------- */
+.ebs-hr-window {
+  position: absolute;
+  z-index: 30;
+  top: 6rem;
+  left: 2rem;
+  width: min(30rem, calc(100vw - 2rem));
+  background: var(--background-color, #ffffff);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+  box-shadow: 0.25rem 0.25rem 0.75rem rgba(0, 0, 0, 0.5);
+}
+
+.ebs-hr-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: #555555;
+  color: #ffffff;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  cursor: move;
+  touch-action: none;
+}
+
+.ebs-hr-title {
+  margin: 0;
+  font-weight: bold;
+  font-size: 1.05rem;
+}
+
+.ebs-hr-close {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #ffffff;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.ebs-hr-close:hover { color: #ffbc00; }
+
+.ebs-hr-body { padding: var(--ebs-s3); }
+
+.ebs-hr-plot-grid {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "ylabel yticks plot"
+    ".      .      xticks"
+    ".      .      xlabel";
+}
+
+.ebs-hr-ylabel {
+  grid-area: ylabel;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.ebs-hr-yticks {
+  grid-area: yticks;
+  position: relative;
+  width: 3.6rem;
+  font-size: 0.95rem;
+}
+
+.ebs-hr-yticks span {
+  position: absolute;
+  right: 0.3rem;
+  transform: translateY(-50%);
+}
+
+.ebs-hr-plotwrap {
+  grid-area: plot;
+  position: relative;
+  line-height: 0;
+}
+
+#hrCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ebs-hr-xticks {
+  grid-area: xticks;
+  position: relative;
+  height: 1.3rem;
+  font-size: 0.95rem;
+}
+
+.ebs-hr-xticks span {
+  position: absolute;
+  top: 0.15rem;
+  transform: translateX(-50%);
+}
+
+/* every label is centred on its tick, as in the original (the end labels are
+   allowed to overhang the plot box slightly) */
+
+.ebs-hr-xlabel {
+  grid-area: xlabel;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+/* MathJax mass labels of the main-sequence track, positioned over the plot */
+.ebs-hr-mslabels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Direct children only: the inner MathJax span must stay inline, or the
+   unit symbol is torn off its number and positioned on its own.
+   left/top are set from JS, which measures each label and keeps it inside
+   the plot box so it never covers the axis numbers. */
+.ebs-hr-mslabels > span {
+  position: absolute;
+  font-size: 0.8rem;
+  color: #444444;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* draggable star points */
+.ebs-hr-point {
+  position: absolute;
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  line-height: 1.5rem;
+}
+
+.ebs-hr-point::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.6rem;
+  height: 0.6rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 1px solid #ffffff;
+  box-shadow: 0 0 0 1px #1a1a1a;
+}
+
+/* Centred on the point, then pushed away from the other point by the
+   original's 14-pixel offset (set inline from labelX / labelY). */
+.ebs-hr-point > span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #1a1a1a;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 0.2rem;
+  padding: 0 0.15rem;
+  line-height: 1.1;
+}
+
+.ebs-hr-check { margin-top: var(--ebs-s3); }
+.ebs-hr-check label { font-size: 1rem; }
+
+/* --------------------------------------------------------------------------
+   Responsive: stack to one column below the foundation's 56rem breakpoint
+   (the foundation collapse handles .app-layout; these rules keep the sim's
+   own grids usable down to phone-portrait widths).
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .ebs-layout { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 34rem) {
+  .ebs-slider {
+    grid-template-columns: minmax(5rem, auto) 4.75rem 2.2rem;
+  }
+  .ebs-slider__track { grid-column: 1 / -1; }
+  .ebs-slider__label { text-align: left; }
+
+  .ebs-anim-row { grid-template-columns: 1fr; }
+  .ebs-checks-row { grid-template-columns: 1fr; }
+  .ebs-checks-btn { justify-self: start; }
+  /* the drop-down and its button wrap to their own lines here */
+  .ebs-presets-row .button,
+  .ebs-presets-row .ebs-select { flex: 1 1 100%; }
+
+  .ebs-lc-ylabel { font-size: 0.9rem; }
+  .ebs-lc-yticks { width: 2.2rem; }
+}

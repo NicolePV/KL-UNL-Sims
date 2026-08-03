@@ -1,0 +1,11 @@
+select a star system 
+--- RECORDSEPARATOR ---
+above to investigate its 
+--- RECORDSEPARATOR ---
+planets, or choose "none" 
+--- RECORDSEPARATOR ---
+to experiment with the 
+--- RECORDSEPARATOR ---
+full range of star masses 
+--- RECORDSEPARATOR ---
+and planet distances

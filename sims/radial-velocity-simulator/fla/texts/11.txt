@@ -1,0 +1,47 @@
+This simulator models the motion of an extrasolar planet and its star 
+--- RECORDSEPARATOR ---
+around their common center of mass. Although the star does not move 
+--- RECORDSEPARATOR ---
+very much scientists can use the doppler shift of the star's absorption 
+--- RECORDSEPARATOR ---
+lines to determine its speed with great accuracy. This allows them to infer 
+--- RECORDSEPARATOR ---
+the existence and properties of a planet they can not see directly.
+--- RECORDSEPARATOR ---
+The panel in the upper left shows the system and its orientation in space 
+--- RECORDSEPARATOR ---
+with respect to the earth. In the Visualization Controls panel beneath the 
+--- RECORDSEPARATOR ---
+visualization there is an option to show several different perspectives at 
+--- RECORDSEPARATOR ---
+the same time. The view from earth is the most important since it is the 
+--- RECORDSEPARATOR ---
+star's velocity along the line of sight that we measure with the radial 
+--- RECORDSEPARATOR ---
+velocity technique. Note that the sizes of the planet and star discs are not 
+--- RECORDSEPARATOR ---
+to scale – this is done for clarity and does not affect the radial velocity.
+--- RECORDSEPARATOR ---
+The radial velocity plot is shown in the upper right panel. This plot shows 
+--- RECORDSEPARATOR ---
+how fast the star is moving along the earth's line of sight. 
+--- RECORDSEPARATOR ---
+It is important 
+--- RECORDSEPARATOR ---
+to realize that the velocity is that of the star even though the star may 
+--- RECORDSEPARATOR ---
+appear to move very little, or not at all, in the visualization panel.
+--- RECORDSEPARATOR ---
+ This 
+--- RECORDSEPARATOR ---
+panel also has options to show simulated noisy measurements and to hide 
+--- RECORDSEPARATOR ---
+the theoretical curve – this gives a better idea of what working with real 
+--- RECORDSEPARATOR ---
+data is like.
+--- RECORDSEPARATOR ---
+The planet, star, and system properties can be set in the lower panels. 
+--- RECORDSEPARATOR ---
+These parameters can also be set by selecting one of the presets from the 
+--- RECORDSEPARATOR ---
+drop down menu in the Presets panel.

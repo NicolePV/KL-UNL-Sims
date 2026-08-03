@@ -1,0 +1,3 @@
+on(initialize){
+   onEntrySelectedChangeHandler = "onGasSelectedViaList";
+}

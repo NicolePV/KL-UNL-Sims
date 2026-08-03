@@ -1,0 +1,61 @@
+This simulator demonstrates how gases of different molecular masses 
+--- RECORDSEPARATOR ---
+behave when maintained at thermodynamic equilibrium in a chamber. The 
+--- RECORDSEPARATOR ---
+chamber can be set to allow particles that exceed a certain speed to 
+--- RECORDSEPARATOR ---
+escape, providing an analogy for the bleeding of a planet's atmosphere 
+--- RECORDSEPARATOR ---
+into space.
+--- RECORDSEPARATOR ---
+To begin select a gas from the drop-down menu in the 
+--- RECORDSEPARATOR ---
+Gases
+--- RECORDSEPARATOR ---
+ panel. You 
+--- RECORDSEPARATOR ---
+can add up to three gases at a time. Click the 
+--- RECORDSEPARATOR ---
+start simulation
+--- RECORDSEPARATOR ---
+ button in 
+--- RECORDSEPARATOR ---
+the 
+--- RECORDSEPARATOR ---
+Chamber Properties
+--- RECORDSEPARATOR ---
+ panel to see the particles in motion. When the 
+--- RECORDSEPARATOR ---
+simulation is running the sliders and most other options are disabled, so 
+--- RECORDSEPARATOR ---
+you will need to stop the simulation to make changes.
+--- RECORDSEPARATOR ---
+Note that in this simulation the particles in the chamber are meant to be 
+--- RECORDSEPARATOR ---
+interpreted as tracer particles – each particle shown represents a great 
+--- RECORDSEPARATOR ---
+many more particles.
+--- RECORDSEPARATOR ---
+The bar chart at the left side of the 
+--- RECORDSEPARATOR ---
+Gases
+--- RECORDSEPARATOR ---
+ panel indicates the absolute 
+--- RECORDSEPARATOR ---
+amount of each gas in the chamber. The relative amounts are given as 
+--- RECORDSEPARATOR ---
+percentages in the gases list. You can drag the bars to adjust their 
+--- RECORDSEPARATOR ---
+heights, or you can click the 
+--- RECORDSEPARATOR ---
+reset proportions
+--- RECORDSEPARATOR ---
+ button to restore all the 
+--- RECORDSEPARATOR ---
+gases to their full amounts.
+--- RECORDSEPARATOR ---
+One caveat: phase changes are ignored in this simulator. That is, we 
+--- RECORDSEPARATOR ---
+assume that the particles in the chamber stay in a gaseous state 
+--- RECORDSEPARATOR ---
+regardless of the temperature or pressure in the chamber.

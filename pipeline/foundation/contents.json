@@ -26,7 +26,7 @@
     "masthead": {
       "help": {
         "title": "Help and Instructions",
-        "content": "<p>This demonstrator illustrates the horizon coordinate system, where altitude and azimuth define an object's position in the sky.</p>"
+        "content": "<p>This demonstrator illustrates the horizon coordinate system, where altitude and azimuth define an object's position in the sky.</p><p>You can click on the celestial sphere and then drag it around to change the orientation of the horizon, or use the left and right keys on the keyboard to rotate it in place and the up and down keys to change your viewing angle to and from edge-on to face-on. (Pressing the shift key in combination with any of these keys will result in smaller steps, and the Page Up and Down keys will change the viewing angle in larger steps.)</p><p>Click on the star instead of the sphere, and then you can drag it around and use the same keys to the same effect. You may also use the slider bars or number boxes for azimuth angle (to move the star around) and for altitude (to move it up and down).</p> "
       },
       "about": {
         "title": "About this Demonstrator",
@@ -303,6 +303,23 @@
       "about": {
         "title": "About this Simulator",
         "content": "<p>This simulator is part of the Solar System Models Module of the <a href=\"https://astro.unl.edu/naap/\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">Nebraska Astronomy Applet Project<span class=\"sr-only\"> (opens in new tab)</span></a>; supporting materials can be found there.</p>_DEFAEUNL__AASATF__FUNDYES_"
+      }
+    }
+  }, 
+
+  "planetaryorbitsimulator": {
+    "meta": {
+      "title": "Planetary Orbit Simulator",
+      "version": "2.0 (Accessible HTML5)"
+    },
+    "masthead": {
+      "help": {
+        "title": "Help and Instructions",
+        "content": "<p>This simulator models the motion of a hypothetical planet that orbits the sun according to Kepler's laws of motion.</p><p>The size and eccentricity of the planet's orbit can be set using the sliders in the <em>Orbit Settings</em> panel.Presets for the existing planets can be loaded by selecting a planet from the combo box and clicking OK.</p><p>Since the planets take months to years to orbit the sun the animation is shown speeded up. You can control the animation rate in the <em>Animation Controls</em> panel. The rate is specified in simulated years per second.</p><p>The <em>Visualization Options</em> panel provides options for showing the solar system planets and their orbits. One thing to note is that all of the planets' orbits are shown pointing in the saame direction. In reality this is not the case (nor are the planets in exactly the same plane).</p><p>The <em>clear optional features</em> button hides the solar system planets and resets the features selected in the tabbed panel.</p><p>The tabbed panel beneath the visualization lets you control options specific to each of Kepler's labs. The <em>Newtonian Features</em> tab lets you see the velocity and acceleration vectors of the planet.</p><p>The orbit visualization window is partially interactive. The planet's position in the diagram can be adjusted by dragging it around, as can the sweeps created using the <em>Kepler's 2nd Law</em> controls.</p>"
+      },
+      "about": {
+        "title": "About this Simulator",
+        "content": "<p>This simulator is part of the Planetary Orbit Simulator Module of the <a href=\"https://astro.unl.edu/naap/\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">Nebraska Astronomy Applet Project<span class=\"sr-only\"> (opens in new tab)</span></a>; supporting materials can be found there.</p>_DEFAEUNL__AASATF__FUNDYES_"
       }
     }
   }, 

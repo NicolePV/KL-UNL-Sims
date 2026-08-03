@@ -1,0 +1,7 @@
+Interval
+--- RECORDSEPARATOR ---
+Between
+--- RECORDSEPARATOR ---
+Pulse
+--- RECORDSEPARATOR ---
+Arrivals

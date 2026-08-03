@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HR Diagram Star Cluster Fitting Explorer</title>
+
+  <!-- Shared KL-UNL foundation styles (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles, layered on top of the foundation -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!-- MathJax: configured before the (locally vendored) library loads.
+       All mathematics in this sim is typeset by MathJax so it is selectable,
+       zoomable, screen-reader exposed, and offers the "Show Math As" menu. -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      },
+      chtml: {
+        // \text{...} content inherits the surrounding page font, so plot numbers
+        // and the (M)/(m) axis variables render in the same sans-serif as the
+        // other labels (while staying MathJax — the right-click menu still works).
+        mtextInheritFont: true
+      },
+      options: {
+        // Typeset math is display-only; keep it out of the Tab order.
+        enableMenu: true
+      },
+      startup: {
+        typeset: false   // simulation.js typesets once content is in place
+      }
+    };
+  </script>
+  <script src="assets/mathjax/tex-chtml.js" id="MathJax-script" async></script>
+</head>
+
+<body>
+  <div class="app-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title bar + Reset / Help / About + dialogs, all from the foundation
+         component. It reads its text from foundation/contents.json by sim-id
+         and renders the single <h1>. Do not add a competing masthead/h1. -->
+    <kl-unl-masthead sim-id="clusterFittingExplorer"
+                     json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout">
+
+      <!-- ============================ LEFT: HR DIAGRAM ==================== -->
+      <div class="app-layout__left cfe-col-diagram">
+        <section class="panel cfe-panel" aria-labelledby="cfe-hr-heading">
+          <h2 class="panel__heading" id="cfe-hr-heading">HR Diagram</h2>
+
+          <div class="panel__canvas-wrap cfe-plot">
+            <!-- Axis titles live in HTML (they zoom, and their variables are
+                 MathJax-typeset) rather than being baked into the canvas. -->
+            <div class="cfe-axis-title cfe-axis-title--left" aria-hidden="true">
+              <span>Absolute Magnitude (<span class="cfe-mj" data-tex="\text{M}"></span>)</span>
+            </div>
+            <div class="cfe-axis-title cfe-axis-title--right" aria-hidden="true">
+              <span>Apparent Magnitude (<span class="cfe-mj" data-tex="\text{m}"></span>)</span>
+            </div>
+            <div class="cfe-axis-title cfe-axis-title--bottom" aria-hidden="true">
+              <span>Temperature (K)</span>
+            </div>
+
+            <!-- Plot area box: canvas + interaction proxies + label overlay.
+                 The canvas is the visual layer only (aria-hidden); the text
+                 equivalent is provided through the live region + descriptions. -->
+            <div class="cfe-plotbox" id="cfe-plotbox">
+              <canvas id="cfe-canvas" class="cfe-canvas" aria-hidden="true"></canvas>
+
+              <!-- Distance-modulus fit: drag anywhere on the plot (or focus +
+                   arrow keys) to slide the cluster stars vertically. -->
+              <div class="cfe-drag" id="cfe-drag"
+                   role="slider" tabindex="0"
+                   aria-orientation="vertical"
+                   aria-label="Vertical fit. Drag up or down, or use the arrow keys, to shift the cluster stars and set the distance modulus."
+                   aria-valuemin="-10" aria-valuemax="20" aria-valuenow="0"
+                   aria-valuetext="Distance modulus m minus M, 0.0 magnitudes"></div>
+
+              <!-- Movable horizontal reference line (shown via the checkbox). -->
+              <div class="cfe-bar" id="cfe-bar" hidden
+                   role="slider" tabindex="0"
+                   aria-orientation="vertical"
+                   aria-label="Horizontal reference line. Move up or down with the arrow keys to read matching absolute and apparent magnitudes."
+                   aria-valuemin="-10.3" aria-valuemax="17.3" aria-valuenow="3.5"
+                   aria-valuetext="Reference line. Absolute magnitude 3.5, apparent magnitude 3.5">
+                <span class="cfe-bar__value cfe-bar__value--left cfe-mj" id="cfe-bar-left" data-tex=""></span>
+                <span class="cfe-bar__line" aria-hidden="true"></span>
+                <span class="cfe-bar__value cfe-bar__value--right cfe-mj" id="cfe-bar-right" data-tex=""></span>
+              </div>
+
+              <!-- Tick-mark numeric labels (MathJax), positioned over the plot. -->
+              <div class="cfe-overlay" id="cfe-overlay" aria-hidden="true"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================ RIGHT: CONTROLS ==================== -->
+      <div class="app-layout__right cfe-col-controls">
+
+        <!-- Cluster Selection -->
+        <section class="panel cfe-panel" aria-labelledby="cfe-cluster-heading">
+          <h2 class="panel__heading" id="cfe-cluster-heading">Cluster Selection</h2>
+          <fieldset class="control-fieldset">
+            <legend class="sr-only">Cluster Selection</legend>
+            <div class="control-row cfe-row-select">
+              <label class="control-row__label" for="cfe-cluster">Select cluster</label>
+              <select id="cfe-cluster" class="cfe-select"></select>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- Diagram Options -->
+        <section class="panel cfe-panel cfe-panel--grow" aria-labelledby="cfe-options-heading">
+          <h2 class="panel__heading" id="cfe-options-heading">Diagram Options</h2>
+          <fieldset class="control-fieldset">
+            <legend class="sr-only">Diagram Options</legend>
+            <div class="control-choice cfe-choice">
+              <input type="checkbox" id="cfe-showbar">
+              <label for="cfe-showbar">show horizontal bar</label>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- Distance Modulus Calculator -->
+        <section class="panel cfe-panel cfe-panel--grow" aria-labelledby="cfe-calc-heading">
+          <h2 class="panel__heading" id="cfe-calc-heading">Distance Modulus Calculator</h2>
+          <div class="cfe-calc">
+            <!-- Formula, inputs and result share a 4-column grid so the input
+                 boxes sit directly under the m and M of the formula (as in the
+                 original). No visible m/M labels; names are on the inputs. -->
+            <div class="cfe-calc__grid">
+              <!-- Row 1: formula -->
+              <span class="cfe-mj" data-tex="m" aria-hidden="true"></span>
+              <span class="cfe-mj" data-tex="-" aria-hidden="true"></span>
+              <span class="cfe-mj" data-tex="M" aria-hidden="true"></span>
+              <span class="cfe-mj cfe-calc__rhs" data-tex="= -5 + 5\log_{10} d" aria-hidden="true"></span>
+
+              <!-- Row 2: inputs -->
+              <input type="text" id="cfe-app" class="control-row__input cfe-calc__input"
+                     inputmode="decimal" autocomplete="off" spellcheck="false"
+                     aria-label="m, apparent magnitude">
+              <span class="cfe-mj" data-tex="-" aria-hidden="true"></span>
+              <input type="text" id="cfe-abs" class="control-row__input cfe-calc__input"
+                     inputmode="decimal" autocomplete="off" spellcheck="false"
+                     aria-label="M, absolute magnitude">
+              <span aria-hidden="true"></span>
+
+              <!-- Row 3: numeric result -->
+              <span class="cfe-calc__mod" id="cfe-calc-mod" aria-hidden="true"></span>
+              <span class="cfe-calc__rhs" id="cfe-calc-res" aria-hidden="true"></span>
+            </div>
+            <p class="sr-only" id="cfe-calc-formula-sr">
+              The distance modulus formula: apparent magnitude m minus absolute
+              magnitude M equals negative 5 plus 5 times the base-10 logarithm of
+              the distance d in parsecs.
+            </p>
+            <p class="sr-only" id="cfe-calc-result-sr" aria-live="polite"></p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Polite announcements of state changes (units always spoken). -->
+  <div class="sr-only" id="cfe-live" role="status" aria-live="polite"></div>
+  <!-- Continuously-updated description of what the diagram currently shows. -->
+  <div class="sr-only" id="cfe-diagram-desc"></div>
+
+  <!-- Foundation helpers + cluster data + sim logic (all local, no CDN). -->
+  <script src="foundation/kl-unl.js"></script>
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <script src="assets/clusterData.js" defer></script>
+  <script src="simulation.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photometry Simulator</title>
+
+  <!-- Shared KL-UNL foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles (layered on top of the foundation, never editing it) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax renders ALL mathematics in this sim (the f1/f2/delta-magnitude
+    equations and every x/y variable label). It is self-hosted at
+    foundation/mathjax/tex-mml-chtml.js -- no CDN (self-contained requirement).
+    The MathJax contextual menu is intentionally left enabled (not overridden):
+    right-clicking any typeset math opens "Show Math As" etc.
+  -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      chtml: { mtextInheritFont: true, merrorInheritFont: true },
+      startup: {
+        pageReady: function () {
+          return MathJax.startup.defaultPageReady().then(function () {
+            // Typeset math is display-only: keep it out of the Tab order
+            // (the MathJax context menu still works with tabindex="-1").
+            document.querySelectorAll('mjx-container').forEach(function (el) {
+              el.setAttribute('tabindex', '-1');
+            });
+            if (window.klunlInitEqn) { window.klunlInitEqn(); }
+          });
+        }
+      }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <script src="foundation/kl-unl.js" defer></script>
+  <script src="simulation.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It reads its text from foundation/contents.json by sim-id and
+         dispatches a "sim-reset" event the sim listens for. -->
+    <kl-unl-masthead sim-id="photometrySimulator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout psim-layout" id="appLayout">
+
+      <!-- ============ LEFT COLUMN: star field + magnitude calculation ============ -->
+      <div class="psim-col psim-col--left">
+
+        <section class="panel psim-panel" aria-labelledby="hdgStarField">
+          <h2 class="panel__heading" id="hdgStarField">Star Field</h2>
+          <div class="panel__canvas-wrap psim-field-wrap">
+            <div class="psim-field-stage" id="fieldStage">
+              <canvas id="fieldCanvas" width="800" height="600" role="img"
+                      aria-label="Star field CCD image with two movable measurement apertures"
+                      aria-describedby="fieldDesc"></canvas>
+              <!-- Focusable drag proxies for the two apertures (pointer drag + arrow keys).
+                   role=application so arrow keys reach the widget in NVDA focus mode. -->
+              <div id="ap1Proxy" class="psim-aperture-proxy" tabindex="0" role="application"
+                   aria-roledescription="movable aperture" aria-label="Aperture 1">
+                <span id="ap1Label" class="psim-aperture-label psim-aperture-label--1" aria-hidden="true" hidden>1</span>
+              </div>
+              <div id="ap2Proxy" class="psim-aperture-proxy" tabindex="0" role="application"
+                   aria-roledescription="movable aperture" aria-label="Aperture 2">
+                <span id="ap2Label" class="psim-aperture-label psim-aperture-label--2" aria-hidden="true" hidden>2</span>
+              </div>
+            </div>
+          </div>
+          <div class="psim-field-controls">
+            <div class="control-choice">
+              <input type="checkbox" id="showLabelsCheckBox">
+              <label for="showLabelsCheckBox">label the apertures</label>
+            </div>
+          </div>
+          <p class="sr-only" id="fieldDesc"></p>
+        </section>
+
+        <section class="panel psim-panel" aria-labelledby="hdgMag">
+          <h2 class="panel__heading" id="hdgMag">Magnitude Difference Calculation</h2>
+          <div class="psim-equations">
+            <div id="eqnF1" class="psim-eqn" aria-describedby="eqnF1SR"></div>
+            <p class="sr-only" id="eqnF1SR"></p>
+            <div id="eqnF2" class="psim-eqn" aria-describedby="eqnF2SR"></div>
+            <p class="sr-only" id="eqnF2SR"></p>
+            <div id="eqnDeltaMag" class="psim-eqn" aria-describedby="eqnDeltaMagSR"></div>
+            <p class="sr-only" id="eqnDeltaMagSR"></p>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ============ RIGHT COLUMN: aperture info panels ============ -->
+      <div class="psim-col psim-col--right">
+
+        <section class="panel psim-panel" aria-labelledby="hdgAp1">
+          <h2 class="panel__heading" id="hdgAp1">Aperture 1 Info</h2>
+          <div class="psim-apinfo">
+            <div class="psim-zoom-col">
+              <div class="psim-zoom-stage" id="zoomStage1">
+                <div id="zoom1Focus" class="psim-zoom-proxy" tabindex="0" role="application"
+                     aria-roledescription="pixel inspector"
+                     aria-label="Aperture 1 zoom window. Use the arrow keys to inspect individual pixels.">
+                  <canvas id="zoomCanvas1" width="368" height="368" aria-hidden="true"></canvas>
+                </div>
+                <div id="pixelInfo1" class="psim-pixel-info" hidden aria-hidden="true">
+                  <div class="psim-pixel-info__body">
+                    <div class="psim-pi-row"><span class="psim-pi-label">\(\mathsf{x}\):</span><span class="psim-pi-value" id="pi1x"></span></div>
+                    <div class="psim-pi-row"><span class="psim-pi-label">\(\mathsf{y}\):</span><span class="psim-pi-value" id="pi1y"></span></div>
+                    <div class="psim-pi-row"><span class="psim-pi-label">counts:</span><span class="psim-pi-value" id="pi1counts"></span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="psim-center-readout">
+                <div class="psim-ro-row"><span class="psim-ro-label">center \(\mathsf{x}\):</span><span class="psim-ro-value" id="ap1cx"></span></div>
+                <div class="psim-ro-row"><span class="psim-ro-label">center \(\mathsf{y}\):</span><span class="psim-ro-value" id="ap1cy"></span></div>
+              </div>
+            </div>
+            <div class="psim-stats">
+              <h3 class="psim-stats-heading">Inner Disc</h3>
+              <div class="psim-stat-row"><span class="psim-stat-label">numPixels:</span><span class="psim-stat-value" id="ap1InnerPixels"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">counts:</span><span class="psim-stat-value" id="ap1InnerCounts"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">average:</span><span class="psim-stat-value" id="ap1InnerAvg"></span></div>
+              <h3 class="psim-stats-heading">Outer Ring</h3>
+              <div class="psim-stat-row"><span class="psim-stat-label">numPixels:</span><span class="psim-stat-value" id="ap1OuterPixels"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">counts:</span><span class="psim-stat-value" id="ap1OuterCounts"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">average:</span><span class="psim-stat-value" id="ap1OuterAvg"></span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel psim-panel" aria-labelledby="hdgAp2">
+          <h2 class="panel__heading" id="hdgAp2">Aperture 2 Info</h2>
+          <div class="psim-apinfo">
+            <div class="psim-zoom-col">
+              <div class="psim-zoom-stage" id="zoomStage2">
+                <div id="zoom2Focus" class="psim-zoom-proxy" tabindex="0" role="application"
+                     aria-roledescription="pixel inspector"
+                     aria-label="Aperture 2 zoom window. Use the arrow keys to inspect individual pixels.">
+                  <canvas id="zoomCanvas2" width="368" height="368" aria-hidden="true"></canvas>
+                </div>
+                <div id="pixelInfo2" class="psim-pixel-info" hidden aria-hidden="true">
+                  <div class="psim-pixel-info__body">
+                    <div class="psim-pi-row"><span class="psim-pi-label">\(\mathsf{x}\):</span><span class="psim-pi-value" id="pi2x"></span></div>
+                    <div class="psim-pi-row"><span class="psim-pi-label">\(\mathsf{y}\):</span><span class="psim-pi-value" id="pi2y"></span></div>
+                    <div class="psim-pi-row"><span class="psim-pi-label">counts:</span><span class="psim-pi-value" id="pi2counts"></span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="psim-center-readout">
+                <div class="psim-ro-row"><span class="psim-ro-label">center \(\mathsf{x}\):</span><span class="psim-ro-value" id="ap2cx"></span></div>
+                <div class="psim-ro-row"><span class="psim-ro-label">center \(\mathsf{y}\):</span><span class="psim-ro-value" id="ap2cy"></span></div>
+              </div>
+            </div>
+            <div class="psim-stats">
+              <h3 class="psim-stats-heading">Inner Disc</h3>
+              <div class="psim-stat-row"><span class="psim-stat-label">numPixels:</span><span class="psim-stat-value" id="ap2InnerPixels"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">counts:</span><span class="psim-stat-value" id="ap2InnerCounts"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">average:</span><span class="psim-stat-value" id="ap2InnerAvg"></span></div>
+              <h3 class="psim-stats-heading">Outer Ring</h3>
+              <div class="psim-stat-row"><span class="psim-stat-label">numPixels:</span><span class="psim-stat-value" id="ap2OuterPixels"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">counts:</span><span class="psim-stat-value" id="ap2OuterCounts"></span></div>
+              <div class="psim-stat-row"><span class="psim-stat-label">average:</span><span class="psim-stat-value" id="ap2OuterAvg"></span></div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- Single polite live region: state-change announcements (with units), on commit -->
+    <p class="sr-only" id="liveRegion" aria-live="polite"></p>
+  </div>
+</body>
+</html>

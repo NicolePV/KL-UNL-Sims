@@ -1,0 +1,1 @@
+rotational speed (km/s)
