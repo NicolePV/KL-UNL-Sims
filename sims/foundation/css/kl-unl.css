@@ -1,0 +1,598 @@
+/* ==========================================================================
+   Default CSS style for KL-UNL project
+   ========================================================================== */
+
+/* Selector rule examples (selector and target combinations):
+   *                all elements
+   .classname       all elements with this class
+   #idname          element with this id
+   div              all div elements
+   div   span       all span elements which are inside             a div
+   div > span       all span elements which are direct children of a div
+   div > *          all      elements which are direct children of a div
+   h2 ~ span        all span elements which             follow an h2 within same parent
+   h2 + span        all span elements which immediately follow an h2 within same parent
+   h1, .intro       h1 elements and class intro elements
+
+   .control input[type="checkbox"] all checkbox input elements within control class parents
+
+   Element aspect modification:
+   .slider:focus                             element when in specific state
+   .slider::-webkit-slider-runnable-track    specific part of element
+
+   Responsive design:
+   @media (max-width: 40rem)  apply nested rules when screen width < 40rem
+
+   Accessibility:
+   :focus-visible             element with focus, when visual indicator of focus is  necessary
+                              (allows selection of interactive element like button via  
+                              keyboard navigation, but not mouse clicks, touch taps)
+   :focus:not(:focus-visible) element with focus, when visual indicator of focus not necessary
+                              (allows selection of interactive element like button via  
+                              mouse clicks, touch taps, but not keyboard navigation) 
+
+   Sizing: 
+   1px : fixed unit, does not scale with browser or parent sizing
+         use for thin borders, fixed images
+   1rem == 16px at default browser sizing, scales with root element font size
+         use for global typography and spacing
+   1em scales with element, or direct parent element, font size
+         use for component scaling, like button padding
+   1vh, vw relative to viewport height and width
+ */
+
+/* --------------------------------------------------------------------------
+   Default color palette and style, including masthead
+   -------------------------------------------------------------------------- */
+
+/* Define global CSS variables */
+:root {
+  --foreground-color:        #1a1a1a;  /* dark charcoal grey */
+  --background-color:        #ffffff;  /* white              */
+  --alert-color-r:           #ea351f;  /* red-orange         */
+  --alert-color-g:           #b3f681;  /* light neon green   */
+  --outline-color:           #005fcc;  /* deep azure blue    */
+  
+  --button-foreground-color: #ffffff;  /* white              */
+  --button-background-color: #005a9c;  /* french blue        */
+  --button-outline-width:    2px;      /* aka focus ring     */
+  --button-outline-style:    solid;
+  --button-outline-color:    #ffbc00;  /* yellow-orange      */
+  --button-outline-color2:   #005fcc;  /* deep azure blue    */
+  --button-hover-darken:     0.9;      /* reduces brightness to 90% */
+
+  --border-width:            1px;
+  --border-style:            solid;
+  --border-color:            #767676;  /* medium grey        */
+  --border-bottom-width:     3px;
+  --border-bottom-style:     solid;
+  --border-bottom-color:     #005a9c;  /* french blue        */
+}
+
+/* --------------------------------------------------------------------------
+   Masthead style
+   -------------------------------------------------------------------------- */
+
+/* Masthead title and buttons live inside separate shadow DOM. We style this 
+   from outside so that if masthead were to overflow into a horizontal scroll  
+   the rest of the simulation would be isolated (no scrolling). */
+kl-unl-masthead {
+  display:        block;
+  overflow-x:     auto;
+}
+
+/* --------------------------------------------------------------------------
+   General page style
+   -------------------------------------------------------------------------- */
+html {
+  font-size:      100%;
+}
+
+body {
+  font-family:    Arial, Helvetica, sans-serif;
+  font-size:      1.125rem;
+  line-height:    1.5;
+  margin:         0;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+}
+
+.p-indent {
+  margin-left:    20px;
+}
+
+.app-shell {
+  position:       relative;
+  max-width:      62.5rem;
+  margin:         0 auto;
+  min-height:     20rem;
+}
+
+.app-shell__backdrop {
+  position:       absolute;
+  left:           0;
+  top:            0;
+  z-index:        0;
+  pointer-events: none;
+  box-shadow:     0.25rem 0.25rem 0.5rem rgba(0, 0, 0, 0.5);
+}
+
+.app-layout {
+  position:       relative;
+  z-index:        1;
+  display:        grid;
+  grid-template-columns: 25rem 1fr;
+  grid-template-rows:    auto;
+  gap:            0;
+  align-items:    start;
+  padding-top:    0.25rem;
+}
+
+.app-layout__left {
+  display:        flex;
+  flex-direction: column;
+  gap:            0;
+}
+
+.app-layout__right {
+  min-width:      0;
+}
+
+/* --------------------------------------------------------------------------
+   Panel style
+   -------------------------------------------------------------------------- */
+.panel {
+  background:     var(--background-color, #ffffff);
+  box-shadow:     0.25rem 0.25rem 0.5rem rgba(0, 0, 0, 0.5);
+  font-size:      inherit;  /* inherit from parent */
+}
+
+.panel__heading {
+  margin:         0;
+  padding:        0.5rem 1rem;
+  font-size:      inherit;
+  font-weight:    bold;
+}
+
+.panel--size {
+  min-height:     26.875rem;
+}
+
+.panel--size .panel__canvas-wrap {
+  padding:        0 1.25rem 1rem;  /* top 0, left and right 1.25rem, bottom 1rem */
+}
+
+.panel__canvas-wrap {
+  line-height:    0;
+}
+
+.panel--cursor {
+  padding:        0 0 1rem;
+}
+
+.panel__help {
+  margin:         0.75rem 1rem 0;
+  font-size:      0.85rem;
+  line-height:    1.4;
+}
+
+/* --------------------------------------------------------------------------
+   Canvas stage style
+   -------------------------------------------------------------------------- */
+.stage {
+  position:       relative;
+  width:          100%;
+  max-width:      62rem;
+  max-height:     100%;
+  margin:         auto;
+  aspect-ratio:   1 / 1;
+}
+
+.stage-canvas {
+  display:        block;
+  width:          100%;
+  height:         100%;
+}
+
+.stage-overlay  {
+  position:       absolute;
+  inset:          0;
+  pointer-events: none;
+  overflow:       visible;
+}
+
+.stage-overlay > *  {
+  position:       absolute;
+}
+
+.stage-label  {
+  white-space:    nowrap;
+  line-height:    1;
+}
+
+/* --------------------------------------------------------------------------
+   Controls panel style
+   -------------------------------------------------------------------------- */
+.controls-panel {
+  grid-column:    1 / -1;
+  display:        grid;
+  grid-template-columns: 25rem 1fr;
+  align-items:    start;
+}
+
+.control-fieldset {
+  border:         0;
+  margin:         0;
+  padding:        0 1rem 0.5rem;
+}
+
+.control-fieldset__legend {
+  font-weight:    bold;
+  padding:        0 0 0.5rem;
+}
+
+.control-fieldset--plot {
+  padding-top:    0.25rem;
+}
+
+/* Desktop widths (larger screens) */
+.control-row {
+  display:        grid;
+  grid-template-columns: repeat(auto-fit, minmax(auto, 1fr));  /* update for specific case */
+  align-items:    center;
+  gap:            0.35rem 0.5rem;
+  margin-bottom:  0.25rem;
+}
+
+.control-row__label {
+  font-weight:    normal;
+}
+
+.control-row__input {
+  font-size:      0.95rem;
+  width:          5.75rem;
+  min-height:     1.5rem;
+  padding:        0.25rem 0.35rem;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
+}
+
+.control-row--axes {
+  grid-template-columns: auto 1fr auto 1fr;
+  margin-bottom:  0.75rem;
+}
+
+.control-row--axes label {
+  font-weight:    normal;
+}
+
+.control-row--axes select {
+  min-height:     2.75rem;
+  padding:        0.25rem;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
+}
+
+.control-grid {
+  display:        grid;
+  grid-template-columns: 1fr 1fr;
+  gap:            0.5rem 1rem;
+}
+
+.control-choice {
+  display:        flex;
+  align-items:    center;
+  gap:            0.35rem;
+  min-height:     1.25rem;
+}
+
+.control-choice label {
+  cursor:         pointer;
+  font-weight:    normal;
+}
+
+/* --------------------------------------------------------------------------
+   Controls style - slider bars
+   -------------------------------------------------------------------------- */
+.control-row__slider {
+  display:        block;
+  cursor:         pointer;
+  padding:        0;
+  touch-action:   manipulation;
+}
+
+.control-row__slider {
+  -webkit-appearance: none;
+  appearance:     none;
+  width:          100%;
+  height:         2.75rem; /* touch-friendly tap target area, >= 44px */
+  background:     transparent;
+  margin:         0;
+}
+
+/* Clear default focus outline; handled via custom focus ring on thumb */
+.control-row__slider:focus {
+  outline:        none;
+}
+
+/* WebKit (Chrome, Safari, Edge)      */
+/* depends on JS updateSliderProgress */
+.control-row__slider::-webkit-slider-runnable-track {
+  height:         8px;
+  border-radius:  4px;
+  border:         1px solid var(--border-color, #767676);
+  background: linear-gradient(
+    to right,
+    var(--button-background-color, #005a9c) 0%,
+    var(--button-background-color, #005a9c) var(--slider-progress, 0%),
+    #e0e0e0 var(--slider-progress, 0%),
+    #e0e0e0 100%
+  );
+}
+
+.control-row__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance:     none;
+  height:         1.9rem;
+  width:          1.15rem;
+  margin-top:    -0.75rem; /* centers 22px thumb on 8px track + 1px border */
+  border-radius:  0.5rem;
+  border:         2px solid var(--button-background-color, #005a9c);
+  background-color: #ffffff;
+  box-shadow:     0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor:         pointer;
+  transition:     background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.control-row__slider::-webkit-slider-thumb:hover {
+  background-color: #f0f7ff;
+  border-color:     var(--outline-color, #005fcc);
+}
+
+/* Keyboard Focus Indicator for WebKit */
+.control-row__slider:focus-visible::-webkit-slider-thumb {
+  outline:        var(--button-outline-width, 2px) var(--button-outline-style, solid) var(--button-outline-color2, #005fcc);
+  outline-offset: 4px;
+}
+
+/* Firefox */
+.control-row__slider::-moz-range-track {
+  height:         8px;
+  background-color: #e0e0e0;
+  border:         1px solid var(--border-color, #767676);
+  border-radius:  4px;
+}
+
+.control-row__slider::-moz-range-progress {
+  height:         8px;
+  background-color: var(--button-background-color, #005a9c);
+  border-radius:  4px 0 0 4px;
+}
+
+.control-row__slider::-moz-range-thumb {
+  height:         1.9rem;
+  width:          1.15rem;
+  box-sizing:     border-box;
+  border-radius:  0.5rem;
+  border:         2px solid var(--button-background-color, #005a9c);
+  background-color: #ffffff;
+  box-shadow:     0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor:         pointer;
+  transition:     background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.control-row__slider::-moz-range-thumb:hover {
+  background-color: #f0f7ff;
+  border-color:     var(--outline-color, #005fcc);
+}
+
+/* Keyboard Focus Indicator for Firefox */
+.control-row__slider:focus-visible::-moz-range-thumb {
+  outline:        var(--button-outline-width, 2px) var(--button-outline-style, solid) var(--button-outline-color2, #005fcc);
+  outline-offset: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   Controls style - buttons
+   -------------------------------------------------------------------------- */
+.button {
+  min-height:     2.75rem;
+  min-width:      2.75rem;
+  padding:        0.35rem 0.75rem;
+  cursor:         pointer;
+}
+
+.button-row {
+  display:        flex;
+  width:          100%;
+  justify-content: space-between;  /* flush to the edges, space between them */
+}
+
+/* --------------------------------------------------------------------------
+   Controls style - text boxes for number input
+   -------------------------------------------------------------------------- */
+.control-row__tnum {
+  width:          5.75rem;
+  min-height:     2.5rem;
+  box-sizing:     border-box;
+  font-size:      1.05rem;
+  text-align:     center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Controls style - checkboxes
+   -------------------------------------------------------------------------- */
+.control-choice input[type="checkbox"],
+.control-choice input[type="radio"] {
+  width:          1.5rem;
+  height:         1.5rem;
+  flex-shrink:    0;
+  margin:         0;
+}
+
+/* --------------------------------------------------------------------------
+   Controls style - modal (dialog) boxes
+   -------------------------------------------------------------------------- */
+.modal {
+  display:        none;
+  z-index:        20;
+  position:       absolute;
+  left:           20%;
+  top:            20%;
+  right:          20%;
+  overflow:       auto;
+  background:     var(--alert-color-r,    #ea351f);
+}
+
+.modal-content {
+  display:        flex;
+  align-items:    flex-start;
+  justify-content: space-between;
+  gap:            0.5rem;
+  margin:         0.125rem;
+  padding:        0.5rem;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
+}
+
+/* --------------------------------------------------------------------------
+   State indicator style
+   -------------------------------------------------------------------------- */
+
+/* Focus style */
+/* Visible for keyboard users; suppress only for mouse clicks where supported */
+:focus:not(:focus-visible) {
+  outline:        0;
+}
+
+:focus-visible {
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--outline-color,    #005fcc);
+  outline-offset: 0.125rem;
+}
+
+/* Close style */
+.close {
+  color:          var(--border-color,     #767676);
+  font-size:      1.75rem;
+  font-weight:    bold;
+  line-height:    1;
+  cursor:         pointer;
+  flex-shrink:    0;
+  min-width:      2.75rem;
+  min-height:     2.75rem;
+  text-align:     center;
+}
+
+.close:hover,
+.close:focus {
+  color:          var(--foreground-color, #1a1a1a);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive design
+   -------------------------------------------------------------------------- */
+
+/* Handheld widths (smaller screens) */
+@media (max-width: 40rem) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-panel {
+    display:      block;
+  }
+
+  .control-row {
+    grid-template-columns: repeat(auto-fit, minmax(auto, 1fr));  /* update for specific sim */
+  }
+
+  .control-row__slider {
+    grid-column:  1 / -1;
+  }
+
+  .control-row--axes {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .control-grid,
+  .control-grid--stars {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Accessibility style
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   Screen reader style: visually hidden, available to screen readers
+   -------------------------------------------------------------------------- */
+.sr-only {
+  position:       absolute;
+  width:          1px;
+  height:         1px;
+  padding:        0;
+  margin:         -1px;
+  overflow:       hidden;
+  clip:           rect(0, 0, 0, 0);
+  white-space:    nowrap;
+  border:         0;
+}
+
+.sr-only-focusable:active,
+.sr-only-focusable:focus {
+  position:       static;
+  width:          auto;
+  height:         auto;
+  margin:         0;
+  overflow:       visible;
+  clip:           auto;
+  white-space:    normal;
+  padding:        0.5rem 1rem;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width,     1px);
+  border-style:   var(--border-style,     solid);
+  border-color:   var(--border-color,     #767676);
+  z-index:        1000;
+}
+
+/* ---------------------------------------------------------------------------
+   User preferences
+   --------------------------------------------------------------------------- */
+
+/* When the user asks for more contrast, darken foreground color */
+@media (prefers-contrast: more) {
+  :root {
+    --foreground-color:        #000000;  /* dark charcoal grey becomes black */
+  }
+
+  /* Darken value in text number boxes */
+  .control-row__tnum {
+    border-color:  var(--foreground-color, #1a1a1a);
+  }
+}
+
+/* This rule is kept explicit so that any sim-specific transition inherits the 
+   correct behaviour. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+  }
+}

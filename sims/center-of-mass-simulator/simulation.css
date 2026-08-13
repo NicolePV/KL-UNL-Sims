@@ -1,0 +1,254 @@
+/* ===========================================================================
+   Center of Mass Simulator - sim-specific styles.
+
+   These styles sit ON TOP of the shared KL-UNL foundation. Any component the 
+   foundation does not provide (the scaled diagram stage, the label overlay) 
+   is built here as an additional component.
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   Sim-specific palette
+   --------------------------------------------------------------------------- */
+:root {
+  --com-blue:        #0066ff;
+  --com-red:         #cc0000;
+  --com-green:       #103A10;   /* darkened legacy green for contrast */
+  --com-grid:        #e0e0e0;
+
+  --com-space:       0.75rem;   /* single spacing step, reused everywhere */
+  --com-muted:       #444444;   /* 9.7:1 on white                         */
+
+  /* Ratio between the displayed stage width and its 428-unit internal
+     coordinate system. simulation.js keeps this in sync via ResizeObserver;
+     the overlay labels scale with it so the diagram keeps its proportions. */
+  --stage-scale:     1;
+}
+
+/* ---------------------------------------------------------------------------
+   Typography. The foundation ships 1.125rem body copy; a comfortably large, 
+   rem-based scale that tracks the browser font setting and still reflows 
+   cleanly at 200% zoom.
+   --------------------------------------------------------------------------- */
+
+.panel  {
+  margin:         0.75rem 1rem 1rem;
+  color:          var(--com-muted);
+}
+
+/* These sr-only components are not visible */
+/*
+.com-hint {
+  grid-column:    1 / -1;
+  margin:         0.15rem 0 0;
+  font-size:      0.95rem;
+  color:          var(--com-muted);
+}
+*/
+
+/* ---------------------------------------------------------------------------
+   Page layout: diagram across the top and sliders and checkbox underneath, 
+   mirroring the legacy layout.
+   --------------------------------------------------------------------------- */
+.com-layout {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap:            var(--com-space);
+  padding:        var(--com-space) 0;
+  align-items:    stretch;
+}
+
+.stage-panel     { grid-column: 1 / -1; }
+.controls-panel  {
+  grid-column:    1 / -1;
+  /* Single column: this sim has no side panel (foundation default is 2-col). */
+  grid-template-columns: 1fr;
+  padding-top:    0.55rem;     /* necessary top spacing as heading hidden */
+}
+
+/* The controls-panel's heading is visually hidden, so it has to supply the top 
+   spacing the heading bar used to give it. The value puts this panel's first 
+   legend on the same text baseline as the heading of the panel beside it. */
+
+/* ---------------------------------------------------------------------------
+   The diagram stage.
+
+   The canvas keeps the simulation's legacy internal coordinate system:
+   428 x 168 units with (0, 0) at the center of the grid, which is the center
+   of mass when "keep CM fixed" is on. That is the 420 x 160 legacy grid plus 
+   a 4-unit margin so the outermost grid lines are not sliced in half. As 
+   simulation.js scales the drawing context, the drawing and physics math 
+   never sees the on-screen size.
+
+   The legacy assets (mass spheres, CM cross) are elements in the overlay 
+   above the canvas, positioned in percentages of the stage box so they stay 
+   vector-crisp at any size.
+   --------------------------------------------------------------------------- */
+.panel__canvas-wrap {
+  padding:        0 1rem;  /* top and bottom 0, left and right 1rem */
+}
+
+.stage {
+  aspect-ratio:   428 / 168;  
+}
+
+/* Mass spheres: images/53.svg, the exported radial-gradient ball,
+   reused as-is and only scaled (legacy scaling was 100 * m^0.37 percent). */
+.com-mass {
+  transform:      translate(-50%, -50%);
+}
+
+/* Center-of-mass cross: assets/shapes/51.svg, darkened. Its 12 x 12 box
+   has the cross centered, so a plain centering transform places it correctly. */
+.com-cm-cross {
+  width:          calc(12 / 428 * 100%);
+  height:         calc(12 / 168 * 100%);
+  transform:      translate(-50%, -50%);
+}
+
+/* ---------------------------------------------------------------------------
+   Overlay labels are typeset by MathJax rather than painted onto the canvas: 
+   right-clicking any of them opens the MathJax menu. They are display-only 
+   and never tab stops. Their size follows the stage so the diagram keeps the 
+   original proportions, with a small floor so they stay readable on a phone; 
+   the same values are shown at full page-text size in the relation panel 
+   beside the diagram.
+   --------------------------------------------------------------------------- */
+.stage-label  {
+  transform:      translate(-50%, -50%);
+  font-size:      max(0.55rem, calc(var(--stage-scale) * 0.66rem));
+}
+
+/* White object labels sit on the grey spheres. White on the sphere gradient is
+   only ~3.2:1, so each glyph carries a dark outline; the effective contrast at
+   every glyph edge is then better than 18:1.
+
+   The outline is eight hard offsets at a radius well under the (bold) stroke
+   weight, and no blur at all. A blurred shadow reads as grime around the
+   glyph and fills in the counters of an "m"; a tight hard ring keeps the
+   letterform crisp.
+
+   These labels are also set slightly smaller than the rest, so the pair sits
+   comfortably inside even the smallest sphere, and are shifted up by the
+   glyph-vs-box offset that simulation.js measures once (see
+   calibrateMassLabels); the fallback matches the measured value for MathJax's
+   TeX fonts. 
+
+   Note: Extra adjustments had to be made to prevent clipping on the top of the  
+   "m" and "1" and "2" subscript chars. */
+.stage-label--mass {
+  font-size:      max(0.6rem, calc(var(--stage-scale) * 0.74rem));
+  color:          #ffffff;
+  transform:      translate(-50%, calc(-50% - var(--mass-label-shift, 0.14em)));
+  text-shadow:
+     0.045em  0       0 #111111,
+    -0.045em  0       0 #111111,
+     0        0.045em 0 #111111,
+     0       -0.045em 0 #111111,
+     0.032em  0.032em 0 #111111,
+    -0.032em  0.032em 0 #111111,
+     0.032em -0.032em 0 #111111,
+    -0.032em -0.032em 0 #111111;
+}
+
+.stage-label--cm { color: var(--com-green); }
+.stage-label--r1 { color: var(--com-blue);  }
+.stage-label--r2 { color: var(--com-red);   }
+
+/* ---------------------------------------------------------------------------
+   Controls. Label column, value box column, slider column; the three rows share
+   the same grid so labels, boxes and sliders line up down the panel and the
+   value boxes are identical in size.
+   --------------------------------------------------------------------------- */
+
+/* All three control rows share ONE grid so the label column, the value boxes
+   and the sliders line up on the same edges down the whole panel. */
+.com-rows {
+  display:        grid;
+  grid-template-columns: max-content 5.75rem minmax(6rem, 1fr);
+  align-items:    center;
+  gap:            0.6rem 0.75rem;
+}
+
+.com-row {
+  display:        contents;
+}
+
+/* Checkbox row sits outside .com-rows so display:contents from .com-row does
+   not override foundation .control-choice flex layout. */
+.com-choice {
+  margin-top:     0.75rem;
+}
+
+.com-row__label {
+  justify-self:   end;
+  font-size:      1.05rem;
+}
+
+.com-choice label {
+  font-size:      1.05rem;
+}
+
+/* MathJax output is content to read, never something to operate: keep it out of
+   the tab order without hiding it from screen readers or disabling its menu. */
+.stage-label mjx-container {
+  outline:        none;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive design: desktop -> iPad -> phone portrait
+   The foundation collapses .app-layout to one column at 40rem; because this
+   sheet re-declares the columns it has to repeat that collapse, then carry the
+   layout down to phone-portrait widths.
+   --------------------------------------------------------------------------- */
+@media (max-width: 40rem) {
+  .com-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-panel, 
+  .controls-panel  {
+    grid-column:  1 / -1;
+  }
+
+  /* The foundation moves .control-row__slider onto its own full-width line at
+     this breakpoint. Match that with a two-column row so the label stretches
+     and the value box stays flush with the right edge of the slider. */
+  .com-rows {
+    grid-template-columns: minmax(0, 1fr) 5.75rem;
+    gap:          0.3rem 0.75rem;
+  }
+
+  .com-row__label {
+    justify-self: start;
+  }
+
+  .com-row__slider {
+    margin-bottom: 0.4rem;
+  }
+}
+
+@media (max-width: 134rem) {
+  body {
+    font-size:    1.0625rem;
+  }
+
+  .panel__canvas-wrap {
+    padding:      0 0.5rem;
+  }
+
+  .com-fieldset {
+    padding-left:  0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   User preferences
+   --------------------------------------------------------------------------- */
+
+/* The grid is a light scale backdrop and is deliberately kept at the source
+   colour. When the user asks for more contrast, darken it anyway. */
+@media (prefers-contrast: more) {
+  :root {
+    --com-grid:      #949494;
+  }
+}
