@@ -257,15 +257,20 @@ class KLUNLMasthead extends HTMLElement {
       <dialog id="feedbackDialog-mh" aria-labelledby="feedbackTitle-mh">
         <h2 id="feedbackTitle-mh" style="margin-top: 0;">Submit Astronomy Simulation Feedback</h2>
 
-        <form id="feedbackForm-mh" method="dialog">
-          <h5>Thank you for helping us to improve these materials.</h5>
+        <!-- Added novalidate to prevent premature "invalid data" VoiceOver announcements -->
+        <form id="feedbackForm-mh" method="dialog" novalidate>
+          <p style="margin-bottom: 16px; font-size: 0.9rem;">Thank you for helping us to improve these materials.</p>
         
-          <!-- Honeypot anti-spam field -->
-          <input type="text" name="website_hp" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <!-- Anti-spam honeypot: Hidden from screen readers and pointer interaction -->
+          <input type="text" name="website_hp" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none !important;">
 
+          <!-- Category Selection -->
           <div class="form-group">
-            <label for="fbCategory-mh">Feedback Category <span aria-hidden="true">*</span></label>
-            <select id="fbCategory-mh" required>
+            <label for="fbCategory-mh">
+              Feedback Category <span style="color: #d93025;" aria-hidden="true">*</span>
+              <span class="sr-only">(required)</span>
+            </label>
+            <select id="fbCategory-mh" aria-required="true">
               <option value="" disabled selected>Select a category...</option>
               <option value="functionality">Functionality / Bug Report</option>
               <option value="appearance"   >Visual / Layout Issue</option>
@@ -277,8 +282,12 @@ class KLUNLMasthead extends HTMLElement {
             </select>
           </div>
 
-          <fieldset class="likert-group">
-            <legend>Importance Rating (1 = Dust grain, 5 = Supernova) <span aria-hidden="true">*</span></legend>
+          <!-- Likert Radio Group -->
+          <fieldset class="likert-group" role="radiogroup" aria-required="true" aria-labelledby="likertLegend-mh">
+            <legend id="likertLegend-mh">
+              Importance Rating (1 = Dust grain, 5 = Supernova) <span style="color: #d93025;" aria-hidden="true">*</span>
+              <span class="sr-only">(required)</span>
+            </legend>
             <div class="likert-options">
               <label class="likert-option"><input type="radio" name="fbImportance" value="1" required> 1</label>
               <label class="likert-option"><input type="radio" name="fbImportance" value="2"> 2</label>
@@ -288,20 +297,29 @@ class KLUNLMasthead extends HTMLElement {
             </div>
           </fieldset>
 
+          <!-- Description Field -->
           <div class="form-group">
-            <label for="fbDescription-mh">Description <span aria-hidden="true">*</span></label>
-            <textarea id="fbDescription-mh" rows="4" required placeholder="Please describe what occurred or share an idea..."></textarea>
+            <label for="fbDescription-mh">
+              Description <span style="color: #d93025;" aria-hidden="true">*</span>
+              <span class="sr-only">(required)</span>
+            </label>
+            <p id="fbDescHelp-mh" style="margin: 0 0 4px 0; font-size: 0.8rem; color: #595959;">
+              Please describe what occurred or share an idea for improvement.
+            </p>
+            <textarea id="fbDescription-mh" rows="4" aria-required="true" aria-describedby="fbDescHelp-mh"></textarea>
           </div>
 
+          <!-- Optional Name Field -->
           <div class="form-group">
             <label for="fbName-mh">Name (Optional)</label>
-            <input type="text" id="fbName-mh">
+            <input type="text" id="fbName-mh" autocomplete="name">
           </div>
 
+          <!-- Optional Email Field -->
           <div class="form-group">
             <label for="fbEmail-mh">Email Address (Optional)</label>
-            <input type="email" id="fbEmail-mh" placeholder="name@example.edu">
-            <small id="emailHelp-mh" style="color: #595959;">Your name or email would only be used to clarify your feedback report and will never be shared.</small>
+            <input type="email" id="fbEmail-mh" autocomplete="email" aria-describedby="emailHelp-mh">
+            <small id="emailHelp-mh" style="color: #595959;">Your name or email will only be used to clarify your feedback report and will never be shared.</small>
           </div>
 
           <div class="dialog-footer">
@@ -311,11 +329,11 @@ class KLUNLMasthead extends HTMLElement {
         </form>
 
         <!-- Post-Submit Confirmation View -->
-        <div id="fbSuccessView-mh" style="display: none; text-align: center; padding: 20px 0;">
-          <h3>Thank You!</h3>
-          <p>Your feedback has been recorded and will helps us to improve these astronomy simulations for everyone.</p>
+        <div id="fbSuccessView-mh" role="status" aria-live="polite" style="display: none; text-align: center; padding: 20px 0;">
+          <h3 id="fbSuccessTitle-mh">Thank You!</h3>
+          <p id="fbSuccessBody-mh">Your feedback has been recorded and will help us to improve these astronomy simulations for everyone.</p>
           <div class="dialog-footer" style="justify-content: center;">
-            <button type="button" id="closeFbSuccessBtn-mh" class="close-btn">Close</button>
+            <button type="button" id="closeFbSuccessBtn-mh" class="close-btn" aria-describedby="fbSuccessTitle-mh fbSuccessBody-mh">Close</button>
           </div>
         </div>
       </dialog>
@@ -425,9 +443,14 @@ class KLUNLMasthead extends HTMLElement {
     const shadow             = this.shadowRoot;
     const dialog             = shadow.getElementById('feedbackDialog-mh');
     
-    // Reset form view states
-    shadow.getElementById('feedbackForm-mh').reset();
-    shadow.getElementById('feedbackForm-mh').style.display = "block";
+    // Reset form view states and invalid aria markers
+    const form = shadow.getElementById('feedbackForm-mh');
+    form.reset();
+    
+    shadow.getElementById('fbCategory-mh').removeAttribute('aria-invalid');
+    shadow.getElementById('fbDescription-mh').removeAttribute('aria-invalid');
+
+    form.style.display                                      = "block";
     shadow.getElementById('fbSuccessView-mh').style.display = "none";
 
     dialog.showModal();
@@ -438,28 +461,71 @@ class KLUNLMasthead extends HTMLElement {
   }
 
   async handleFeedbackSubmit(e) {
+    // 1. Stop native submit and prevent the dialog from closing automatically
     e.preventDefault();
+    e.stopPropagation();
+
     const shadow = this.shadowRoot;
 
-    // 1. Anti-spam Honeypot Check
-    const hpVal = shadow.querySelector('input[name="website_hp"]').value;
+    // Anti-spam Honeypot Check
+    const hpVal = shadow.querySelector('input[name="website_hp"]')?.value;
     if (hpVal) {
       this.closeFeedbackModal();
       return;
     }
 
+    // 2. Query Form Elements
+    const categoryEl    = shadow.getElementById('fbCategory-mh');
+    const descriptionEl = shadow.getElementById('fbDescription-mh');
+    const importanceEls = shadow.querySelectorAll('input[name="fbImportance"]');
+    const selectedRadio = shadow.querySelector('input[name="fbImportance"]:checked');
+
+    // Clear former error states
+    categoryEl.removeAttribute('aria-invalid');
+    descriptionEl.removeAttribute('aria-invalid');
+
+    let isValid = true;
+    let firstErrorElement = null;
+
+    // Validation Check 1: Description
+    if (!descriptionEl.value.trim()) {
+      isValid = false;
+      descriptionEl.setAttribute('aria-invalid', 'true');
+      firstErrorElement = descriptionEl;
+    }
+
+    // Validation Check 2: Importance Radio Group
+    if (!selectedRadio) {
+      isValid = false;
+      firstErrorElement = importanceEls[0];
+    }
+
+    // Validation Check 3: Category Select
+    if (!categoryEl.value) {
+      isValid = false;
+      categoryEl.setAttribute('aria-invalid', 'true');
+      firstErrorElement = categoryEl; // Prioritize focus on Category
+    }
+
+    // 3. Block Submission if Any Item is Missing
+    if (!isValid) {
+      if (firstErrorElement) {
+        firstErrorElement.focus();
+      }
+      return false; // Stop execution completely
+    }
+
+    // 4. Proceed with Submission
     const submitBtn       = shadow.getElementById('submitFbBtn-mh');
     submitBtn.disabled    = true;
     submitBtn.textContent = "Sending...";
 
-    // 2. Gather User Inputs
-    const category    = shadow.getElementById('fbCategory-mh').value;
-    const description = shadow.getElementById('fbDescription-mh').value;
+    const category    = categoryEl.value;
+    const description = descriptionEl.value.trim();
     const name        = shadow.getElementById('fbName-mh').value;
     const email       = shadow.getElementById('fbEmail-mh').value;
-    const importance  = shadow.querySelector('input[name="fbImportance"]:checked')?.value || "3";
+    const importance  = selectedRadio.value;
 
-    // 3. Assemble Metadata Payload
     const payload = {
       simId:       this.getAttribute('sim-id'),
       timestamp:   new Date().toISOString(),
@@ -473,14 +539,12 @@ class KLUNLMasthead extends HTMLElement {
       userEmail:   email || "Not provided"
     };
 
-    // Determine target mode ('github', 'sheets', or 'both')
     const mode      = this.getAttribute('feedback-mode') || 'both';
     const proxyUrl  = this.getAttribute('proxy-url')     || 'http://astronomy.nmsu.edu/geas/klunl/api/feedback-proxy.php';
     const sheetsUrl = this.getAttribute('sheets-url')    || 'https://script.google.com/macros/s/AKfycbzZV7Z8d-tVO3bGTFiZNxFRIeB6PKyGeSqpvsVRmgqbrXfugMGatGHc64oaT79kKvivpw/exec';
 
     const requests = [];
 
-    // Option A: Send to GitHub Proxy
     if ((mode === 'github' || mode === 'both') && proxyUrl) {
       requests.push(
         fetch(proxyUrl, {
@@ -491,12 +555,10 @@ class KLUNLMasthead extends HTMLElement {
       );
     }
 
-    // Option B: Send to Google Apps Script Endpoint
     if ((mode === 'sheets' || mode === 'both') && sheetsUrl) {
       requests.push(
         fetch(sheetsUrl, {
           method: 'POST',
-          // Google Apps Script requires text/plain or no-cors mode to avoid preflight CORS blocks
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
         })
@@ -506,10 +568,14 @@ class KLUNLMasthead extends HTMLElement {
     try {
       await Promise.all(requests);
 
-      // Show Thank You Screen on Success
+      // Transition to Thank You View on Successful Delivery
       shadow.getElementById('feedbackForm-mh').style.display  = "none";
       shadow.getElementById('fbSuccessView-mh').style.display = "block";
-      shadow.getElementById('closeFbSuccessBtn-mh').focus();
+
+      // Delay focus slightly so VoiceOver detects the visible live region & aria-describedby linkage
+      setTimeout(() => {
+        shadow.getElementById('closeFbSuccessBtn-mh').focus();
+      }, 50);
 
     } catch (err) {
       console.error('Feedback delivery issue:', err);
