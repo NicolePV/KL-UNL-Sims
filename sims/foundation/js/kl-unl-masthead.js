@@ -319,7 +319,7 @@ class KLUNLMasthead extends HTMLElement {
           <div class="form-group">
             <label for="fbEmail-mh">Email Address (Optional)</label>
             <input type="email" id="fbEmail-mh" autocomplete="email" aria-describedby="emailHelp-mh">
-            <small id="emailHelp-mh" style="color: #595959;">Your name or email will only be used to clarify your feedback report and will never be shared.</small>
+            <small id="emailHelp-mh" style="color: #595959;">Your name or email would only be used to clarify your feedback report and will never be shared.</small>
           </div>
 
           <div class="dialog-footer">
@@ -629,8 +629,6 @@ document.querySelector('a[href="#helpBtn-mh"]').addEventListener('click', functi
   if (masthead && masthead.shadowRoot) {
     const helpBtn = masthead.shadowRoot.querySelector('#helpBtn-mh') || 
                     masthead.shadowRoot.querySelector('button');
-    if (helpBtn) {
-      helpBtn.focus();
-    }
+    if (helpBtn) { helpBtn.focus(); }
   }
 });

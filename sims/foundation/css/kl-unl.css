@@ -402,16 +402,26 @@ body {
    Controls style - buttons
    -------------------------------------------------------------------------- */
 .button {
+  color:          #ffffff;
   min-height:     2.75rem;
   min-width:      2.75rem;
   padding:        0.35rem 0.75rem;
+  opacity:        1.0;
   cursor:         pointer;
+  pointer-events: auto;
 }
 
 .button-row {
   display:        flex;
   width:          100%;
   justify-content: space-between;  /* flush to the edges, space between them */
+}
+
+.button:disabled {
+  color:          #000000;
+  opacity:        0.75;
+  cursor:         not-allowed;
+  pointer-events: none;        /* prevents JS mouse events and CSS hovers */
 }
 
 /* --------------------------------------------------------------------------
@@ -472,7 +482,7 @@ body {
 /* Focus style */
 /* Visible for keyboard users; suppress only for mouse clicks where supported */
 :focus:not(:focus-visible) {
-  outline:        0;
+  outline:        none;
 }
 
 :focus-visible {

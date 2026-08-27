@@ -63,8 +63,8 @@ import {
   const R_LABEL_Y    = 62;
 
   // Exported asset box sizes (images/*.svg).
-  const MASS_ART     = 28;    // 53.svg: 28 × 28, radius 14
-  const CROSS_ART    = 12;    // cross.svg: 12 × 12
+  const MASS_ART     = 28;    // sphere.svg: 28 × 28, radius 14
+  const CROSS_ART    = 12;    // cross.svg:  12 × 12
 
   const SLIDER_SPEC = {
     mass1: { min:  1, max: 10, init:  7, precision: 1, text: 'object 1 mass:' },
@@ -309,7 +309,7 @@ import {
     if (el.canvas.width  !== bw) { el.canvas.width  = bw; }
     if (el.canvas.height !== bh) { el.canvas.height = bh; }
 
-    // Uniform scale: draw in original Flash stage coordinates.
+    // Uniform scale: draw in legacy Flash stage coordinates.
     const k = bw / STAGE_W;
     ctx.setTransform(k, 0, 0, k, ORIGIN_X * k, ORIGIN_Y * k);
     ctx.clearRect(-ORIGIN_X, -ORIGIN_Y, STAGE_W, STAGE_H);
@@ -531,7 +531,7 @@ import {
       setValue(key, parseFloat(c.range.value), true);
     });
 
-    // Number box: Enter or blur commits.
+    // Number box: Enter, spin button, or blur commits.
     let keydownTriggered = false;
     c.num.addEventListener('keydown', function (event) {
       const isAllowedKey = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(event.key);
@@ -549,6 +549,14 @@ import {
         setValue(key, parseFloat(c.num.value), true);
         c.num.blur();
       }
+    });
+    // Capture spin button events (clicking on up or down arrows within number box)
+    c.num.addEventListener('change', function () {
+      if (keydownTriggered) {
+        keydownTriggered = false;
+        return;
+      }
+      setValue(key, parseFloat(c.num.value), true);
     });
     c.num.addEventListener('blur', function () {
       if (keydownTriggered) {

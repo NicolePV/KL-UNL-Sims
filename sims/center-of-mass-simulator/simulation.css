@@ -90,7 +90,7 @@
   aspect-ratio:   428 / 168;  
 }
 
-/* Mass spheres: images/53.svg, the exported radial-gradient ball,
+/* Mass spheres: images/sphere.svg, the exported radial-gradient ball,
    reused as-is and only scaled (legacy scaling was 100 * m^0.37 percent). */
 .com-mass {
   transform:      translate(-50%, -50%);

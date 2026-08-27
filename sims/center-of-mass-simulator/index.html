@@ -6,9 +6,9 @@
   <title>Center of Mass Simulator</title>
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
-  <!-- Shared KL-UNL foundation, copied in unchanged (its code is never edited). -->
+  <!-- Shared KL-UNL foundation -->
   <link rel="stylesheet" href="../foundation/css/kl-unl.css" type="text/css" media="all">
-  <!-- Sim-specific styles, layered on top of the foundation. -->
+  <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
   <link rel="apple-touch-icon"      href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
@@ -51,8 +51,7 @@
   <div class="app-shell com-shell">
     <div class="app-shell__backdrop" aria-hidden="true"></div>
 
-    <!-- Title + Reset / Help / About all come from the shared masthead
-         component. -->
+    <!-- Title + Reset / Help / About / Feedback all come from the shared masthead component. -->
     <kl-unl-masthead sim-id="centerofmass" json-url="../foundation/js/kl-unl-masthead.json"></kl-unl-masthead>
 
     <!-- Single polite live region. Announces committed changes only (slider
@@ -82,8 +81,8 @@
             labels. Positioned in percentages of the stage box so everything
             scales with the canvas. -->
             <div class="stage-overlay">
-              <img  class="com-mass" id="mass1" src="images/53.svg" alt="">
-              <img  class="com-mass" id="mass2" src="images/53.svg" alt="">
+              <img  class="com-mass" id="mass1" src="images/sphere.svg" alt="">
+              <img  class="com-mass" id="mass2" src="images/sphere.svg" alt="">
               <span class="stage-label stage-label--mass" id="lblM1">$$m_1$$</span>
               <span class="stage-label stage-label--mass" id="lblM2">$$m_2$$</span>
 
@@ -124,8 +123,13 @@
           <h3 class="sr-only" id="hdgMass1">Mass 1 number box and slider controls</h3>
           <div class="control-row com-row" aria-labelledby="hdgMass1">
             <label class="control-row__label com-row__label" for="mass1Num">object 1 mass:</label>
+            <!-- Switch from type=text to type=number
             <input class="control-row__input control-row__tnum" id="mass1Num"
                    type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" spellcheck="false"
+                   value="7.0" aria-describedby="massRangeHint">
+            -->
+            <input class="control-row__input control-row__tnum" id="mass1Num"
+                   type="number" step="0.1" min="1" max="10" autocomplete="off" spellcheck="false"
                    value="7.0" aria-describedby="massRangeHint">
             <label class="sr-only" for="mass1Slider">object 1 mass slider</label>
             <input class="control-row__slider com-row__slider" id="mass1Slider"
@@ -135,8 +139,13 @@
           <h3 class="sr-only" id="hdgMass2">Mass 2 number box and slider controls</h3>
           <div class="control-row com-row" aria-labelledby="hdgMass2">
             <label class="control-row__label com-row__label" for="mass2Num">object 2 mass:</label>
+            <!-- Switch from type=text to type=number
             <input class="control-row__input control-row__tnum" id="mass2Num"
                    type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" spellcheck="false"
+                   value="3.0" aria-describedby="massRangeHint">
+            -->
+            <input class="control-row__input control-row__tnum" id="mass2Num"
+                   type="number" step="0.1" min="1" max="10" autocomplete="off" spellcheck="false"
                    value="3.0" aria-describedby="massRangeHint">
             <label class="sr-only" for="mass2Slider">object 2 mass slider</label>
             <input class="control-row__slider com-row__slider" id="mass2Slider" 
@@ -146,8 +155,13 @@
           <h3 class="sr-only" id="hdgSep">Object separation number box and slider controls</h3>
           <div class="control-row com-row" aria-labelledby="hdgSep">
             <label class="control-row__label com-row__label" for="sepNum">separation:</label>
+            <!-- Switch from type=text to type=number
             <input class="control-row__input control-row__tnum" id="sepNum"
                    type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" spellcheck="false"
+                   value="10.0" aria-describedby="sepRangeHint">
+            -->
+            <input class="control-row__input control-row__tnum" id="sepNum"
+                   type="number" step="0.1" min="1" max="20" autocomplete="off" spellcheck="false"
                    value="10.0" aria-describedby="sepRangeHint">
             <label class="sr-only" for="sepSlider">separation slider</label>
             <input class="control-row__slider com-row__slider" id="sepSlider"
@@ -179,7 +193,8 @@
     </main>
   </div>
 
-  <!-- Foundation scripts. Utils are imported by simulation.js (ES module). -->
+  <!-- Foundation scripts. Utilities are imported by simulation.js (ES module). -->
+  <!-- Loading at the end allows Skip to Help to attach to masthead --> 
   <script src="../foundation/js/kl-unl-masthead.js"></script>
   <script src="../foundation/js/kl-unl-mathjax.js"></script>
   <!-- All simulator logic. -->
