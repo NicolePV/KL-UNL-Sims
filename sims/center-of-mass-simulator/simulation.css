@@ -35,6 +35,10 @@
   color:          var(--com-muted);
 }
 
+.panel__heading  {
+  border-bottom: none;
+}
+
 /* These sr-only components are not visible */
 /*
 .com-hint {

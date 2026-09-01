@@ -13,7 +13,7 @@
      in radians.
    =========================================================================== */
 
-import { pMod } from './kl-unl-utils.js';
+import { pMod, hexToRGBA } from './kl-unl-utils.js';
 
 /** Geometric constants */
 export const D2R =  0.017453292519943295;   /** Degrees → radians (π/180)      */
@@ -35,6 +35,10 @@ export const CELESTIAL_SPHERE_COLORS = {
   ALT_ARC:    '#a63743',  // (brick red)
   AZ_CIRC:    '#a0a0a0',  // (medium gray)
   ALT_CIRC:   '#a0a0a0',  // (medium gray)
+  RA_ARC:     '#4b4bfe',  // (bright blue)
+  DEC_ARC:    '#fe4b4b',  // (bright red)
+  RA_CIRC:    '#a0a0a0',  // (medium gray)
+  DEC_CIRC:   '#a0a0a0',  // (medium gray)
   MRDN2_CIRC: '#000000',  // (black)
   MRDN_CIRC:  '#216331',  // (dark green)
   POLE_LNSG:  '#505050',  // (dark gray)
@@ -43,15 +47,25 @@ export const CELESTIAL_SPHERE_COLORS = {
   CSPHERE_1:  '#e6e9ec',  // (pale  grayish blue)
   CSPHERE_2:  '#d0d4d9',  // (light grayish blue)
   CSPHERE_3:  '#787e86',  // (muted grayish blue)
+  CSPHERE_4:  '#787878',  // (medium grey)
 
-  // Horizon
+  // Ecliptic 
+  ECLPTC_1:   '#9931DF',  // (violet)
+  ECLPTC_2:   '#9408c7',  // (violet)
+
+  // Horizon plane
   HOR_ABV_1:  '#46b446',  // (vibrant green)
   HOR_ABV_2:  '#3da53d',  // (medium  green)
   HOR_ABV_3:  '#2f8a2f',  // (forest  green)
   HOR_BLW_1:  '#0a7a14',  // (deep    green)
   HOR_BLW_2:  '#005000',  // (dark    green)
 
-  // North and south poles
+  // Earth
+  EARTH_1:    '#bcd2f5',  // (light  blue)
+  EARTH_2:    '#5b86d6',  // (medium blue)
+  EARTH_3:    '#3f8f4a',  // (medium green)
+
+  // North and south pole base markers
   POLE_MRK1:  '#222222',  // (dark grey)
   POLE_MRK2:  '#ffffff',  // (white)
 
@@ -60,9 +74,11 @@ export const CELESTIAL_SPHERE_COLORS = {
   LABEL_FILL: '#1a1a1a',  // (dark     grey)
   LABEL_HALO: '#ffffff',  // (white)
 
-  // Altitude and azimuth labels
+  // Star position labels
   AZ_LABEL:   '#4a4080',  // (dark blue)
   ALT_LABEL:  '#9a2230',  // (scarlet sage)
+  RA_LABEL:   '#4b4bfe',  // (bright blue)
+  DEC_LABEL:  '#fe4b4b',  // (bright red)
 
   // Cardinal direction labels
   NESW_LINE:  '#1a1a1a',  // (dark grey)
@@ -483,8 +499,29 @@ export class Circle {
     this.front = [];
     /** @type {Array<{move:number[], curves:number[][]}>} */
     this.back  = [];
-    if (style) this.setStyle(style.thickness, style.color, style.alpha);
-    if (def)   this.setParameters(def);
+    /** @type {object|null} Hatch fill config; null = disabled. */
+    this.hatch = null;
+    /** @type {Array<{move:number[], line:number[]}>} */
+    this.hatchFront = [];
+    /** @type {Array<{move:number[], line:number[]}>} */
+    this.hatchBack  = [];
+    if (style) {
+      this.setStyle(style.thickness, style.color, style.alpha);
+      if (style.hatch) this.setHatch(style.hatch);
+    }
+    if (def) {
+      this.setParameters(def);
+      if (def.hatch) this.setHatch(def.hatch);
+    }
+  }
+
+  /**
+   * Enable or disable interior parallel hatching.
+   * @param {object|null} options - { color, thick, alpha, spacing, angle, innerR }
+   */
+  setHatch(options) {
+    if (options == null) { this.hatch = null; return; }
+    this.hatch = options;
   }
 
   /**
@@ -625,6 +662,8 @@ export class Circle {
   update() {
     this.front.length = 0;
     this.back.length  = 0;
+    this.hatchFront.length = 0;
+    this.hatchBack.length  = 0;
     if (!this.visible) return;
 
     const tc = this.c, pc = this.sphere.c;
@@ -650,6 +689,62 @@ export class Circle {
       v7 = pc.b6 * tc.w1 + pc.b7 * tc.w4 + pc.b8 * tc.w7;
       v8 = pc.b6 * tc.w2 + pc.b7 * tc.w5 + pc.b8 * tc.w8;
     }
+
+    const computeHatch = () => {
+      if (!this.hatch || this.gS !== this.gE) return;
+      const R       = pc.r;
+      const spacing = this.hatch.spacing ?? 10;
+      const innerR  = this.hatch.innerR  ?? 0;
+      const psi     = (this.hatch.angle  ?? 0) * D2R;
+      const cosP    = Math.cos(psi), sinP = Math.sin(psi);
+      const frontH  = this.hatchFront, backH = this.hatchBack;
+      const p1 = {}, p2 = {}, pm = {};
+
+      const planeToScreen = (u, v, out) => {
+        out.x = (v0 / R) * u + (v1 / R) * v + v2;
+        out.y = (v3 / R) * u + (v4 / R) * v + v5;
+        out.z = (v6 / R) * u + (v7 / R) * v + v8;
+      };
+
+      const pushInterval = (s, t1, t2) => {
+        if (t2 <= t1) return;
+        const u1 =  s * cosP + t1 * sinP, v1 = -s * sinP + t1 * cosP;
+        const u2 =  s * cosP + t2 * sinP, v2 = -s * sinP + t2 * cosP;
+        planeToScreen(u1, v1, p1);
+        planeToScreen(u2, v2, p2);
+        if (p1.z >= 0 && p2.z >= 0) {
+          frontH.push({ move: [p1.x, p1.y], line: [p2.x, p2.y] });
+        } else if (p1.z < 0 && p2.z < 0) {
+          backH.push({ move: [p1.x, p1.y], line: [p2.x, p2.y] });
+        } else {
+          const f  = p1.z / (p1.z - p2.z);
+          const tm = t1 + f * (t2 - t1);
+          const um = s * cosP + tm * sinP, vm = -s * sinP + tm * cosP;
+          planeToScreen(um, vm, pm);
+          if (p1.z >= 0) {
+            frontH.push({ move: [p1.x, p1.y], line: [pm.x, pm.y] });
+            backH.push( { move: [pm.x, pm.y], line: [p2.x, p2.y] });
+          } else {
+            backH.push( { move: [p1.x, p1.y], line: [pm.x, pm.y] });
+            frontH.push({ move: [pm.x, pm.y], line: [p2.x, p2.y] });
+          }
+        }
+      };
+
+      const kMax = Math.ceil(R / spacing);
+      for (let k = -kMax; k <= kMax; k++) {
+        const s = k * spacing;
+        if (Math.abs(s) >= R) continue;
+        const tMax = Math.sqrt(R * R - s * s);
+        if (innerR > 0 && Math.abs(s) < innerR) {
+          const tIn = Math.sqrt(innerR * innerR - s * s);
+          pushInterval(s, -tMax, -tIn);
+          pushInterval(s,  tIn,  tMax);
+        } else {
+          pushInterval(s, -tMax, tMax);
+        }
+      }
+    };
 
     const minStep  = this.minStep;
     const frontArr = this.front,
@@ -686,11 +781,12 @@ export class Circle {
     if (A === 0) {
       if (v8 < 0) drawArc(this.gS, this.gE, backArr);
       else drawArc(this.gS, this.gE, frontArr);
+      computeHatch();
       return;
     }
     const sj = -v8 / A;
-    if (sj <= -1) { drawArc(this.gS, this.gE, frontArr); return; }
-    if (sj >=  1) { drawArc(this.gS, this.gE, backArr);  return; }
+    if (sj <= -1) { drawArc(this.gS, this.gE, frontArr); computeHatch(); return; }
+    if (sj >=  1) { drawArc(this.gS, this.gE, backArr);  computeHatch(); return; }
 
     const j = Math.asin(sj);
     const t = Math.atan2(v6, v7);
@@ -705,6 +801,7 @@ export class Circle {
     if (this.gS === this.gE) {
       drawArc(gAsc,  gDesc, frontArr);
       drawArc(gDesc, gAsc,  backArr);
+      computeHatch();
       return;
     }
     const gArray = [[gAsc, 0], [gDesc, 1], [this.gS, 2], [this.gE, 3]];
@@ -731,6 +828,7 @@ export class Circle {
       else if (code === 2) draw  = true;
       else                 draw  = false;
     }
+    computeHatch();
   }
 }
 
@@ -904,65 +1002,537 @@ export class Line {
 }
 
 /**
+ * Default absolute orientation: normal = radial, up in the meridional plane.
+ * @param {{x:number,y:number,z:number}} p - Point on the sphere.
+ */
+export function radialUp(p) {
+  const n = { x: p.x, y: p.y, z: p.z };
+  let u;
+  if (!(n.x === 0 && n.y === 0)) {
+    const ux = -n.x * n.z, uy = -n.z * n.y, uz = n.x * n.x + n.y * n.y;
+    const m  = Math.sqrt(ux * ux + uy * uy + uz * uz);
+    u = { x: ux / m, y: uy / m, z: uz / m };
+  } else {
+    u = { x: 0, y: 1, z: 0 };
+  }
+  return { n, u };
+}
+
+/**
+ * Screen transform at world point p with unit normal n and up u (Flash absOrient).
+ * @param {CelestialSphere} S
+ * @param {{x:number,y:number,z:number}} p
+ * @param {{x:number,y:number,z:number}} n
+ * @param {{x:number,y:number,z:number}} u
+ * @param {number} [sys=0] - 0 horizon (WtoSz), 1 celestial (CtoSz).
+ */
+export function absOrient(S, p, n, u, sys = 0) {
+  const c = S.c;
+  const sp = {}, sp_n = {}, sp_u = {};
+  const toSz = (pt, out) => (sys === 1 ? S.CtoSz(pt, out) : S.WtoSz(pt, out));
+  toSz(p, sp);
+  toSz({ x: p.x + n.x, y: p.y + n.y, z: p.z + n.z }, sp_n);
+  toSz({ x: p.x + u.x, y: p.y + u.y, z: p.z + u.z }, sp_u);
+  const npz = sys === 1
+    ? (n.x * c.b6 + n.y * c.b7 + n.z * c.b8) / c.r
+    : (n.x * c.a6 + n.y * c.a7 + n.z * c.a8) / c.r;
+  const A = Math.atan2(sp_n.y - sp.y, sp_n.x - sp.x) + HALF_PI;
+  const cA = Math.cos(A), sA = Math.sin(A);
+  const x0 = sp_u.x - sp.x, y0 = sp_u.y - sp.y;
+  const x1 = cA * x0 + sA * y0, y1 = -sA * x0 + cA * y0;
+  const instRot = Math.atan2(y1 / npz, x1) + HALF_PI;
+  return { sp, yscale: npz, shellRot: A, instRot };
+}
+
+/** Stroke quadratic circle path buckets onto ctx. */
+export function strokeCirclePaths(ctx, paths, { color, thick, alpha, lineCap }) {
+  if (!paths || !paths.length) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = Math.max(thick, 0.6);
+  ctx.globalAlpha = alpha;
+  if (lineCap) ctx.lineCap = lineCap;
+  for (const p of paths) {
+    ctx.beginPath();
+    ctx.moveTo(p.move[0], p.move[1]);
+    for (const cu of p.curves) ctx.quadraticCurveTo(cu[0], cu[1], cu[2], cu[3]);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Parse a horizon or celestial point and project to screen coordinates.
+ * @param {CelestialSphere} S
+ * @param {object} inP - `{az,alt}` or `{ra,dec}` (optional `r`)
+ * @param {object} outSp - Mutated screen point `{x,y,z}`
+ * @param {object} [outP] - Optional mutated parsed point `{sys,x,y,z,...}`
+ * @returns {object} Parsed point (same as outP when provided)
+ */
+export function projectPointScreen(S, inP, outSp, outP) {
+  const p = outP || {};
+  S.parsePointInput(inP, p);
+  if      (p.sys === 1) S.CtoSz(p, outSp);
+  else if (p.sys === 0) S.WtoSz(p, outSp);
+  return p;
+}
+
+/** Legacy fS/bS band: true when the projected point is on the near hemisphere. */
+export function isScreenFront(sp) {
+  return sp.z >= 0;
+}
+
+/**
+ * Far-side circle arc, stroked after an occluding fill (horizon plane, Earth, …).
+ * Dimmed like other back circles, with an optional halo underlay for rim readability.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Circle} circle
+ * @param {{ hexToRGBA: function, haloColor?: string, haloAlpha?: number, dim?: number, haloWidth?: number }} opts
+ */
+export function drawCircleArcBack(ctx, circle, { haloColor = '#ffffff', haloAlpha = 0.9, dim = 0.55, haloWidth = 5 }) {
+  if (!circle || circle.visible === false) return;
+  const paths = circle.back;
+  if (!paths || !paths.length) return;
+  const strokePaths = () => {
+    for (const p of paths) {
+      ctx.beginPath();
+      ctx.moveTo(p.move[0], p.move[1]);
+      for (const cu of p.curves) ctx.quadraticCurveTo(cu[0], cu[1], cu[2], cu[3]);
+      ctx.stroke();
+    }
+  };
+  ctx.save();
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.globalAlpha = circle.alpha * dim;
+  ctx.strokeStyle = hexToRGBA(haloColor, haloAlpha);
+  ctx.lineWidth   = haloWidth;
+  strokePaths();
+  ctx.strokeStyle = circle.color;
+  ctx.lineWidth   = Math.max(1, circle.thick);
+  strokePaths();
+  ctx.restore();
+}
+
+/**
+ * Faint outline at the celestial-sphere limb (after {@link drawGlass}).
+ * @param {function(string, number): string} hexToRGBA
+ */
+export function drawSphereRim(ctx, S, CSC, alpha = 0.5) {
+  ctx.strokeStyle = hexToRGBA(CSC.CSPHERE_4, alpha);
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, S.c.r, 0, TWO_PI);
+  ctx.stroke();
+}
+
+/** Stroke line-segment path buckets onto ctx. */
+export function strokeLinePaths(ctx, paths, { color, thick, alpha }) {
+  if (!paths || !paths.length) return;
+  ctx.lineJoin    = 'round';
+  ctx.miterLimit  = 2;
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = Math.max(thick, 0.6);
+  ctx.globalAlpha = alpha;
+  for (const p of paths) {
+    ctx.beginPath();
+    ctx.moveTo(p.move[0], p.move[1]);
+    ctx.lineTo(p.line[0], p.line[1]);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Draw front or back circle bucket with optional dimming and skip predicate.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Circle[]} circles
+ * @param {'back'|'front'} which
+ * @param {{dim?: number, skip?: function, lineCap?: string}} [opts]
+ */
+export function drawCircleBucket(ctx, circles, which, opts = {}) {
+  const dim  = (which === 'back') ? (opts.dim ?? 0.55) : 1;
+  const skip = opts.skip || (() => false);
+  for (const c of circles) {
+    if (skip(c, which)) continue;
+    if (c.visible === false) continue;
+    const paths = c[which];
+    if (!paths || !paths.length) continue;
+    strokeCirclePaths(ctx, paths, {
+      color: c.color, thick: c.thick, alpha: c.alpha * dim, lineCap: opts.lineCap
+    });
+  }
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * Stroke interior hatch chords for circles with an enabled hatch config.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Circle[]} circles
+ * @param {'back'|'front'} which
+ * @param {{dim?: number}} [opts]
+ */
+export function drawCircleHatch(ctx, circles, which, opts = {}) {
+  const dim = (which === 'back') ? (opts.dim ?? 0.55) : 1;
+  for (const c of circles) {
+    if (!c.hatch || c.visible === false) continue;
+    const segs = (which === 'back') ? c.hatchBack : c.hatchFront;
+    if (!segs || !segs.length) continue;
+    const h = c.hatch;
+    strokeLinePaths(ctx, segs, {
+      color: h.color ?? c.color,
+      thick: h.thick ?? 1,
+      alpha: (h.alpha ?? 1) * dim
+    });
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Stroke one Line clip bucket (bE / fE / aI / bI or merged front/back). */
+export function drawLineLayer(ctx, lines, which) {
+  for (const l of lines) {
+    const segs = l[which];
+    if (!segs || !segs.length) continue;
+    strokeLinePaths(ctx, segs, { color: l.color, thick: l.thick, alpha: l.alpha });
+  }
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * Small open ring at world point p, radial orientation (Flash zenith/nadir marker).
+ * @param {function(string, number): string} hexToRGBA - from kl-unl-utils.js
+ */
+export function drawMarker(ctx, S, p, CSC) {
+  const { n, u } = radialUp(p);
+  const o = absOrient(S, p, n, u);
+  ctx.save();
+  ctx.translate(o.sp.x, o.sp.y);
+  ctx.rotate(o.shellRot);
+  ctx.scale(1, o.yscale);
+  ctx.rotate(o.instRot);
+  ctx.lineWidth   = 1.5;
+  ctx.strokeStyle = CSC.POLE_MRK1;
+  ctx.fillStyle   = hexToRGBA(CSC.POLE_MRK2, 0.9);
+  ctx.beginPath();
+  ctx.arc(0, 0, 4, 0, TWO_PI);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Radially oriented star burst at a sphere point (Flash Draggable Star /
+ * setOrientationType("absolute") with radial normal). Full opacity; optional
+ * hover image when front-facing.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CelestialSphere} S
+ * @param {object} worldPt - Parsed or parseable point ({az,alt,r} or {ra,dec,r}, …).
+ * @param {HTMLImageElement} img
+ * @param {HTMLImageElement} imgHover
+ * @param {boolean} hovered - pointer is over the star hit target
+ * @param {object} [opts] - { sys, scale, sp } optional precomputed screen point
+ */
+export function drawStarSprite(ctx, S, worldPt, img, imgHover, hovered, opts = {}) {
+  const p = (worldPt.x != null) ? worldPt : (() => { const q = {}; S.parsePointInput(worldPt, q); return q; })();
+  const sp = opts.sp || (() => {
+    const s = {};
+    if (p.sys === 1) S.CtoSz(p, s); else S.WtoSz(p, s);
+    return s;
+  })();
+  const image = (hovered && isScreenFront(sp)) ? imgHover : img;
+  if (!image?.naturalWidth) return;
+  const w     = image.naturalWidth, h = image.naturalHeight;
+  const scale = opts.scale ?? 1;
+  const sys   = opts.sys != null ? opts.sys : (p.sys != null ? p.sys : 0);
+  const { n, u } = radialUp(p);
+  const o     = absOrient(S, p, n, u, sys);
+  ctx.save();
+  ctx.translate(o.sp.x, o.sp.y);
+  ctx.rotate(o.shellRot);
+  ctx.scale(1, o.yscale);
+  ctx.rotate(o.instRot);
+  if (scale !== 1) ctx.scale(scale, scale);
+  ctx.drawImage(image, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+/**
+ * Canvas label at a sphere point with absolute orientation (mirrors on far side).
+ * @param {CelestialSphere} S
+ * @param {object} worldPt - Parsed or parseable point ({x,y,z} or {ra,dec,r}, …).
+ * @param {object} [opts] - { sys, font, halo, alpha }
+ */
+export function drawOrientedLabel(ctx, S, worldPt, text, color, opts = {}) {
+  const p = (worldPt.x != null) ? worldPt : (() => { const q = {}; S.parsePointInput(worldPt, q); return q; })();
+  const sys   = opts.sys != null ? opts.sys : 0;
+  const { n, u } = radialUp(p);
+  const o     = absOrient(S, p, n, u, sys);
+  ctx.save();
+  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+  ctx.translate(o.sp.x, o.sp.y);
+  ctx.rotate(o.shellRot);
+  ctx.scale(1, o.yscale);
+  ctx.rotate(o.instRot);
+  ctx.lineJoin     = 'round';
+  ctx.miterLimit   = 2;
+  ctx.font         = opts.font || '700 16px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth    = 3;
+  ctx.strokeStyle  = opts.halo || (S.CSC && S.CSC.LABEL_HALO) || '#ffffff';
+  ctx.fillStyle    = color;
+  ctx.strokeText(text, 0, 0);
+  ctx.fillText(  text, 0, 0);
+  ctx.restore();
+}
+
+/**
+ * Fill coastline polygons on a globe disk, following the limb when segments pass
+ * behind the visible hemisphere. Ports Flash GlobeComponent.updateGlobe().
+ * Without limb-following, skipping back-facing vertices and calling closePath()
+ * draws a straight chord across the disk and produces spurious land fill.
+ *
+ * @param {CanvasRenderingContext2D} ctx - translated to globe center; disk clip optional
+ * @param {Array<Array<{x:number,y:number,z:number}>>} shoreData
+ * @param {function({x,y,z}, {x,y,z}): void} project - writes screen x, y and depth z
+ * @param {number} globeRadius - visible disk radius (e.g. inner.c.r)
+ */
+export function fillShorePolygons(ctx, shoreData, project, globeRadius) {
+  const arcR    = 1.5 * globeRadius;
+  const arcStep = 2   * Math.acos(globeRadius * 1.1 / arcR);
+  const out     = {};
+
+  for (const poly of shoreData) {
+    const len = poly.length;
+    let startIdx = -1, prevFront = false;
+    for (let k = 0; k < len; k++) {
+      project(poly[k], out);
+      if (out.z > 0) {
+        if (prevFront) { startIdx = k; break; }
+        prevFront = true;
+      } else prevFront = false;
+    }
+    if (startIdx < 0) continue;
+
+    ctx.beginPath();
+    project(poly[startIdx], out);
+    ctx.moveTo(out.x, out.y);
+    let prevBack = false, angleLast = 0;
+
+    for (let w = 1; w < len; w++) {
+      project(poly[(startIdx + w) % len], out);
+      const isBack = out.z < 0;
+      if (!isBack) {
+        if (prevBack) {
+          const ang = Math.atan2(out.y, out.x);
+          let da = pMod(ang - angleLast, TWO_PI);
+          let steps, inc;
+          if (da > PI) { da = TWO_PI - da; steps = Math.ceil(da / arcStep); inc = -da / steps; }
+          else { steps = Math.ceil(da / arcStep); inc = da / steps; }
+          for (let t = 1; t <= steps; t++) {
+            const aa = angleLast + inc * t;
+            ctx.lineTo(arcR * Math.cos(aa), arcR * Math.sin(aa));
+          }
+          ctx.lineTo(out.x, out.y);
+        } else {
+          ctx.lineTo(out.x, out.y);
+        }
+      } else if (!prevBack) {
+        angleLast = Math.atan2(out.y, out.x);
+        ctx.lineTo(arcR * Math.cos(angleLast), arcR * Math.sin(angleLast));
+      }
+      prevBack = isBack;
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
+ * Frosted-glass sphere body using CSC grey radial stops.
+ * @param {function(string, number): string} hexToRGBA - from kl-unl-utils.js
+ */
+export function drawGlass(ctx, S, CSC) {
+  const r = S.c.r;
+  const g = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+  g.addColorStop(0,    hexToRGBA(CSC.CSPHERE_1, 0.32));
+  g.addColorStop(0.80, hexToRGBA(CSC.CSPHERE_2, 0.38));
+  g.addColorStop(1,    hexToRGBA(CSC.CSPHERE_3, 0.52));
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TWO_PI);
+  ctx.fillStyle = g;
+  ctx.fill();
+}
+
+/**
+ * Port of Flash "7 CS Objects.as": screen position + orientation for sphere sprites.
+ */
+export class SphereObject {
+  constructor(sphere, position, opts) {
+    this.s = sphere;
+    this._o = { x: 0, y: 0, z: 0 };
+    this._n = { x: 0, y: 0, z: 1 };
+    this._u = { x: 0, y: 1, z: 0 };
+    this._oType  = 0;
+    this.visible = true;
+    this._sp     = { x: 0, y: 0, z: 0 };
+    this.opts    = opts || {};
+    this.labe    = false;
+    this.text    = '';
+    if (position) this.setPosition(position);
+    else { this._p = { x: 0, y: 0, z: 1 }; this._sys = 0; this._r = 1; }
+  }
+
+  setPosition(a) {
+    const p = this.s.parse(a);
+    this._sys = (p.sys === 1) ? 1 : 0;
+    this._p = p;
+    this._r = p.r;
+  }
+
+  setOrientationAbsolute() {
+    this._oType = 2;
+    const p = this._p;
+    const nm = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    this._n = { x: p.x / nm, y: p.y / nm, z: p.z / nm };
+    if (!(this._n.x === 0 && this._n.y === 0)) {
+      const u = {
+        x: -this._n.x * this._n.z,
+        y: -this._n.z * this._n.y,
+        z:  this._n.x * this._n.x + this._n.y * this._n.y
+      };
+      const nu = Math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z);
+      this._u = { x: u.x / nu, y: u.y / nu, z: u.z / nu };
+    } else {
+      this._u = { x: 0, y: 1, z: 0 };
+    }
+    this._p_u = { x: p.x + this._u.x, y: p.y + this._u.y, z: p.z + this._u.z };
+    this._p_n = { x: p.x + this._n.x, y: p.y + this._n.y, z: p.z + this._n.z };
+  }
+
+  update() {
+    const s = this.s, c = s.c, sp = this._sp;
+    if (this._sys === 0) s.WtoSz(this._p, sp); else s.CtoSz(this._p, sp);
+    if (this._oType === 2) {
+      const sp_u = {}, sp_n = {};
+      let npz;
+      if (this._sys === 0) {
+        npz = (this._n.x * c.a6 + this._n.y * c.a7 + this._n.z * c.a8) / c.r;
+        s.WtoSz(this._p_n, sp_n);
+        s.WtoSz(this._p_u, sp_u);
+      } else {
+        npz = (this._n.x * c.b6 + this._n.y * c.b7 + this._n.z * c.b8) / c.r;
+        s.CtoSz(this._p_n, sp_n);
+        s.CtoSz(this._p_u, sp_u);
+      }
+      this.yscale = npz;
+      const Aa = Math.atan2(sp_n.y - sp.y, sp_n.x - sp.x) + HALF_PI;
+      this.rotation = Aa;
+      const cA = Math.cos(Aa),      sA = Math.sin(Aa);
+      const x0 = sp_u.x - sp.x,     y0 = sp_u.y - sp.y;
+      const x1 = cA * x0 + sA * y0, y1 = -sA * x0 + cA * y0;
+      this.instRotation = Math.atan2(y1 / npz, x1) + HALF_PI;
+    } else {
+      this.yscale       = 1;
+      this.rotation     = 0;
+      this.instRotation = 0;
+    }
+  }
+}
+
+/**
  * Star location describer.
  *
- * @param   {number} az  - Azimuth  angle of star for stick figure on horizon (degrees)
- * @param   {number} alt - Altitude angle of star for stick figure on horizon (degrees)
- * @returns {string} snt - Description of star position in sky, for accessibility content
+ * @param   {number} mode - Mode 0 for altitude        and azimuth     angles, 
+  *                         Mode 1 for right ascension and declination angles  
+ * @param   {number} az   - Azimuth  angle of star for stick figure on horizon (degrees)
+ * @param   {number} alt  - Altitude angle of star for stick figure on horizon (degrees)
+ * @returns {string} snt  - Description of star position in sky, for accessibility content
  */
 
-export function locateStar(az,alt)  {
-  // Place star in observer's sky as one might describe it to a fellow viewer,
-  // based on stellar azimuth and altitude and oriented with respect to
-  // the cardinal directions and the horizon.
-  //
+export function locateStar(coord1,coord2,mode=0)  {
+  // Place star in observer's sky as one might describe it to a fellow viewer.
   // Text is designed to be used by screen readers and in aria labels.
 
-  // Describe star's position in the sky based on azimuth.
-  let s0 = 'The star appears ';
-  if        ( az ==   0 )  {
-    s0 += 'due north';
-  } else if ( (  0   <= az && az <  22.5) ||
-              (337.5 <= az && az < 360  ) )  {
-    s0 += 'slightly ' + (az < 180 ? 'east'  : 'west'  ) + ' of north';
-  } else if ( 22.5 <= az && az <  67.5 )  {
-    s0 += 'in the northeast';
-  } else if ( az ==  90 )  {
-    s0 += 'due east';
-  } else if ( 67.5 <= az && az < 112.5 )  {
-    s0 += 'slightly ' + (az <  90 ? 'north' : 'south' ) + ' of east';
-  } else if (112.5 <= az && az < 157.5 )  {
-    s0 += 'in the southeast';
-  } else if ( az == 180 )  {
-    s0 += 'due south';
-  } else if (157.5 <= az && az < 202.5 )  {
-    s0 += 'slightly ' + (az < 180 ? 'east'  : 'west'  ) + ' of south';
-  } else if (202.5 <= az && az < 247.5 )  {
-    s0 += 'in the southwest';
-  } else if ( az == 270 )  {
-    s0 += 'due west';
-  } else if (247.5 <= az && az < 292.5 )  {
-    s0 += 'slightly ' + (az < 270 ? 'south' : 'north' ) + ' of west';
-  } else if (292.5 <= az && az < 337.5 )  {
-    s0 += 'in the northwest';
-  }
-  // Describe star's position in the sky based on altitude.
-  if        ( alt <  -5 )  {
-    s0  = 'The star is hidden well below the horizon. ';
-  } else if ( alt <   0 )  {
-    s0  = 'The star is hidden just below the horizon. ';
-  } else if ( alt ==  0 )  {
-    s0 += ', right on the horizon. ';
-  } else if ( alt <  30 )  {
-    s0 += ', above the horizon. ';
-  } else if ( alt <  60 )  {
-    s0 += ', well above the horizon. ';
-  } else if ( alt <  75 )  {
-    s0 += ', high above the horizon. ';
-  } else if ( alt <  90 )  {
-    s0 += ', almost directly above the observer\'s head. ';
-  } else  {
-    s0  = 'The star is directly above the observer\'s head. ';
+  let s0 = '';
+  
+  if ( !Number.isFinite( coord1 ) )  { coord1 = 0; }
+  if ( !Number.isFinite( coord2 ) )  { coord2 = 0; }
+    
+  // Place star in observer's sky based on stellar azimuth and altitude and
+  // oriented with respect to the cardinal directions and the horizon.
+  if ( mode == 0 )  {
+    
+    const az  = Math.min( Math.max( coord1,   0 ), 360 );
+    const alt = Math.min( Math.max( coord2, -90 ),  90 );
+    
+    // Describe star's position in the sky based on azimuth.
+    s0 = 'The star appears ';
+    if        ( az ==   0 )  {
+      s0 += 'due north';
+    } else if ( (  0   <= az && az <  22.5) ||
+                (337.5 <= az && az <= 360  ) )  {
+      s0 += 'slightly ' + (az < 180 ? 'east'  : 'west'  ) + ' of north';
+    } else if ( 22.5 <= az && az <  67.5 )  {
+      s0 += 'in the northeast';
+    } else if ( az ==  90 )  {
+      s0 += 'due east';
+    } else if ( 67.5 <= az && az < 112.5 )  {
+      s0 += 'slightly ' + (az <  90 ? 'north' : 'south' ) + ' of east';
+    } else if (112.5 <= az && az < 157.5 )  {
+      s0 += 'in the southeast';
+    } else if ( az == 180 )  {
+      s0 += 'due south';
+    } else if (157.5 <= az && az < 202.5 )  {
+      s0 += 'slightly ' + (az < 180 ? 'east'  : 'west'  ) + ' of south';
+    } else if (202.5 <= az && az < 247.5 )  {
+      s0 += 'in the southwest';
+    } else if ( az == 270 )  {
+      s0 += 'due west';
+    } else if (247.5 <= az && az < 292.5 )  {
+      s0 += 'slightly ' + (az < 270 ? 'south' : 'north' ) + ' of west';
+    } else if (292.5 <= az && az < 337.5 )  {
+      s0 += 'in the northwest';
+    }
+    // Describe star's position in the sky based on altitude.
+    if        ( alt <  -5 )  {
+      s0  = 'The star is hidden well below the horizon. ';
+    } else if ( alt <   0 )  {
+      s0  = 'The star is hidden just below the horizon. ';
+    } else if ( alt ==  0 )  {
+      s0 += ', right on the horizon. ';
+    } else if ( alt <  30 )  {
+      s0 += ', above the horizon. ';
+    } else if ( alt <  60 )  {
+      s0 += ', well above the horizon. ';
+    } else if ( alt <  75 )  {
+      s0 += ', high above the horizon. ';
+    } else if ( alt <  90 )  {
+      s0 += ', almost directly above the observer\'s head. ';
+    } else  {
+      s0  = 'The star is directly above the observer\'s head. ';
+    }
+    
+  // Place star in observer's sky based on stellar right ascension and declination.
+  } else if (mode == 1)  {
+    
+    const ra  = Math.min( Math.max( coord1,   0 ), 24 );
+    const dec = Math.min( Math.max( coord2, -90 ), 90 );
+    
+    // Describe star's position in the sky based on declination.
+    if        ( dec == -90   )  {
+      s0 += 'directly above the South Pole. ';
+    } else if ( dec <  -66.5 )  {
+      s0 += 'almost directly above the South Pole. ';
+    } else if ( dec <  -23.5 )  {
+      s0 += 'visible from the southern hemisphere. ';
+    } else if ( dec <   23.5 )  {
+      s0 += 'above the equator. ';
+    } else if ( dec <   66.5 )  {
+      s0 += 'visible from the northern hemisphere. ';
+    } else if ( dec <   90   )  {
+      s0 += 'almost directly above the North Pole. ';
+    } else  {
+      s0 += 'directly above the North Pole. ';
+    }
   }
   return s0;
 };

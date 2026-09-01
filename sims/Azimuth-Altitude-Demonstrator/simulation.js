@@ -3,29 +3,42 @@
    ---------------------------------------------------------------------------
    Rendering uses an HTML5 <canvas> for code-drawn geometry (sphere shading,
    horizon plane, circles, arcs, pole stubs, markers, and feature labels) and
-   images for the star and stick figure. Named labels and degree readouts are 
+   images for the star and stick figure. Feature labels and degree readouts are 
    announced via canvas aria-label and live region.
    
    Math (rotation matrices, great/small-circle front/back splitting,
    screen<->horizon conversion, drag + snapping) is kept identical to legacy 
-   source so positions, arcs and drag behaviour match original exactly.
+   source so positions, arcs and drag behaviour match original.
    =========================================================================== */
 
   // Import celestial sphere and utilities module components
   import {
     CelestialSphere, Circle, Line,
-    CELESTIAL_SPHERE_COLORS, 
+    CELESTIAL_SPHERE_COLORS,
     D2R, R2D, TWO_PI, HALF_PI, PI,
-    locateStar
+    drawCircleBucket, drawCircleArcBack,
+    drawLineLayer, drawGlass, drawMarker, drawStarSprite, 
+  //drawCircleHatch,
+    projectPointScreen, isScreenFront, drawOrientedLabel, 
+    locateStar, absOrient, radialUp
   } from '../foundation/js/kl-unl-celestial-sphere.js';
 
   import {
-    legToFixed, speak, pMod, snapFixed, amplifyArrowKey, updateSliderProgress,
-    hexToRGBA, soon, announceLive, logAct
+    legToFixed, stepToPrec, speak, pMod, snapFixed, noEinNumber, amplifyArrowKey,
+    updateSliderProgress, hexToRGBA, soon, announceLive, logAct,
+    updateShowHideLabelButtons
   } from '../foundation/js/kl-unl-utils.js';
 
   // Log initialization, browser, platform, and screen size in server access log
   logAct("INIT_AltAz");
+
+  // Adjust control panel control labels for very width screens via two break-points
+  const brkpt1      = 65;  // first  breakpoint, at 65rem
+  const brkpt2      = 75;  // first  breakpoint, at 75rem
+  const mediaCheck1 = window.matchMedia('(min-width: ' + brkpt1 + 'rem)');
+  const mediaCheck2 = window.matchMedia('(min-width: ' + brkpt2 + 'rem)');
+  updateControlLabels(mediaCheck1);
+  updateControlLabels(mediaCheck2);
 
   /* =========================================================================
      App: controller, canvas renderer, UI wiring.
@@ -86,6 +99,16 @@
       // Draw guides first, and then stellar coordinates
       this.circles = [this.meridian2, this.azCircle, this.altCircle,
                       this.meridian,  this.azArc,    this.altArc];
+
+      // Test hatching of a celestial sphere circle (checking implementation and format)
+      /*
+      this.meridian.setHatch({
+        color: this.S.CSC.ECLPTC_2, thick: 1, alpha: 1,
+        spacing: 10, angle: 0,
+        innerR: 50
+      });
+      */
+      
     }
 
     /* =========================================================================
@@ -105,7 +128,7 @@
     }
 
     cacheDom() {
-      this.canvas        = document.getElementById('sky');
+      this.canvas        = document.getElementById('sky-canvas');
       this.ctx           = this.canvas.getContext('2d');
       this.canvas.width  = this.STAGE * this.dpr;
       this.canvas.height = this.STAGE * this.dpr;
@@ -164,17 +187,11 @@
       this.labels.nadir    = this.chk.nadir.checked;
       this.labels.meridian = this.chk.meridian.checked;
 
-      // Disable show all or hide all buttons as appropriate
-      document.getElementById('showAllBtn').disabled = false;
-      document.getElementById('hideAllBtn').disabled = false;
-      if ( ( this.chk.zenith.checked + this.chk.horizon.checked +
-             this.chk.nadir.checked  + this.chk.meridian.checked ) == 0 )  {
-        document.getElementById('hideAllBtn').disabled = true;
-      }
-      if ( ( this.chk.zenith.checked + this.chk.horizon.checked +
-             this.chk.nadir.checked  + this.chk.meridian.checked ) == 4 )  {
-        document.getElementById('showAllBtn').disabled = true;
-      }
+      updateShowHideLabelButtons(
+        document.getElementById('showAllBtn'),
+        document.getElementById('hideAllBtn'),
+        Object.values(this.chk)
+      );
       this.render();
       this.announce();
     }
@@ -223,11 +240,11 @@
       if (!skipSliderSync) {
         this.azSlider.value  = pt.az;
         this.altSlider.value = pt.alt;
-        this.azNumber.value  = legToFixed(pt.az,  1);
-        this.altNumber.value = legToFixed(pt.alt, 1);
+        this.azNumber.value  = legToFixed(pt.az,  stepToPrec(azNumber.step  ) );
+        this.altNumber.value = legToFixed(pt.alt, stepToPrec(altNumber.step ) );
       }
       // Spoken values include angle name and degrees unit.
-      this.azSlider.setAttribute ('aria-valuetext', 'Azimuth '  + speak(pt.az,  1, 'degree'));
+      this.azSlider.setAttribute ('aria-valuetext', 'Azimuth '  + speak(pt.az,  0, 'degree'));
       this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 1, 'degree'));
     }
 
@@ -242,9 +259,9 @@
       for (const l of this.lines  ) l.update();
 
       // star + markers screen positions
-      const starP = {}; S.parsePointInput({ az: this.star.az, alt: this.star.alt, r: 1 }, starP);
+      const starP = {};
+      projectPointScreen(S, { az: this.star.az, alt: this.star.alt, r: 1 }, this.star.sp, starP);
       this.star.p = starP;
-      S.WtoSz(starP, this.star.sp);
       const zenithSp = {}; S.WtoSz({ x: 0, y: 0, z:  1 }, zenithSp);
       const nadirSp  = {}; S.WtoSz({ x: 0, y: 0, z: -1 }, nadirSp );
       this.computeLabelAnchors(zenithSp, nadirSp);
@@ -259,41 +276,45 @@
 
       // For star, legacy fS/bS bands keyed on screen depth (sp.z),
       // not world altitude — drawn after circles in the matching hemisphere.
-      const starFront = this.star.sp.z >= 0;
+      const starFront = isScreenFront(this.star.sp);
 
       // Legacy line layers: bE (unmasked, behind) → shading →
       // bI (under plane) → horizon → aI (over plane) → front circles → fE.
       // External stubs use full alpha; only back *circles* are dimmed.
-      this.drawLineLayer(   'bE');
-      this.drawCircleBucket('back');
-      this.drawValueLabels( 'back');           // before glass and stick figure
-      this.drawNamedLabels( 'back');           // before glass (far-side names)
-      this.drawMarker({ x: 0, y: 0, z: -1 });  // nadir ring (_bF after _bEL)
-      if (!starFront) this.drawStar();         // bS: after back circles
+      this.paintLineLayer(   'bE');
+      this.paintCircleBucket('back');
+      this.drawValueLabels(  'back');           // before glass and stick figure
+      this.drawFeatureLabels('back');           // before glass (far-side names)
+      drawMarker(this.ctx, this.S, { x: 0, y: 0, z: -1 }, this.S.CSC);  // nadir ring (_bF after _bEL)
+      if (!starFront) this.drawStar();          // bS: after back circles
+
+      // Test hatching of a celestial sphere circle
+    //drawCircleHatch(this.ctx, this.circles, 'back', { dim: 0.55 });  // great circle hatching
 
       // Frosted-glass sphere body: a translucent grey disk that sits between
       // the far and near halves, so far-side circles read as fainter (seen
       // "through" the front of the sphere). Also gives the sphere shape.
-      this.drawGlass();
+      drawGlass(this.ctx, this.S, this.S.CSC);
 
-      this.drawLineLayer(   'bI');             // inner-below, under the plane
+      this.paintLineLayer(   'bI');             // inner-below, under the plane
       this.drawHorizonPlane();
-      this.drawLineLayer(   'aI');             // inner-above, over the plane
-      this.drawAzArcBack();                    // far azArc on the green rim (after plane)
+    //drawCircleHatch(this.ctx, this.circles, 'front');  // great circle hatching
+      this.paintLineLayer(   'aI');             // inner-above, over the plane
+      this.drawAzArcBack();                     // far azArc on the green rim (after plane)
 
       // Cardinal labels on horizon plane, split by screen depth so stick 
       // figure occludes labels behind it.
       this.drawCardinals(   'back');
-      this.drawStick();                        // observer stands on the plane
+      this.drawStick();                         // observer stands on the plane
       this.drawCardinals(   'front');
 
       // Near-side geometry (in front of sphere center), full strength
-      this.drawCircleBucket('front');
-      this.drawMarker({ x: 0, y: 0, z: 1 });   // zenith ring (_fF) before npLine
-      this.drawLineLayer(   'fE');             // npLine through the ellipse center
-      if (starFront) this.drawStar();          // fS: after front circles
-      this.drawValueLabels( 'front');          // after stick and front arcs
-      this.drawNamedLabels( 'front');          // near-side names, after geometry
+      this.paintCircleBucket('front');
+      drawMarker(this.ctx, this.S, { x: 0, y: 0, z: 1 }, this.S.CSC);   // zenith ring (_fF) before npLine
+      this.paintLineLayer(   'fE');             // npLine through the ellipse center
+      if (starFront) this.drawStar();           // fS: after front circles
+      this.drawValueLabels(  'front');          // after stick and front arcs
+      this.drawFeatureLabels('front');          // near-side names, after geometry
 
       ctx.restore();
 
@@ -301,26 +322,11 @@
       this.updateCanvasDescription();
     }
 
-    drawCircleBucket(which) {
-      const ctx = this.ctx;
-      const dim = (which === 'back') ? 0.55 : 1;   // far-side lines read fainter
-      for (const c of this.circles) {
-        // Far azArc is coplanar with green disk; painting it here (before
-        // the plane) gets covered by the fill. drawAzArcBack() strokes it after.
-        if (which === 'back' && c === this.azArc) continue;
-        const paths     = c[which];  if (!paths.length) continue;
-        ctx.lineCap     = 'round';  // smooths AltAz zeropoint appearance
-        ctx.lineWidth   = Math.max(1, c.thick);
-        ctx.strokeStyle = c.color;
-        ctx.globalAlpha = (c.alpha ) * dim;
-        for (const p of paths) {
-          ctx.beginPath();
-          ctx.moveTo(p.move[0], p.move[1]);
-          for (const cu of p.curves) ctx.quadraticCurveTo(cu[0], cu[1], cu[2], cu[3]);
-          ctx.stroke();
-        }
-      }
-      ctx.globalAlpha = 1;
+    paintCircleBucket(which) {
+      drawCircleBucket(this.ctx, this.circles, which, {
+        skip: (c, w) => (w === 'back' && c === this.azArc),
+        lineCap: 'round'
+      });
     }
 
     // Far-side azimuth arc, painted after the horizon plane so green fill
@@ -330,48 +336,14 @@
     // Note that without this addition, far-side blue arc appeared to be
     // absent.
     drawAzArcBack() {
-      const c     = this.azArc;  if (!c.visible)    return;
-      const paths = c.back;      if (!paths.length) return;
-      const ctx   = this.ctx;
-      const strokePaths = () => {
-        for (const p of paths) {
-          ctx.beginPath();
-          ctx.moveTo(p.move[0], p.move[1]);
-          for (const cu of p.curves) ctx.quadraticCurveTo(cu[0], cu[1], cu[2], cu[3]);
-          ctx.stroke();
-        }
-      };
-      ctx.save();
-      ctx.lineCap     = 'round';
-      ctx.lineJoin    = 'round';
-      ctx.globalAlpha = (c.alpha ) * 0.55;
-      ctx.strokeStyle = hexToRGBA( this.S.CSC.AZ_ARC_BCK, 0.9 );
-      ctx.lineWidth   = 5;
-      strokePaths();
-      ctx.strokeStyle = c.color;
-      ctx.lineWidth   = Math.max(1, c.thick);
-      strokePaths();
-      ctx.restore();
+      drawCircleArcBack(this.ctx, this.azArc, { haloColor: this.S.CSC.AZ_ARC_BCK });
     }
 
     // Stroke lines (bE / fE / aI / bI) at line's own alpha value.
     // External back stubs (bE) stay full strength so the part past the rim
     // is not dimmed; the glass disk covers the overlapping portion.
-    drawLineLayer(which) {
-      const ctx = this.ctx;
-      for (const l of this.lines) {
-        const segs      = l[which];  if (!segs.length) continue;
-        ctx.lineWidth   = Math.max(1, l.thick);
-        ctx.strokeStyle = l.color;
-        ctx.globalAlpha = l.alpha;
-        for (const s of segs) {
-          ctx.beginPath();
-          ctx.moveTo(s.move[0], s.move[1]);
-          ctx.lineTo(s.line[0], s.line[1]);
-          ctx.stroke();
-        }
-      }
-      ctx.globalAlpha = 1;
+    paintLineLayer(which) {
+      drawLineLayer(this.ctx, this.lines, which);
     }
 
     drawHorizonPlane() {
@@ -399,80 +371,6 @@
       ctx.restore();
     }
 
-    // Marker: small open ring, setOrientationType("absolute") with no args
-    // (normal = radial) so it lies flat on the sphere and foreshortens to an
-    // ellipse as phi changes. At the poles that is yscale = ±sin(phi).
-    drawMarker(p) {
-      const ctx = this.ctx;
-      const n = { x: p.x, y: p.y, z: p.z };
-      let u;
-      if (!(n.x === 0 && n.y === 0)) {
-        const ux = -n.x * n.z, uy = -n.z * n.y, uz = n.x * n.x + n.y * n.y;
-        const m = Math.sqrt(ux * ux + uy * uy + uz * uz);
-        u = { x: ux / m, y: uy / m, z: uz / m };
-      } else {
-        u = { x: 0, y: 1, z: 0 };
-      }
-      const o = this.absOrient(p, n, u);
-      ctx.save();
-      ctx.translate(o.sp.x, o.sp.y);
-      ctx.rotate(o.shellRot);
-      ctx.scale(1, o.yscale);
-      ctx.rotate(o.instRot);
-      ctx.lineWidth   = 1.5;
-      ctx.strokeStyle = this.S.CSC.POLE_MRK1;
-      ctx.fillStyle   = hexToRGBA( this.S.CSC.POLE_MRK2, 0.9 );
-      ctx.beginPath(); ctx.arc(0, 0, 4, 0, TWO_PI);
-      ctx.fill(); ctx.stroke();
-      ctx.restore();
-    }
-
-    // Frosted-glass sphere body. Translucent grey radial fill: clearer in the
-    // center, denser at the rim (also draws sphere outline). Because it is
-    // painted after the far-side geometry, back-side meridian/azimuth/altitude
-    // lines show through it muted, while near-side lines (drawn after) stay
-    // full strength -- the depth cue the original conveyed with masked shading.
-    drawGlass() {
-      const ctx = this.ctx, r = this.S.c.r;
-      const g = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
-      g.addColorStop(0,    hexToRGBA( this.S.CSC.CSPHERE_1, 0.32));
-      g.addColorStop(0.80, hexToRGBA( this.S.CSC.CSPHERE_2, 0.38));
-      g.addColorStop(1,    hexToRGBA( this.S.CSC.CSPHERE_3, 0.52));
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, TWO_PI);
-      ctx.fillStyle = g; ctx.fill();
-    }
-
-    // Calculate screen transform at world point p, with unit normal n and up
-    // vector u, to foreshorten (yscale = normal's screen-z) and rotate for 
-    // alignment tangent to the sphere with "up" along u. 
-    absOrient(p, n, u) {
-      const S       = this.S, c = S.c;
-      const sp      = {}; S.WtoSz(p, sp);
-      const sp_n    = {}; S.WtoSz({ x: p.x + n.x, y: p.y + n.y, z: p.z + n.z }, sp_n);
-      const sp_u    = {}; S.WtoSz({ x: p.x + u.x, y: p.y + u.y, z: p.z + u.z }, sp_u);
-      const npz     = (n.x * c.a6 + n.y * c.a7 + n.z * c.a8) / c.r;   // shell yscale factor
-      const A       = Math.atan2(sp_n.y - sp.y, sp_n.x - sp.x) + HALF_PI; // shell rotation
-      const cA      = Math.cos(A), sA = Math.sin(A);
-      const x0      = sp_u.x - sp.x,     y0 = sp_u.y - sp.y;
-      const x1      = cA * x0 + sA * y0, y1 = -sA * x0 + cA * y0;
-      const instRot = Math.atan2(y1 / npz, x1) + HALF_PI;          // instance rotation
-      return { sp, yscale: npz, shellRot: A, instRot };
-    }
-
-    // Default absolute orientation: normal = radial, up in the meridional plane
-    radialUp(p) {
-      const n = { x: p.x, y: p.y, z: p.z };
-      let u;
-      if (!(n.x === 0 && n.y === 0)) {
-        const ux = -n.x * n.z, uy = -n.z * n.y, uz = n.x * n.x + n.y * n.y;
-        const m  = Math.sqrt(ux * ux + uy * uy + uz * uz);
-        u = { x: ux / m, y: uy / m, z: uz / m };
-      } else {
-        u = { x: 0,      y: 1,      z: 0      };
-      }
-      return { n, u };
-    }
-
     // Stick figure (observer) standing at the sphere center. setOrientationType
     // ("absolute", normal (-1,0,0), up = zenith (0,0,1)) -> tilts/foreshortens
     // with the local ground as view rotates.
@@ -481,7 +379,7 @@
       const sc  = 1.2;
       const w   = this.imgStick.naturalWidth  * sc;
       const h   = this.imgStick.naturalHeight * sc;
-      const o   = this.absOrient({ x: 0, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+      const o   = absOrient(this.S, { x: 0, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
       ctx.save();
       ctx.translate(o.sp.x, o.sp.y);
       ctx.rotate(o.shellRot);
@@ -506,7 +404,7 @@
       S.parsePointInput({ az, alt: 0, r: App.CARDINAL_R }, p);
       const n   = { x: 0, y: 0, z: 1 };
       const u   = { x: 1, y: 0, z: 0 };   // N's plane "up" — same for all cardinals
-      const o   = this.absOrient(p, n, u);
+      const o   = absOrient(this.S, p, n, u);
       ctx.save();
       ctx.translate(o.sp.x, o.sp.y);
       ctx.rotate(o.shellRot);
@@ -542,27 +440,9 @@
     }
 
     drawValueLabel(pt, text, ltrColor) {
-      const ctx = this.ctx, S = this.S;
-      const p   = {};
-      S.parsePointInput({ az: pt.az, alt: pt.alt, r: 1.001 }, p);
-      const { n, u } = this.radialUp(p);
-      const o        = this.absOrient(p, n, u);
-      ctx.save();
-      ctx.translate(o.sp.x, o.sp.y);
-      ctx.rotate(o.shellRot);
-      ctx.scale(1, o.yscale);
-      ctx.rotate(o.instRot);
-      ctx.lineJoin     = 'round';
-      ctx.miterLimit   = 2;
-      ctx.font         = '700 16px system-ui, -apple-system, Segoe UI, sans-serif';
-      ctx.textAlign    = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth    = 3;
-      ctx.strokeStyle  = this.S.CSC.LABEL_HALO;
-      ctx.fillStyle    = ltrColor;
-      ctx.strokeText(text, 0, 0);  // light halo provides contrast around label
-      ctx.fillText(  text, 0, 0);  // label within halo
-      ctx.restore();
+      drawOrientedLabel(this.ctx, this.S,
+        { az: pt.az, alt: pt.alt, r: 1.001 }, text, ltrColor, 
+        { halo: this.S.CSC.LABEL_HALO });
     }
 
     // which: 'back' (sp.z < 0, before figure) or 'front' (sp.z >= 0, after figure).
@@ -571,9 +451,11 @@
       const S = this.S;
       const specs = [
         { pt: { az: this.star.az - 13, alt: 5 },
-          text: legToFixed(this.star.az,  1) + '°', color: this.S.CSC.AZ_LABEL  },
+          text:  legToFixed(this.star.az,  stepToPrec(azNumber.step  ) ) + '°',
+          color: this.S.CSC.AZ_LABEL  },
         { pt: { az: this.star.az + 13, alt: this.star.alt / 2 },
-          text: legToFixed(this.star.alt, 1) + '°', color: this.S.CSC.ALT_LABEL }
+          text:  legToFixed(this.star.alt, stepToPrec(altNumber.step ) ) + '°',
+          color: this.S.CSC.ALT_LABEL }
       ];
       for (const s of specs) {
         const p = {}, sp = {};
@@ -590,20 +472,8 @@
     // star's own direction), so the sprite lies flat against sphere surface
     // and foreshortens toward limb instead of always facing viewer.
     drawStar() {
-      const ctx = this.ctx;
-      const img = (this.starHovered && this.star.sp.z > 0) ? this.imgStarHover : this.imgStar;
-      if (!img.naturalWidth) return;
-      const w   = img.naturalWidth, h = img.naturalHeight;
-      const p   = this.star.p;                       // unit point (r = 1)
-      const { n, u } = this.radialUp(p);
-      const o   = this.absOrient(p, n, u);
-      ctx.save();
-      ctx.translate(o.sp.x, o.sp.y);
-      ctx.rotate(o.shellRot);
-      ctx.scale(1, o.yscale);
-      ctx.rotate(o.instRot);
-      ctx.drawImage(img, -w / 2, -h / 2, w, h);     // burst centered on the point
-      ctx.restore();
+      drawStarSprite(this.ctx, this.S, this.star.p,
+        this.imgStar, this.imgStarHover, this.starHovered, { sp: this.star.sp });
     }
 
     // Anchor screen points for four named feature labels (used by the leader
@@ -671,16 +541,16 @@
 
     // Camera-facing named labels (Legacy default _oType = 0, not absOrient).
     // which: 'back' (feature sp.z < 0, before glass) or 'front' (sp.z >= 0).
-    drawNamedLabels(which) {
+    drawFeatureLabels(which) {
       const off = App.LABEL_OFFSET;
       for (const key of Object.keys(off)) {
         if (!this.labels[key]) continue;
         const a = this._labelAnchor[key];
         const behind = a.z < 0;
         if ((which === 'back' && behind) || (which === 'front' && !behind)) {
-          this.drawLabelLeader(key);
-          this.drawNamedLabel( key);
-          this.drawLabelLeader(key);
+          this.drawLabelLeader(  key);
+          this.drawFeatureLabel( key);
+          this.drawLabelLeader(  key);
         }
       }
     }
@@ -715,7 +585,7 @@
       ctx.restore();
     }
 
-    drawNamedLabel(key) {
+    drawFeatureLabel(key) {
       const ctx = this.ctx;
       const { x, y, text } = this.namedLabelPos(key);
       ctx.save();
@@ -755,13 +625,13 @@
         'Horizon diagram. Cardinal directions N, E, S, and W shown on the horizon. ' +
         'Star at azimuth ' + speak(this.star.az,  1, 'degree') +
              ', altitude ' + speak(this.star.alt, 1, 'degree') + '. ' + 
-        locateStar(this.star.az,this.star.alt) + 'Visible labels: ' + labelText + '.');
+        locateStar(this.star.az,this.star.alt, 0) + 'Visible labels: ' + labelText + '.');
     }
 
     announce(includeOrientation) {
       let msg = 'Star at azimuth ' + speak(this.star.az,  1, 'degree') +
                      ', altitude ' + speak(this.star.alt, 1, 'degree') + '. ' +
-                locateStar(this.star.az,this.star.alt);
+                locateStar(this.star.az,this.star.alt, 0);
       if (includeOrientation) {
         msg += ' View reset.';
       }
@@ -785,7 +655,7 @@
 
       // Sliders + number fields (both mutate the same state)
       const syncFromSlider = (slider, number) => {
-        number.value = legToFixed(Number(slider.value), 1);
+        number.value = legToFixed(Number(slider.value), stepToPrec(number.step) );
         this.onPositionSliderChanged();
         this.announce();
       };
@@ -796,7 +666,7 @@
         let v = Number(number.value);
         if (!isFinite(v)) return;
         v = Math.max(Number(slider.min), Math.min(Number(slider.max), v));
-        number.value = legToFixed( v, 1 );
+        number.value = legToFixed(v, stepToPrec(number.step) );
         slider.value = v;
         this.onPositionSliderChanged();
         this.announce();
@@ -804,9 +674,6 @@
       this.azNumber.addEventListener( 'change',  () => syncFromNumber(this.azNumber,  this.azSlider) );
       this.altNumber.addEventListener('change',  () => syncFromNumber(this.altNumber, this.altSlider));
 
-      const noEinNumber = (event) => {
-        if (event.key === 'e' || event.key === 'E') { event.preventDefault() };
-      };
       this.azNumber.addEventListener(  'keydown', noEinNumber );
       this.altNumber.addEventListener( 'keydown', noEinNumber );
 
@@ -895,15 +762,16 @@
     // Arrow keys rotate view; Shift/CapsLock = x10 larger step (10deg vs 1deg),
     // PageUp/Down = phi in 15deg steps. 
     onCanvasKey(ev) {
-      const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10 : 1;
+      const dStp = 1;
+      const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10*dStp : dStp;
       let dTheta = 0, dPhi = 0; 
       switch (ev.key) {
-        case 'ArrowLeft':  dTheta =  step;  break;
-        case 'ArrowRight': dTheta = -step;  break;
-        case 'ArrowUp':    dPhi   = -step;  break;
-        case 'ArrowDown':  dPhi   =  step;  break;
-        case 'PageUp':     dPhi   =   -15;  break;
-        case 'PageDown':   dPhi   =    15;  break;
+        case 'ArrowLeft':  dTheta =     step;  break;
+        case 'ArrowRight': dTheta =    -step;  break;
+        case 'ArrowUp':    dPhi   =    -step;  break;
+        case 'ArrowDown':  dPhi   =     step;  break;
+        case 'PageUp':     dPhi   = -15*dStp;  break;
+        case 'PageDown':   dPhi   =  15*dStp;  break;
         default: return;
       }
       ev.preventDefault();
@@ -915,15 +783,17 @@
     // Arrow keys move star (alt/az), mirroring star drag. Same step scheme 
     // as view rotation: 1deg arrows, 10deg with Shift/CapsLock, 15deg Page keys.
     onStarKey(ev) {
-      const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10 : 1;
+      let dStp   = Number(altNumber.step);
+      if ( ( ev.key == 'ArrowLeft' ) || ( ev.key == 'ArrowRight' ) )  { dStp = Number(azNumber.step); }
+      const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10*dStp : dStp;
       let dAz = 0, dAlt = 0;
       switch (ev.key) {
-        case 'ArrowLeft':  dAz  =  step;  break;
-        case 'ArrowRight': dAz  = -step;  break;
-        case 'ArrowUp':    dAlt =  step;  break;
-        case 'ArrowDown':  dAlt = -step;  break;
-        case 'PageUp':     dAlt =    15;  break;
-        case 'PageDown':   dAlt =   -15;  break;
+        case 'ArrowLeft':  dAz  =     step;  break;
+        case 'ArrowRight': dAz  =    -step;  break;
+        case 'ArrowUp':    dAlt =     step;  break;
+        case 'ArrowDown':  dAlt =    -step;  break;
+        case 'PageUp':     dAlt =  15*dStp;  break;
+        case 'PageDown':   dAlt = -15*dStp;  break;
         default: return;
       }
       ev.preventDefault();
@@ -941,6 +811,22 @@
       this.desc.textContent = 'View rotated. ' +
            'Viewing azimuth ' + speak(az,  1, 'degree') +
         ', viewing altitude ' + speak(alt, 1, 'degree') + '.';
+    }
+  }
+
+  // Update control panel labels for very wide screens
+  mediaCheck1.addEventListener('change', updateControlLabels);
+  mediaCheck2.addEventListener('change', updateControlLabels);
+  function updateControlLabels(ev) {
+    const remToPx = parseFloat( getComputedStyle( document.documentElement ).fontSize );
+    const wid     = document.documentElement.scrollWidth / remToPx;  // convert px to rem
+    
+    if ( (brkpt1 <= wid) && (wid <= brkpt2) ) {
+      document.querySelector('label[for="azNumber"]' ).innerHTML = 'az:';
+      document.querySelector('label[for="altNumber"]').innerHTML = 'alt:';
+    } else  {
+      document.querySelector('label[for="azNumber"]' ).innerHTML = 'azimuth:';
+      document.querySelector('label[for="altNumber"]').innerHTML = 'altitude:';
     }
   }
 

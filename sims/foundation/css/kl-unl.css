@@ -2,6 +2,8 @@
    Default CSS style for KL-UNL project
    ========================================================================== */
 
+@import url('kl-unl-utils.css');
+
 /* Selector rule examples (selector and target combinations):
    *                all elements
    .classname       all elements with this class
@@ -67,6 +69,8 @@
   --border-bottom-width:     3px;
   --border-bottom-style:     solid;
   --border-bottom-color:     #005a9c;  /* french blue        */
+  
+  --panel-border-bottom:     #cccccc;  /* light grey         */
 }
 
 /* --------------------------------------------------------------------------
@@ -152,6 +156,7 @@ body {
   padding:        0.5rem 1rem;
   font-size:      inherit;
   font-weight:    bold;
+  border-bottom:  1px solid var(--panel-border-bottom, #cccccc);
 }
 
 .panel--size {
@@ -424,6 +429,28 @@ body {
   pointer-events: none;        /* prevents JS mouse events and CSS hovers */
 }
 
+/* Shared sim panel: show-all / hide-all label buttons (blue, full-width row). */
+.sim-button-row {
+  gap:            1rem;
+  margin-bottom:  1.25rem;
+}
+
+.sim-button {
+  flex:           1 1 0;
+  border-width:   var(--border-width, 1px);
+  border-style:   var(--border-style, solid);
+  border-color:   var(--border-color, #767676);
+  border-radius:  4px;
+  background:     var(--button-background-color, #005a9c);
+  color:          var(--button-foreground-color, #ffffff);
+  font-size:      1rem;
+  font-weight:    600;
+}
+.sim-button:hover,
+.sim-button:focus-visible {
+  filter:         brightness(var(--button-hover-darken, 0.9));
+}
+
 /* --------------------------------------------------------------------------
    Controls style - text boxes for number input
    -------------------------------------------------------------------------- */
@@ -486,6 +513,16 @@ body {
 }
 
 :focus-visible {
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--outline-color,    #005fcc);
+  outline-offset: 0.125rem;
+}
+
+/* Restore focus indicator for mouse clicks on celestial sphere and star 
+   symbol.                                                               */
+.sim-canvas:focus,
+.star-handle:focus  {
   outline-width:  0.125rem;
   outline-style:  solid;
   outline-color:  var(--outline-color,    #005fcc);

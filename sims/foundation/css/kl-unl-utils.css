@@ -1,0 +1,24 @@
+/* ==========================================================================
+   KL-UNL shared utility styles (imported by kl-unl.css)
+   Paired with kl-unl-utils.js — cross-sim UX conventions.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Cursor style
+   -------------------------------------------------------------------------- */
+
+/* Draggable celestial-sphere canvases */
+#sky-canvas,
+.sim-canvas {
+  cursor: grab;
+}
+
+#sky-canvas.dragging,
+.sim-canvas.dragging {
+  cursor: grabbing;
+}
+
+/* All range sliders */
+input[type="range"] {
+  cursor: pointer;
+}

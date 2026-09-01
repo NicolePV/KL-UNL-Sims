@@ -17,6 +17,23 @@ export function legToFixed(x, fractionDigits=0) {
   else                                                   { return nmb.toFixed(f); }
 };
 
+export function stepToPrec( step )  {
+  // Determine number of decimal values to display in number box for a given 
+  // step size.
+  // 
+  // For example, 100 -> 0, 1 -> 0, 0.1 -> 1, 0.01 -> 2; 246 -> 0, 230 -> 0; 
+  // 0.25 -> 2, 0.455 -> 3, 0.5 -> 1, 0.502 -> 3.
+
+  let   prec;
+  const nStep = Number(step) > 0 ? Number(step) : 1;
+
+  if ( Math.log10(nStep) % 1 == 0 )  { prec = Math.max( -Math.log10( nStep ), 0);  } 
+  else if       ( nStep  % 1 == 0 )  { prec = 0; }
+  else                               { prec = step.length - step.indexOf('.') - 1; }
+
+  return prec;
+};
+
 export function speak( value, prec=0, unit='' )  {
   // Create screen reader text for value and unit for variable, 
   // such as "7.0 mass units" or "1 meter" or "minus 4.56"
@@ -34,8 +51,9 @@ export function speak( value, prec=0, unit='' )  {
   // Spell out "minus" for minus sign
   if ( value < 0 )  { name = 'minus ' + name.slice(1).trimStart(); }
   // Don't pluralize unit for integer values of unity
-  if (unit != '')  { 
-    const uname = ( (Math.abs(parseFloat(value)) == 1) && (prec == 0) ) ? unit : unit + 's';
+  if (unit != '')  {
+    const r0    = Math.round( Math.abs( parseFloat(value ) ) );
+    const uname = ( (r0 == 1) && (prec == 0) ) ? unit : unit + 's';
     name += ' ' + uname;
   }
   return name;
@@ -67,6 +85,11 @@ export function snapFixed(x, digits, xmin=0, xmax=0) {
 /* ===========================================================================
    Keyboard functions
    =========================================================================== */
+
+export const noEinNumber = (event) => {
+  // Prevent e or E being entered into number boxes
+  if (event.key === 'e' || event.key === 'E') { event.preventDefault() };
+};
 
 export function amplifyArrowKey(event, element, fctr)  {
   // Amplify slider (or similar) arrow-key steps by fctr when Shift is held.
@@ -100,6 +123,13 @@ export function updateSliderProgress(slider) {
   const pct  = span === 0 ? 0 : ((val - min) / span) * 100;
   slider.style.setProperty('--slider-progress', `${pct}%`);
 };
+
+/** Enable/disable show-all and hide-all label buttons from checkbox state. */
+export function updateShowHideLabelButtons(showBtn, hideBtn, checkboxes) {
+  const on = checkboxes.filter(c => c.checked).length;
+  if (showBtn) showBtn.disabled = on === checkboxes.length;
+  if (hideBtn) hideBtn.disabled = on === 0;
+}
 
 export function decToHex(n) {
   // Convert decimal color to hex ( 10893123 --> #a63743 )

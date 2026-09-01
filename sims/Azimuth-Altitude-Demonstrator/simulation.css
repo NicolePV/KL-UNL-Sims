@@ -4,12 +4,8 @@
    Uses foundation custom properties and classes where possible.
    =========================================================================== */
 
-/* Comfortably large, zoomable type (rem-based so it tracks the browser font
-   setting and reflows at 200% zoom). Body floor ~1.125rem per the guidelines. */
-body {
-  font-size:      1.125rem;
-  line-height:    1.4;
-}
+/* Line-height override; font-size floor comes from foundation kl-unl.css. */
+body { line-height: 1.4; }
 
 /* --- Layout -------------------------------------------------------------- */
 /* Diagram on the left (wider), the two control panels stacked on the right,
@@ -55,7 +51,6 @@ body {
 
 .sim-panel .panel__heading {
   color:          var(--foreground-color, #1a1a1a);
-  border-bottom:  1px solid #cccccc;
 }
 
 /* --- Canvas stage ------------------------------------------------------- */
@@ -70,12 +65,11 @@ body {
   aspect-ratio:   1 / 1;
 }
 
-#sky {
+.sim-canvas {
   display:        block;
   width:          100%;
   height:         100%;
   touch-action:   none;   /* dragging the star/sphere must not scroll the page */
-  cursor:         grab;
 }
 
 .sim-kbd-hint {
@@ -98,26 +92,6 @@ body {
   border:         0;
   border-radius:  50%;
   pointer-events: none;
-}
-.star-handle:focus-visible {
-  outline-width:  0.125rem;
-  outline-style:  solid;
-  outline-color:  var(--outline-color, #005fcc);
-  outline-offset: 0.125rem;
-}
-
-#sky.dragging {
-  cursor:         grabbing;
-}
-
-/* Restore focus indicator for mouse clicks on celestial sphere and star 
-   symbol.                                                               */
-#sky:focus,
-.star-handle:focus  {
-  outline-width:  0.125rem;
-  outline-style:  solid;
-  outline-color:  var(--outline-color,    #005fcc);
-  outline-offset: 0.125rem;
 }
 
 /* --- Star Position controls --------------------------------------------- */
@@ -154,33 +128,11 @@ body {
   grid-column:    1 / -1;
   width:          100%;
   min-height:     2.75rem;   /* comfortable touch target */
-  cursor:         pointer;
 }
 
 /* --- Labels panel ------------------------------------------------------- */
 .sim-labels-body {
   padding:        0.75rem 1rem 1rem;
-}
-
-.sim-button-row {
-  gap: 1rem;
-  margin-bottom:  1.25rem;
-}
-
-.sim-button {
-  flex:           1 1 0;
-  border-width:   var(--border-width, 1px);
-  border-style:   var(--border-style, solid);
-  border-color:   var(--border-color, #767676);
-  border-radius:  4px;
-  background:     var(--button-background-color, #005a9c);
-  color:          var(--button-foreground-color, #ffffff);
-  font-size:      1rem;
-  font-weight:    600;
-}
-.sim-button:hover,
-.sim-button:focus-visible {
-  filter:         brightness(var(--button-hover-darken, 0.9));
 }
 
 .sim-checks {
@@ -195,6 +147,13 @@ body {
 .sim-checks .control-choice {
   min-height:     2.25rem;     /* roomy, touch-friendly rows */
   gap:            0.5rem;
+}
+
+/* Place list of labels two per row */
+.sim-checks {
+  display:        grid;
+  grid-template-columns: 1fr 1fr;
+  gap:            0.5rem 1rem;
 }
 
 .sim-checks .control-choice label {
@@ -221,8 +180,37 @@ body {
   .sim-button-row  { gap:       0.6rem; }
 }
 
-/* Respect users who prefer reduced motion (this sim has no autonomous motion,
-   but keep transitions instant for them). */
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+/* For wide widths (monitor screens), place linked number boxes and sliders 
+   on single line (and shorten label) */
+@media (min-width: 65rem) {
+
+  .app-shell {
+    max-width: 65rem;
+  }
+
+  .app-layout.sim-layout {
+    grid-template-columns: minmax(22rem, 1fr) minmax(24rem, 1.2fr);
+  }
+  
+  .sim-slider-row {
+    grid-template-columns: 2rem 5.5rem auto 1fr;
+  }
+
+  .sim-range {
+    grid-column: auto;
+    width: 100%;
+  }
+}
+
+/* For even wider widths, write out full control labels too */
+@media (min-width: 70rem) {
+
+  .app-shell {
+    max-width: 70rem;
+  }
+
+  .sim-slider-row {
+    grid-template-columns: 5rem 5.5rem auto 1fr;
+  }
+
 }

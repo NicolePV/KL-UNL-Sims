@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon"      href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
   <script defer src="../foundation/js/kl-unl-masthead.js"></script>
-  <script defer src="../foundation/js/kl-unl-mathjax.js"></script>
+  <!-- <script defer src="../foundation/js/kl-unl-mathjax.js"></script> -->
   <script type="module" src="simulation.js"></script>
 </head>
 <body id="body">
@@ -31,7 +31,7 @@
           <h2 class="panel__heading" id="diagramHeading">The Horizon Diagram</h2>
           <div class="panel__canvas-wrap">
             <div class="stage" id="stage">
-              <canvas id="sky" width="440" height="440" role="img" tabindex="0"
+              <canvas id="sky-canvas" class="sim-canvas" width="440" height="440" role="img" tabindex="0"
                       aria-describedby="skyHelp"
                       aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
                       aria-label="Horizon diagram. Use the Star Position controls to move the star.">
@@ -82,25 +82,27 @@
             <fieldset class="control-fieldset">
               <legend class="sr-only">Star position controls</legend>
 
+              <!-- Azimuth -->
               <div class="control-row sim-slider-row">
                 <label class="control-row__label" for="azNumber">azimuth:</label>
                 <input class="control-row__input sim-num" id="azNumber" type="number"
-                       min="0" max="360" step="0.1" value="140.0"
+                       min="0" max="360" step="1" value="140" autocomplete="off"
                        inputmode="decimal" aria-label="Azimuth" aria-describedby="azUnit">
                 <span class="sim-unit" id="azUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="azSlider" type="range"
-                       min="0" max="360" step="0.1" value="140"
+                       min="0" max="360" step="1" value="140"
                        aria-label="Azimuth" aria-valuetext="Azimuth 140.0 degrees">
               </div>
 
+              <!-- Altitude -->
               <div class="control-row sim-slider-row">
                 <label class="control-row__label" for="altNumber">altitude:</label>
                 <input class="control-row__input sim-num" id="altNumber" type="number"
-                       min="-90" max="90" step="0.1" value="45.0"
+                       min="-90" max="90" step="1" value="45.0" autocomplete="off"
                        inputmode="decimal" aria-label="Altitude" aria-describedby="altUnit">
                 <span class="sim-unit" id="altUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="altSlider" type="range"
-                       min="-90" max="90" step="0.1" value="45"
+                       min="-90" max="90" step="1" value="45"
                        aria-label="Altitude" aria-valuetext="Altitude 45.0 degrees">
               </div>
             </fieldset>

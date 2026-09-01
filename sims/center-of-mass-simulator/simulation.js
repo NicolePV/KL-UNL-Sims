@@ -28,7 +28,7 @@
    =========================================================================== */
 
 import {
-  legToFixed, speak, snapFixed, amplifyArrowKey, updateSliderProgress,
+  legToFixed, stepToPrec, speak, snapFixed, amplifyArrowKey, updateSliderProgress,
   drawArrowhead, soon, announceLive
 } from '../foundation/js/kl-unl-utils.js';
 
@@ -67,10 +67,17 @@ import {
   const CROSS_ART    = 12;    // cross.svg:  12 × 12
 
   const SLIDER_SPEC = {
-    mass1: { min:  1, max: 10, init:  7, precision: 1, text: 'object 1 mass:' },
-    mass2: { min:  1, max: 10, init:  3, precision: 1, text: 'object 2 mass:' },
-    sep:   { min:  1, max: 20, init: 10, precision: 1, text: 'separation:'    }
+    mass1: { min:  1, max: 10, init:  7,
+             precision: stepToPrec(document.getElementById('mass1Num').step),
+             text:      'object 1 mass:' },
+    mass2: { min:  1, max: 10, init:  3,
+             precision: stepToPrec(document.getElementById('mass2Num').step),
+             text:      'object 2 mass:' },
+    sep:   { min:  1, max: 20, init: 10,
+             precision: stepToPrec(document.getElementById('sepNum').step ),
+             text:      'separation:'    }
   };
+  
   // Product default is unchecked; keep in sync with index.html (no checked attr).
   const FIX_CM_INIT = false;
 

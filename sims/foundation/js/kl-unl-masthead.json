@@ -213,7 +213,7 @@
     "masthead": {
       "help": {
         "title": "Help and Instructions",
-        "content": "<p>This demonstrator illustrates the celestial-equatorial (RA/Dec) coordinate system, where declination and right ascension define an object's position on the celestial sphere. </p><p>The star's position can be changed by using the slider bars or by dragging it.</p>"
+        "content": "<p>This demonstrator illustrates the celestial-equatorial (right ascension and declination) coordinate system, where right ascension and declination define an object's position on the celestial sphere. </p><p>You can click on the celestial sphere and then drag it around to change its orientation, or use the left and right arrow keys on the keyboard to rotate it in place and the up and down arrow keys to change your viewing angle. (Pressing the shift or caps lock key as well results in larger steps, and the page up and down keys change the viewing angle in even larger steps.)</p><p>Click on the star instead of the sphere to drag it around and use the same keys to the same effect. You may also use the slider bars or number boxes for right ascension (to rotate the star around) and for declination (to move it up and down).</p>"
       },
       "about": {
         "title": "About this Demonstrator",
