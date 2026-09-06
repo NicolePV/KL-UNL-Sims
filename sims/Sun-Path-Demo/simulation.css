@@ -142,7 +142,6 @@ body { line-height: 1.4; }
   min-width:             0;
   width:                 100%;
   box-sizing:            border-box;
-  padding-right:         0.25rem;
 }
 
 .sim-controls { padding-bottom: 1rem; }
@@ -175,6 +174,7 @@ body { line-height: 1.4; }
 
 .sim-num {
   width:          clamp(3.8rem, 10vw, 5.25rem);
+  box-sizing:     border-box;
   text-align:     right;
   font-variant-numeric: tabular-nums;
   font-weight:    bold;
@@ -189,6 +189,7 @@ body { line-height: 1.4; }
 }
 .sim-cday-field {
   width:          clamp(6.2rem, 15vw, 8.5rem);
+  box-sizing:     border-box;
   padding-right:  1.3rem;
   text-align:     left;
   cursor:         default;
@@ -196,7 +197,7 @@ body { line-height: 1.4; }
 .sim-cday-spinners {
   position:       absolute;
   top:            1px;
-  right:          1px;
+  right:          5px;
   bottom:         1px;
   display:        flex;
   flex-direction: column;
@@ -342,6 +343,7 @@ body { line-height: 1.4; }
   align-items:           baseline;
   margin:                0.5rem 0.25rem 0;
   padding:               0;
+  padding-left:          0.5rem;
 }
 
 .sim-legend-desc {
