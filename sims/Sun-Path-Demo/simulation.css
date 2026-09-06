@@ -1,0 +1,377 @@
+/* ==========================================================================
+   Sim-specific styles for Paths of the Sun Demonstrator.
+   Layered on top of KL-UNL foundation. 
+   Uses foundation custom properties and classes where possible.
+   ========================================================================== */
+
+/* Line-height override; font-size floor comes from foundation kl-unl.css. */
+body { line-height: 1.4; }
+
+/* --- Layout: diagram (wide, left) + controls (narrow, right) -------------- */
+/* Own grid so the diagram sits left/wide like the original screenshot.
+   Collapses to a single stacked column at the foundation's 56rem breakpoint. */
+.sim-layout {
+  display:        grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem);
+  gap:            0.75rem;
+  align-items:    start; /* stops controls artificially stretching canvas panel */
+  width:          100%;
+  max-width:      100%;
+  box-sizing:     border-box;
+}
+
+.sim-diagram {
+  min-width:      0;
+  width:          100%;
+  box-sizing:     border-box;
+  overflow:       hidden; /* clips any momentary sub-pixel canvas rounding artifacts */
+}
+
+.sim-controls {
+  min-width:      0;
+  width:          100%;
+  box-sizing:     border-box;
+  padding-right:  0.75rem; /* guarantees breathing room on the right border */
+  padding-bottom: 1rem;
+}
+
+.sim-diagram.panel--size .panel__canvas-wrap {
+  padding-top:    0.5rem;
+}
+
+.panel__canvas-wrap {
+  display:               flex;
+  flex-direction:        column;
+  align-items:           stretch;
+  width:                 100%;
+  max-width:             100%;
+  box-sizing:            border-box;
+  min-width:             0;
+}
+
+/* phone / tablet portrait: single column */
+@media (max-width: 56rem) {
+  /* Release any height clamping on app shell and root layouts */
+  .app-shell,
+  .app-layout.sim-layout,
+  .sim-layout {
+    display:               block !important; /* normal block flow recalculates dynamically on every frame */
+    height:                auto  !important;
+    min-height:            0     !important;
+    max-height:            none  !important;
+  }
+
+  .sim-diagram,
+  .sim-controls {
+    display:               block !important;
+    width:                 100%  !important;
+    max-width:             100%  !important;
+    height:                auto  !important;
+    min-height:            0     !important;
+    max-height:            none  !important;
+    box-sizing:            border-box !important;
+  }
+
+  /* Add margin-top on controls to replace the grid-gap in block flow */
+  .sim-controls {
+    margin-top:            0.75rem !important;
+    padding-bottom:        1rem;
+  }
+
+  /* Release foundation fixed-height constraints on diagram internals */
+  .sim-diagram.panel--size,
+  .sim-diagram.panel--size .panel__canvas-wrap,
+  .panel__canvas-wrap,
+  .sim-canvas-box,
+  .panel--size {
+    height:                auto !important;
+    min-height:            0    !important;
+    max-height:            none !important;
+    flex:                  none !important;
+  }
+
+  .sim-diagram.panel--size .panel__canvas-wrap {
+    padding-top:           0.25rem;
+    padding-bottom:        0.25rem;
+  }
+}
+
+/* --- Diagram panel -------------------------------------------------------- */
+.sim-canvas-box {
+  position:       relative;
+  background:     #000000;        /* matches the original black stage */
+  padding:        0.5rem;
+  border-radius:  0.25rem;
+  box-sizing:     border-box;
+  width:          100%;
+  max-width:      100%;
+  min-width:      0;
+  overflow:       hidden;
+}
+
+.sim-light-index {
+  position:       absolute;
+  top:            0.5rem;
+  right:          0.5rem;
+  margin:         0;
+  padding:        0.15rem 0.35rem;
+  font-size:      0.85rem;
+  line-height:    1.3;
+  color:          #ffffff;
+  background:     rgba(0, 0, 0, 0.55);
+  border-radius:  2px;
+  pointer-events: none;
+  z-index:        1;
+}
+
+#sky-canvas {
+  display:        block;
+  width:          100%;
+  max-width:      100%;
+  min-width:      0;
+  height:         auto;           /* CSS scales; backing store keeps stage coords */
+  aspect-ratio:   360 / 268;      /* enforces lock during continuous dynamic drag */
+  touch-action:   none;           /* let pointer-drag rotate without scrolling    */
+}
+/* As allowGrabSun is false, no cursor change */
+/* #sky-canvas.sun-hover { cursor: move; }    */  
+
+/* --- Controls panel ------------------------------------------------------- */
+/* Prevent the fieldset from locking column width */
+.control-fieldset {
+  min-width:             0;
+  width:                 100%;
+  box-sizing:            border-box;
+  padding-right:         0.25rem;
+}
+
+.sim-controls { padding-bottom: 1rem; }
+
+.sim-rule {
+  border:         0;
+  border-top:     1px solid var(--border-color, #767676);
+  margin:         0.85rem 1rem;
+}
+
+/* Latitude slider row: label + value on one line, slider full width below,
+   min/max endpoints under the ends of the track. */
+.sim-slider-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  row-gap:        0.15rem;
+  margin-top:     0.25rem;
+}
+.sim-slider-row .control-row__label { font-weight: bold; }
+
+.sim-cday-row {
+  margin-bottom: 2rem;
+}
+
+.sim-field-wrap {
+    display:       inline-flex;
+    align-items:   baseline;
+    gap:           0.1rem;
+    padding-right: 0.25rem; /* Insets the degree symbol */
+}
+
+.sim-num {
+  width:          clamp(3.8rem, 10vw, 5.25rem);
+  text-align:     right;
+  font-variant-numeric: tabular-nums;
+  font-weight:    bold;
+}
+.sim-unit { font-size: 1.05rem; }
+
+/* Date spinbutton: month name + day, with stepper buttons like a number field */
+.sim-cday-wrap {
+  position:       relative;
+  display:        inline-flex;
+  align-items:    stretch;
+}
+.sim-cday-field {
+  width:          clamp(6.2rem, 15vw, 8.5rem);
+  padding-right:  1.3rem;
+  text-align:     left;
+  cursor:         default;
+}
+.sim-cday-spinners {
+  position:       absolute;
+  top:            1px;
+  right:          1px;
+  bottom:         1px;
+  display:        flex;
+  flex-direction: column;
+  width:          1.15rem;
+  border-left:    1px solid var(--border-color, #767676);
+}
+.sim-cday-step {
+  flex:           1;
+  margin:         0;
+  padding:        0;
+  border:         0;
+  background:     var(--panel-bg, #f5f5f5);
+  cursor:         pointer;
+  line-height:    0;
+}
+.sim-cday-step:hover  { background: var(--hover-bg, #e8e8e8); }
+.sim-cday-step:active { background: var(--active-bg, #d8d8d8); }
+.sim-cday-step--up::before,
+.sim-cday-step--down::before {
+  content:        '';
+  display:        block;
+  width:          0;
+  height:         0;
+  margin:         auto;
+  border-left:    0.28rem solid transparent;
+  border-right:   0.28rem solid transparent;
+}
+.sim-cday-step--up::before {
+  border-bottom:  0.38rem solid var(--foreground-color, #1a1a1a);
+}
+.sim-cday-step--down::before {
+  border-top:     0.38rem solid var(--foreground-color, #1a1a1a);
+}
+
+.sim-slider-stack {
+  grid-column:    1 / -1;
+  display:        grid;
+  grid-template-columns: 1fr auto;
+  row-gap:        0;
+}
+
+/* Inset the right-aligned slider max label (e.g., 90° N, Dec. 31) */
+.sim-slider-stack .sim-slider-max {
+  grid-column:    2;
+  justify-self:   end;
+  padding-right:  0.15rem; /* insets the 'N' away from the clipping edge */
+}
+
+.sim-season-labels {
+  grid-column:    1 / -1;
+  display:        flex;       /* turn container into a coordinated row layout */
+  position:       relative;
+  height:         1rem;
+  margin-top:     0.4rem;
+  margin-bottom: -0.7rem;     /* shift labels closer to slider track */
+  /* System thumb width is 1.15rem; half of that is 0.575rem */
+  padding-left:   0.575rem;
+  padding-right:  1.25rem;
+  box-sizing:     border-box; /* ensure padding doesn't widen container */
+  overflow:       visible;
+}
+
+/* Empty structural layout units */
+.sim-label-spacer {
+  position:       relative; /* creates a coordinate anchor for child text*/
+  height:         100%;
+  pointer-events: none;
+}
+
+.sim-season-label {
+  position:       absolute;
+  top:            0;
+  right:          0;
+  transform:      translateX(50%);
+  font-size:      0.75rem;
+  line-height:    1;
+  color:          var(--foreground-color, #1a1a1a);
+  white-space:    nowrap;
+}
+
+.sim-slider-stack .sim-slider {
+  grid-column:    1 / -1;
+  width:          100%;
+  min-height:     2.75rem;         /* >= 44px touch target */
+}
+
+.sim-slider--temp-track::-webkit-slider-runnable-track {
+  background:     var(--temp-track-gradient, #e0e0e0);
+}
+
+.sim-slider--temp-track::-moz-range-track {
+  background:     var(--temp-track-gradient, #e0e0e0);
+}
+
+.sim-slider--temp-track::-moz-range-progress {
+  background:     transparent;
+}
+
+.sim-slider-stack .sim-slider-min,
+.sim-slider-stack .sim-slider-max {
+  font-size:      0.9rem;
+  color:          var(--foreground-color, #1a1a1a);
+}
+.sim-slider-stack .sim-slider-min { grid-column: 1; justify-self: start; }
+.sim-slider-stack .sim-slider-max { grid-column: 2; justify-self: end; }
+
+.sim-check-row {
+  display:        grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap:     0.5rem;
+  row-gap:        0.5rem;
+  align-items:    center;
+  margin-top:     0.75rem;
+}
+.sim-check-row .control-choice {
+  min-height:     2.75rem;
+  margin-top:     0;
+  width:          100%;
+}
+.sim-check-row label {
+  font-weight: bold;
+  cursor:      pointer;
+}
+
+/* --- Date readout --------------------------------------------------------- */
+.sim-date {
+  text-align:     center;
+  font-size:      1.6rem;
+  font-weight:    bold;
+  margin:         0.5rem 1rem;
+}
+
+/* --- Legend --------------------------------------------------------------- */
+.sim-legend-heading {
+  margin-top:     0.5rem;
+}
+
+.sim-legend {
+  display:               grid;
+  grid-template-columns: 2rem auto minmax(0, 1fr);
+  column-gap:            0.4rem;
+  row-gap:               0.4rem;
+  align-items:           baseline;
+  margin:                0.5rem 0.25rem 0;
+  padding:               0;
+}
+
+.sim-legend-desc {
+  font-size:             0.95rem;
+  overflow-wrap:         anywhere;
+}
+
+/* Swatches are small filled bars in the EXACT diagram line colours, with a thin
+   outline so the light ones stay visible on the white panel. The text label
+   always names the colour AND the feature, so colour is never the only signal. */
+.sim-swatch {
+  display:        inline-block;
+  width:          2rem;
+  height:         0.34rem;
+  border-radius:  1px;
+  outline:        1px solid rgba(0, 0, 0, 0.22);
+  outline-offset: 0;
+  align-self:     center;
+}
+.sim-swatch[data-key="equator" ] { background: #505050; }  /* dark   grey   */
+.sim-swatch[data-key="ecliptic"] { background: #ff5050; }  /* bright red    */
+.sim-swatch[data-key="sunpath" ] { background: #ffffc0; }  /* pale   yellow */
+.sim-swatch[data-key="meridian"] { background: #c0c0c0; }  /* light  gray   */
+
+.sim-legend-color {
+  font-weight:    bold;
+  font-size:      0.95rem;
+  justify-self:   start;
+}
+.sim-legend-desc  {
+  font-size:      0.95rem;
+  word-break:     break-word;
+}

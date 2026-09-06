@@ -91,6 +91,12 @@ export const noEinNumber = (event) => {
   if (event.key === 'e' || event.key === 'E') { event.preventDefault() };
 };
 
+export function keyAccel(ev, base) {
+  // Multiply effect of arrow (or other) key by a factor of ten
+  // if shift key or caps lock are depressed
+  return (ev.shiftKey || ev.getModifierState("CapsLock")) ? base * 10 : base;
+}
+
 export function amplifyArrowKey(event, element, fctr)  {
   // Amplify slider (or similar) arrow-key steps by fctr when Shift is held.
   // Caps Lock also amplifies for users who leave it on while arrowing.

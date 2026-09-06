@@ -5,991 +5,954 @@
    sphere engine (scripts/CelestialSphere.as + "CS *" prototype files) and the
    controller (scripts/frame_1/DoAction.as, scripts/DoInitAction.as).
 
-   All physics constants and formulas are copied VERBATIM from the source:
-     sun RA (hours)   = day * 24/365            (0.06575342465753424)
-     sun declination  = 23.5 * sin(day * 2pi/365)   (0.01721420632103996)
-     sidereal time    = 2pi * frac(366.25/365 * day)   (1.0027397260273974)
-   The drawing reproduces the code-drawn vector art (great circles, sky bowl,
-   horizon plane) on a <canvas>; exported bitmaps/shapes (stickman, shadow,
-   sun, ground) are REUSED as-is from assets/ (copied from shapes/*.svg).
+   Reproduces code-drawn vector art (great circles, sky bowl, horizon plane) 
+   on canvas; stickman, shadow, and sun sprites from images.
+
+   Projection engine: foundation/js/kl-unl-celestial-sphere.js
    ========================================================================== */
 
-(function () {
-  "use strict";
+import {
+  CelestialSphere, Circle,
+  CELESTIAL_SPHERE_COLORS,
+  D2R, R2D, H2R, RA_H, DEC_D, TME_H, TWO_PI,
+  drawCircleBucket, absOrient
+} from '../foundation/js/kl-unl-celestial-sphere.js';
 
-  /* ---- AS angle constants (kept verbatim) -------------------------------- */
-  var DEG = 0.017453292519943295;   // pi/180   degrees -> radians
-  var HRS = 0.2617993877991494;     // pi/12    hours   -> radians
-  var RAD = 57.29577951308232;      // 180/pi   radians -> degrees
-  var TWO_PI = 6.283185307179586;
-  var HALF_PI = 1.5707963267948966;
+import {
+  pMod, speak, hexToRGBA, logAct, updateSliderProgress, noEinNumber, keyAccel
+} from '../foundation/js/kl-unl-utils.js';
 
-  /* ---- Stage geometry (original internal coordinates) -------------------- */
-  // Landscape framing (like the original Flash diagram): the dome + ground +
-  // shadow fit snugly so the panel is not padded with empty black space.
-  var STAGE_W = 360, STAGE_H = 268;
-  var CENTER_X = 180, CENTER_Y = 150;   // sphere centre in stage coords
-  var R = 120;                          // sphere radius (sphere.size = 240)
+logAct('INIT_SUNPATHS');
 
-  /* ======================================================================
-     The celestial-sphere engine (ported 1:1 from the AS prototype methods)
-     ====================================================================== */
-  var sphere = {
-    r: R, r2: R * R,
-    theta: 0, phi: 0, lat: 0, sTime: 0,
-    day: 0,
-    showUnder: false,
-    c: {},               // projection matrices a*/b*/m*
-    sun: { ra: 0, dec: 0, p: { x: 0, y: 0, z: 0, r: 1 }, alt: 0, az: 0, sp: {} }
-  };
+const S = new CelestialSphere(120);   // radius 120 (AS sphere.size = 240)
+S.showUnder = false;
+S.setMinPhi(7);
+S.setMaxPhi(90);
 
-  function mod(n, m) { return (n % m + m) % m; }
+const CSC = CELESTIAL_SPHERE_COLORS;
 
-  /* world(horizon)->screen, celestial->screen (with z component) */
-  function WtoSz(p, sp) {
-    var c = sphere.c;
-    sp.x = p.x * c.a0 + p.y * c.a1;
-    sp.y = p.x * c.a3 + p.y * c.a4 + p.z * c.a5;
-    sp.z = p.x * c.a6 + p.y * c.a7 + p.z * c.a8;
-  }
-  function WtoS(p, sp) {
-    var c = sphere.c;
-    sp.x = p.x * c.a0 + p.y * c.a1;
-    sp.y = p.x * c.a3 + p.y * c.a4 + p.z * c.a5;
-  }
-  function CtoSz(p, sp) {
-    var c = sphere.c;
-    sp.x = p.x * c.b0 + p.y * c.b1 + p.z * c.b2;
-    sp.y = p.x * c.b3 + p.y * c.b4 + p.z * c.b5;
-    sp.z = p.x * c.b6 + p.y * c.b7 + p.z * c.b8;
-  }
-  function CtoS(p, sp) {
-    var c = sphere.c;
-    sp.x = p.x * c.b0 + p.y * c.b1 + p.z * c.b2;
-    sp.y = p.x * c.b3 + p.y * c.b4 + p.z * c.b5;
-  }
-  function CtoW(p, wp) {
-    var c = sphere.c;
-    wp.x = p.x * c.m0 + p.y * c.m1 + p.z * c.m2;
-    wp.y = p.x * c.m3 + p.y * c.m4;
-    wp.z = p.x * c.m6 + p.y * c.m7 + p.z * c.m8;
-  }
+const sun = { ra: 0, dec: 0, p: {}, _altaz: {} };
+let day   = 0;
 
-  function parsePointInput(p1) {
-    var p2 = {};
-    if (p1.az !== undefined && p1.alt !== undefined) {
-      p2.sys = 0;
-      var r0 = (p1.r !== undefined) ? p1.r : 1;
-      var d = r0 * Math.cos(p1.alt * DEG);
-      p2.x = d * Math.cos(p1.az * DEG);
-      p2.y = d * Math.sin(-p1.az * DEG);
-      p2.z = r0 * Math.sin(p1.alt * DEG);
-      p2.r = Math.abs(r0);
-    } else if (p1.ra !== undefined && p1.dec !== undefined) {
-      p2.sys = 1;
-      var r1 = (p1.r !== undefined) ? p1.r : 1;
-      var d2 = r1 * Math.cos(p1.dec * DEG);
-      p2.x = d2 * Math.cos(p1.ra * HRS);
-      p2.y = d2 * Math.sin(p1.ra * HRS);
-      p2.z = r1 * Math.sin(p1.dec * DEG);
-      p2.r = Math.abs(r1);
-    } else if (p1.x !== undefined && p1.y !== undefined && p1.z !== undefined) {
-      p2.sys = (p1.system === "horizon") ? 0 : (p1.system === "celestial" ? 1 : -1);
-      p2.x = p1.x; p2.y = p1.y; p2.z = p1.z;
-      p2.r = Math.sqrt(p2.x * p2.x + p2.y * p2.y + p2.z * p2.z);
+let   showTemperatures   = document.getElementById("light").checked;
+const showTemperatures_0 = showTemperatures;
+let   canvasVar          = 0;  // cycle between moving celestial sphere, date, and latitude
+
+/* ---- Stage geometry (original internal coordinates) -------------------- */
+const STAGE_W  = 360, STAGE_H  = 268;
+const CENTER_X = 180, CENTER_Y = 150;
+
+/* ======================================================================
+   The circles used by this sim (colours/tilts VERBATIM from DoAction.as)
+   ====================================================================== */
+const celestialEquator = new Circle(S, { thickness: 1,   color: CSC.CEL_EQUTR,  alpha: 1 });
+const sunsPath         = new Circle(S, { thickness: 1.6, color: CSC.SUN_PATH,   alpha: 1 });
+const meridian         = new Circle(S, { thickness: 1,   color: CSC.MRDN3_CIRC, alpha: 1 });
+const ecliptic         = new Circle(S, { thickness: 1,   color: CSC.ECLPTC_3,   alpha: 1 });
+const allCircles = [celestialEquator, sunsPath, meridian, ecliptic];
+
+/* ======================================================================
+   Sun + date  (ported from "10 CS Experimental.as" / "2 CS Getter Setter")
+   ====================================================================== */
+function updateSun() {
+  const raNow  = day  * RA_H;                   // right ascension, in hours
+  const decNow = 23.5 * Math.sin(day * DEC_D);  // declination,     in degrees
+  sun.ra       = raNow;
+  sun.dec      = decNow;
+  sun.p        = S.parse({ ra: raNow, dec: decNow });
+}
+
+function setDay(arg) {
+  day = arg % 365;
+  updateSun();
+  S.setSiderealTime( pMod(TME_H * day, 1) * 24 );  // sidereal time, in hours
+}
+
+const MONTHS = [ [  31, "January" ], [  59, "February" ], [  90, "March"     ],
+                 [ 120, "April"   ], [ 151, "May"      ], [ 181, "June"      ],
+                 [ 212, "July"    ], [ 243, "August"   ], [ 273, "September" ],
+                 [ 304, "October" ], [ 334, "November" ], [ 365, "December"  ] ];
+
+function getDateString(d = day) {
+  let today = pMod(d + 79.5, 365);
+  let i     = 0;
+  while (i < 12) { if (today < MONTHS[i][0]) break; i++; }
+  if (i !== 0) today = today - MONTHS[i - 1][0] + 1; else today += 1;
+  return MONTHS[i][1] + " " + Math.floor(today);
+}
+
+// Calendar-day UI axis: cd 0 = Jan 1, cd 79 = Mar 21 (= simulation day 0).
+const CDAY_OFFSET = 79;
+
+function simDayToCalendarDay(sd) {
+  return pMod(sd + CDAY_OFFSET, 365);
+}
+
+function calendarDayToSimDay(cd) {
+  return pMod(cd - CDAY_OFFSET, 365);
+}
+
+function wrapCalendarDay(cd) {
+  return pMod(Math.round(cd), 365);
+}
+
+const CDAY_JUN_21 = MONTHS[4][0]  + 20;  // June 21, cd 171
+const CDAY_DEC_21 = MONTHS[10][0] + 20;  // Dec. 21, cd 354
+const TROPIC_LAT  = 23.5;
+
+function updateSeasonLabels(latDeg) {
+  // Label winter and summer seasons when latitude is outside of the tropics
+  // Label warmer and colder regions in winter and summer seasons
+  let junText   = "", decText   = "";
+  let southText = "", northText = "";
+  if ( showTemperatures )  { 
+    if      (latDeg >  TROPIC_LAT) { junText = "summer"; decText = "winter"; }
+    else if (latDeg < -TROPIC_LAT) { junText = "winter"; decText = "summer"; }
+
+    if    ( ( Math.abs(simDayToCalendarDay(day)       - CDAY_DEC_21) < 30 ) ||
+            ( Math.abs(simDayToCalendarDay(day) + 365 - CDAY_DEC_21) < 30 ) ) {
+      southText = "warmer"; northText = "colder";
     }
-    return p2;
-  }
-
-  /* celestial (ra,dec in radians) -> horizon (az,alt in radians) */
-  function CtoMH(cp) {
-    var hp = {};
-    var sd = Math.sin(cp.dec), cd = Math.cos(cp.dec);
-    var sl = Math.sin(sphere.lat), cl = Math.cos(sphere.lat);
-    var h = sphere.sTime - cp.ra;
-    var ch = Math.cos(h);
-    var caz = sd * cl - cd * ch * sl;
-    var saz = cd * Math.sin(h);
-    hp.az = (caz === 0) ? 0 : mod(Math.atan2(saz, caz), TWO_PI);
-    hp.alt = Math.asin(sd * sl + cd * ch * cl);
-    return hp;
-  }
-
-  /* screen -> horizon (az,alt in radians) — for pointer hit-test / rotation */
-  function StoMH(sp) {
-    var hp = {};
-    var d = Math.sqrt(sp.x * sp.x + sp.y * sp.y) / sphere.r;
-    if (d > 1) d = 1;
-    var b = Math.asin(d);
-    var A = Math.atan2(sp.x, -sp.y);
-    if (sphere.phi === HALF_PI) {
-      hp.alt = HALF_PI - b;
-      hp.az = sphere.theta + Math.PI - A;
-    } else if (sphere.phi === -HALF_PI) {
-      hp.alt = -HALF_PI + b;
-      hp.az = sphere.theta + A;
-    } else {
-      var c = HALF_PI - sphere.phi;
-      var cc = Math.cos(c), sc = Math.sin(c);
-      var cb = Math.cos(b), sb = Math.sin(b);
-      var ca = cb * cc + sb * sc * Math.cos(A);
-      hp.alt = HALF_PI - Math.acos(ca);
-      hp.az = sphere.theta + Math.atan2(sb * Math.sin(A), (cb - ca * cc) / sc);
+    else if ( Math.abs(simDayToCalendarDay(day) - CDAY_JUN_21) < 30 ) {
+      southText = "colder"; northText = "warmer";
     }
-    hp.az = mod(hp.az, TWO_PI);
-    return hp;
   }
+  elSeasonJun.textContent   = junText;
+  elSeasonDec.textContent   = decText;
+  elSeasonSouth.textContent = southText;
+  elSeasonNorth.textContent = northText;  
+}
 
-  function doA() {
-    var c = sphere.c, r = sphere.r;
-    var ct = Math.cos(sphere.theta), st = Math.sin(sphere.theta);
-    var cp = Math.cos(sphere.phi), sp = Math.sin(sphere.phi);
-    c.a0 = -r * st;        c.a1 = r * ct;
-    c.a3 = r * ct * sp;    c.a4 = r * st * sp;   c.a5 = -r * cp;
-    c.a6 = r * ct * cp;    c.a7 = r * st * cp;   c.a8 = r * sp;
-  }
-  function doM() {
-    var c = sphere.c;
-    c.m2 = Math.cos(sphere.lat);
-    c.m3 = Math.sin(sphere.sTime);
-    c.m4 = -Math.cos(sphere.sTime);
-    c.m8 = Math.sin(sphere.lat);
-    c.m0 = c.m4 * c.m8;
-    c.m1 = -c.m3 * c.m8;
-    c.m6 = -c.m2 * c.m4;
-    c.m7 = c.m2 * c.m3;
-  }
-  function doB() {
-    var c = sphere.c;
-    c.b0 = c.a0 * c.m0 + c.a1 * c.m3;
-    c.b1 = c.a0 * c.m1 + c.a1 * c.m4;
-    c.b2 = c.a0 * c.m2;
-    c.b3 = c.a3 * c.m0 + c.a4 * c.m3 + c.a5 * c.m6;
-    c.b4 = c.a3 * c.m1 + c.a4 * c.m4 + c.a5 * c.m7;
-    c.b5 = c.a3 * c.m2 + c.a5 * c.m8;
-    c.b6 = c.a6 * c.m0 + c.a7 * c.m3 + c.a8 * c.m6;
-    c.b7 = c.a6 * c.m1 + c.a7 * c.m4 + c.a8 * c.m7;
-    c.b8 = c.a6 * c.m2 + c.a8 * c.m8;
-  }
+/* ======================================================================
+   Temperature bars (insolation proxy: noon sun angle × day length)
+   ====================================================================== */
+let TEMP_MIN = 0;
+let TEMP_MAX = 1;
+let TEMP_NOW = 0;
 
-  /* ======================================================================
-     Great-circle drawing (ported from "8 CS Circles.as")
-     ====================================================================== */
-  // class-level sample points for a unit circle (nP = 10 quadratic segments)
-  var nP = 10;
-  var cStep = TWO_PI / nP;
-  var uaP = [], ucP = [];
-  (function () {
-    var halfStep = cStep / 2;
-    var cRad = 1 / Math.cos(halfStep);
-    for (var i = 0; i < nP; i++) {
-      var aAngle = (i + 1) * cStep;
-      uaP.push({ x: Math.cos(aAngle), y: Math.sin(aAngle) });
-      var cAngle = aAngle - halfStep;
-      ucP.push({ x: cRad * Math.cos(cAngle), y: cRad * Math.sin(cAngle) });
+function insolationIndex(latDeg, calendarDay) {
+  // We consider angle sun's rays make to ground and length of day; 
+  // colors reflect a state between peak and average temperatures per day.
+  //
+  // For example, on the northern summer solstice the North Pole receives
+  // the highest amount of sunlight (insolation) due to the 24-hour day,
+  // but the subtropics have the highest peak temperatures due to the
+  // Sun being nearly overhead at local noon.
+  // 
+  const simDay   =  calendarDayToSimDay(calendarDay);
+  const dec      =  23.5 * D2R * Math.sin(simDay * TWO_PI / 365);
+  const phi      =  latDeg * D2R;
+  const sinAlt   =  Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec);
+  const alt      =  Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+  const cosOmega = -Math.tan(phi) * Math.tan(dec);
+  let dayFrac;
+  if      (cosOmega <= -1) dayFrac = 1;
+  else if (cosOmega >=  1) dayFrac = 0;
+  else                     dayFrac = Math.acos(cosOmega) / Math.PI;
+  return Math.max(0, Math.sin(alt)) * dayFrac;
+}
+
+function initTempColorScale() {
+  if (!showTemperatures) return;
+  let min = Infinity, max = -Infinity;
+  for (let cd = 0; cd < 365; cd++) {
+    for (let lat = -90; lat <= 90; lat++) {
+      const v = insolationIndex(lat, cd);
+      if (v < min) min = v;
+      if (v > max) max = v;
     }
-  })();
-
-  // A "pen" mirrors the Flash MovieClip drawing API but records segments
-  function Pen() { this.segs = []; this.cur = null; }
-  Pen.prototype.clear = function () { this.segs = []; this.cur = null; };
-  Pen.prototype.moveTo = function (x, y) { this.cur = [["M", x, y]]; this.segs.push(this.cur); };
-  Pen.prototype.curveTo = function (cx, cy, x, y) {
-    if (!this.cur) { this.cur = [["M", 0, 0]]; this.segs.push(this.cur); }
-    this.cur.push(["Q", cx, cy, x, y]);
-  };
-
-  function Circle(color, alpha, thick) {
-    this.color = color; this.alpha = alpha; this.thick = thick;
-    this.sys = 0; this.tilt = 0; this.beta = 0; this.lambda = 0;
-    this.gS = 0; this.gE = 0;
-    this.c = {};                 // w matrix
-    this.aP = []; this.cP = []; this.sP = {};
-    this.front = new Pen(); this.back = new Pen();
-    this.visible = true;
   }
-  Circle.prototype.setParams = function (arg) {
-    if (arg.az !== undefined && arg.alt !== undefined && arg.tilt !== undefined) {
-      this.sys = 0;
-      this.tilt = clampTilt(arg.tilt);
-      this.lambda = clampLambda(arg.alt);
-      this.beta = DEG * mod(-arg.az, 360);
-    } else if (arg.ra !== undefined && arg.dec !== undefined && arg.tilt !== undefined) {
-      this.sys = 1;
-      this.tilt = clampTilt(arg.tilt);
-      this.lambda = clampLambda(arg.dec);
-      this.beta = HRS * mod(arg.ra, 24);
+  TEMP_MIN = min;
+  TEMP_MAX = max;
+}
+
+function tempIndexToColor(v) {
+  let t = (v - TEMP_MIN) / (TEMP_MAX - TEMP_MIN);
+  if      (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  
+  // Show index as 0, 1, 2, 3, 4, 5, 10, 15, ... 95, 100%
+  if ( t < 0.05 )  { TEMP_NOW =     Math.round( 100*t ); }
+  else             { TEMP_NOW = 5 * Math.round(  20*t ); }
+  return `hsl(${240 - 240 * t}, 75%, ${38 + 22 * t}%)`;
+}
+
+function buildTempGradient(sampleAtFrac) {
+  const GRADIENT_STOPS = 48;
+  const parts = [];
+  for (let i = 0; i <= GRADIENT_STOPS; i++) {
+    const frac = i / GRADIENT_STOPS;
+    parts.push(`${tempIndexToColor(sampleAtFrac(frac))} ${(frac * 100).toFixed(1)}%`);
+  }
+  return `linear-gradient(to right, ${parts.join(', ')})`;
+}
+
+function applyTempTrackGradient(slider, gradient) {
+  slider.style.setProperty('--temp-track-gradient', gradient);
+}
+
+function showTemperatureForDate(simDay, latDeg) {
+  if (!showTemperatures) return;
+  applyTempTrackGradient(elCdaySlider,
+    buildTempGradient(frac => insolationIndex(latDeg, frac * 364)));
+}
+
+function showTemperatureForLatitude(simDay, latDeg) {
+  if (!showTemperatures) return;
+  const cd = simDayToCalendarDay(simDay);
+  applyTempTrackGradient(elLatInput,
+    buildTempGradient(frac => insolationIndex(-90 + frac * 180, cd)));
+}
+
+function updateLightIndex(latDeg, calendarDay) {
+  if (!showTemperatures) {
+    elLightIndex.hidden = true;
+    return;
+  }
+  tempIndexToColor(insolationIndex(latDeg, calendarDay));
+  elLightIndex.textContent = "insolation: " + TEMP_NOW + "%";
+  elLightIndex.hidden      = false;
+}
+
+function sunAltAz() {
+  const hp = {};
+  S.CtoMH({ ra: sun.ra * H2R, dec: sun.dec * D2R }, hp);
+  return { alt: hp.alt * R2D, az: pMod(-hp.az * R2D, 360) };
+}
+
+/* ======================================================================
+   Sky colour (ported from DoInitAction.as). The shadow is computed in
+   drawShadow() from the sun's altitude/azimuth.
+   ====================================================================== */
+const SKY = CSC.SKY_1;
+const sky = { backInner: 1, backOuter: 0.8, frontInner: 0.1, frontOuter: 0.4 };
+
+const dayBackInner  = 1,   nightBackInner  = 0.3, dayBackOuter  = 0.8, nightBackOuter  = 0.2;
+const dayFrontInner = 0.1, nightFrontInner = 0,   dayFrontOuter = 0.4, nightFrontOuter = 0.15;
+
+function setSkyColor() {
+  const aa       = sun._altaz;
+  let intensity  = aa.alt / 10 + 0.5;
+  if (intensity > 1) intensity = 1; else if (intensity < 0) intensity = 0;
+  sky.backInner  = intensity * (dayBackInner  - nightBackInner)  + nightBackInner;
+  sky.backOuter  = intensity * (dayBackOuter  - nightBackOuter)  + nightBackOuter;
+  sky.frontInner = intensity * (dayFrontInner - nightFrontInner) + nightFrontInner;
+  sky.frontOuter = intensity * (dayFrontOuter - nightFrontOuter) + nightFrontOuter;
+}
+
+/* ======================================================================
+   Rendering on the <canvas>
+   ====================================================================== */
+const canvas = document.getElementById("sky-canvas");
+const ctx    = canvas.getContext("2d");
+let dpr      = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+
+function sizeCanvas() {
+  canvas.width  = STAGE_W * dpr;
+  canvas.height = STAGE_H * dpr;
+}
+sizeCanvas();
+
+function loadImg(src) { const im = new Image(); im.src = src; return im; }
+const imgStickman = loadImg("images/stickman.svg");
+const imgShadow   = loadImg("images/shadow.svg");
+const imgSun      = loadImg("images/sun.svg");
+[imgStickman, imgShadow, imgSun].forEach(function (im) {
+  im.addEventListener("load", function () { render(); });
+});
+
+function horizonClip(side) {
+  const s   = Math.sin(S.phi);
+  const sgn = (side === "front") ? 1 : -1;
+  const r   = S.c.r;
+  ctx.beginPath();
+  ctx.moveTo(-r, 0);
+  ctx.arc(0, 0, r, Math.PI, TWO_PI, false);
+  const steps = 32;
+  for (let i = 1; i <= steps; i++) {
+    const ang = Math.PI * i / steps;
+    ctx.lineTo(r * Math.cos(ang), sgn * r * s * Math.sin(ang));
+  }
+  ctx.closePath();
+}
+
+function fillSky(side, innerA, outerA) {
+  const r = S.c.r;
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, hexToRGBA(SKY, innerA));
+  g.addColorStop(1, hexToRGBA(SKY, outerA));
+  ctx.save();
+  horizonClip(side);
+  ctx.clip();
+  ctx.fillStyle = g;
+  ctx.fillRect(-r, -r, 2 * r, 2 * r);
+  ctx.restore();
+}
+
+function drawHorizonPlane() {
+  const r      = S.c.r;
+  const yscale = Math.sin(S.phi);
+  ctx.save();
+  ctx.scale(1, yscale);
+  const above  = S.phi > 0;
+  const g = ctx.createRadialGradient(0, 0, r * 0.05, 0, 0, r);
+  if (above) {
+    g.addColorStop(0,    CSC.HOR_ABV_1);
+    g.addColorStop(0.75, CSC.HOR_ABV_2);
+    g.addColorStop(1,    CSC.HOR_ABV_3);
+  } else {
+    g.addColorStop(0,    CSC.HOR_BLW_1);
+    g.addColorStop(1,    CSC.HOR_BLW_2);
+  }
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TWO_PI);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.restore();
+}
+
+const CARDINAL_R = 0.88;
+const CARDINALS  = [
+  { t: 'N', az:   0 }, { t: 'E', az:  90 },
+  { t: 'S', az: 180 }, { t: 'W', az: 270 }
+];
+
+function drawCardinalLabel(az, text) {
+  const p = {};
+  S.parsePointInput({ az, alt: 0, r: CARDINAL_R }, p);
+  const n = { x: 0, y: 0, z: 1 };
+  const u = { x: 1, y: 0, z: 0 };
+  const o = absOrient(S, p, n, u);
+  ctx.save();
+  ctx.translate(o.sp.x, o.sp.y);
+  ctx.rotate(o.shellRot);
+  ctx.scale(1, o.yscale);
+  ctx.rotate(o.instRot);
+  ctx.lineJoin     = 'round';
+  ctx.miterLimit   = 2;
+  ctx.font         = '600 18px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth    = 3;
+  ctx.strokeStyle  = CSC.NESW_LINE;
+  ctx.fillStyle    = CSC.NESW_FILL;
+  ctx.strokeText(text, 0, 0);
+  ctx.fillText(  text, 0, 0);
+  ctx.restore();
+}
+
+function drawCardinals(which) {
+  if (S.phi <= 0) return;
+  for (const c of CARDINALS) {
+    const p = {}, sp = {};
+    S.parsePointInput({ az: c.az, alt: 0, r: CARDINAL_R }, p);
+    S.WtoSz(p, sp);
+    const behind = sp.z < 0;
+    if ((which === 'back' && behind) || (which === 'front' && !behind)) {
+      drawCardinalLabel(c.az, c.t);
     }
-    this.doW(); this.prerender();
-  };
-  function clampTilt(t) { return t < 0 ? 0 : (t > 180 ? Math.PI : t * DEG); }
-  function clampLambda(l) { return l < -90 ? -Math.PI : (l > 90 ? Math.PI : l * DEG); }
-
-  Circle.prototype.doW = function () {
-    var st = Math.sin(this.tilt), ct = Math.cos(this.tilt);
-    var sb = Math.sin(this.beta), cb = Math.cos(this.beta);
-    var cl = Math.cos(this.lambda), sl = Math.sin(this.lambda);
-    var c = this.c;
-    c.w0 = cl * cb;        c.w1 = -cl * sb * ct;   c.w2 = sl * sb * st;
-    c.w3 = cl * sb;        c.w4 = cl * cb * ct;    c.w5 = -sl * cb * st;
-    c.w7 = cl * st;        c.w8 = sl * ct;
-  };
-  Circle.prototype.CPtoSYS = function (cp, o) {
-    var c = this.c;
-    o.x = cp.x * c.w0 + cp.y * c.w1 + c.w2;
-    o.y = cp.x * c.w3 + cp.y * c.w4 + c.w5;
-    o.z = cp.y * c.w7 + c.w8;
-  };
-  Circle.prototype.CGtoSYS = function (g, o) {
-    var x = Math.cos(g), y = Math.sin(g), c = this.c;
-    o.x = x * c.w0 + y * c.w1 + c.w2;
-    o.y = x * c.w3 + y * c.w4 + c.w5;
-    o.z = y * c.w7 + c.w8;
-  };
-  Circle.prototype.prerender = function () {
-    this.aP = []; this.cP = [];
-    for (var i = 0; i < nP; i++) {
-      var a = {}, cc = {};
-      this.CPtoSYS(uaP[i], a);
-      this.CPtoSYS(ucP[i], cc);
-      this.aP.push(a); this.cP.push(cc);
-    }
-    this.sP = { x: this.aP[nP - 1].x, y: this.aP[nP - 1].y, z: this.aP[nP - 1].z };
-  };
-
-  Circle.prototype.arc = function (g1, g2, pen) {
-    var proj = (this.sys === 0) ? WtoS : CtoS;
-    var saP = {}, scP = {};
-    if (g2 < g1) g2 += TWO_PI;
-    var arc = g2 - g1;
-    var i, aP, cP, icP = {}, naP = {}, ncP = {}, half, cRad;
-    if (arc === 0) {                              // full circle
-      proj(this.sP, saP);
-      pen.moveTo(saP.x, saP.y);
-      for (i = 0; i < nP; i++) {
-        proj(this.aP[i], saP);
-        proj(this.cP[i], scP);
-        pen.curveTo(scP.x, scP.y, saP.x, saP.y);
-      }
-    } else if (arc <= cStep) {
-      aP = {}; cP = {};
-      this.CGtoSYS(g1, aP);
-      proj(aP, saP); pen.moveTo(saP.x, saP.y);
-      half = arc / 2; cRad = 1 / Math.cos(half);
-      icP.x = cRad * Math.cos(g1 + half); icP.y = cRad * Math.sin(g1 + half);
-      this.CPtoSYS(icP, cP);
-      this.CGtoSYS(g2, aP);
-      proj(aP, saP); proj(cP, scP);
-      pen.curveTo(scP.x, scP.y, saP.x, saP.y);
-    } else {
-      aP = this.aP; cP = this.cP;
-      var a1 = mod(Math.ceil(g1 / cStep) - 1, nP);
-      var a2 = mod(Math.floor(g2 / cStep) - 1, nP);
-      var angle = (a1 + 1) * cStep - g1;
-      if (angle === 0) {
-        proj(aP[a1], saP); pen.moveTo(saP.x, saP.y);
-      } else {
-        this.CGtoSYS(g1, naP);
-        proj(naP, saP); pen.moveTo(saP.x, saP.y);
-        half = angle / 2; cRad = 1 / Math.cos(half);
-        icP.x = cRad * Math.cos(g1 + half); icP.y = cRad * Math.sin(g1 + half);
-        this.CPtoSYS(icP, ncP);
-        proj(ncP, scP); proj(aP[a1], saP);
-        pen.curveTo(scP.x, scP.y, saP.x, saP.y);
-      }
-      var lim = a2; if (lim < a1) lim += nP;
-      for (i = a1 + 1; i <= lim; i++) {
-        proj(aP[i % nP], saP); proj(cP[i % nP], scP);
-        pen.curveTo(scP.x, scP.y, saP.x, saP.y);
-      }
-      angle = (g2 % TWO_PI) - (a2 + 1) * cStep;
-      if (angle !== 0) {
-        half = angle / 2; cRad = 1 / Math.cos(half);
-        icP.x = cRad * Math.cos(g2 - half); icP.y = cRad * Math.sin(g2 - half);
-        this.CPtoSYS(icP, ncP);
-        proj(ncP, scP);
-        this.CGtoSYS(g2, naP); proj(naP, saP);
-        pen.curveTo(scP.x, scP.y, saP.x, saP.y);
-      }
-    }
-  };
-
-  // Decide which parts of the circle are on the near (front) vs far (back)
-  // side of the sphere and emit them to the two pens (ported from update()).
-  Circle.prototype.update = function () {
-    this.front.clear(); this.back.clear();
-    if (!this.visible) return;
-    var tc = this.c, pc = sphere.c, k1, k2, k3;
-    if (this.sys === 0) {
-      k1 = tc.w0 * pc.a6 + tc.w3 * pc.a7;
-      k2 = tc.w1 * pc.a6 + tc.w4 * pc.a7 + tc.w7 * pc.a8;
-      k3 = tc.w2 * pc.a6 + tc.w5 * pc.a7 + tc.w8 * pc.a8;
-    } else {
-      k1 = tc.w0 * pc.b6 + tc.w3 * pc.b7;
-      k2 = tc.w1 * pc.b6 + tc.w4 * pc.b7 + tc.w7 * pc.b8;
-      k3 = tc.w2 * pc.b6 + tc.w5 * pc.b7 + tc.w8 * pc.b8;
-    }
-    var A = Math.sqrt(k1 * k1 + k2 * k2);
-    if (A === 0) {
-      this.arc(this.gS, this.gE, k3 < 0 ? this.back : this.front);
-    } else {
-      var sj = -k3 / A;
-      if (sj <= -1) {
-        this.arc(this.gS, this.gE, this.front);
-      } else if (sj >= 1) {
-        this.arc(this.gS, this.gE, this.back);
-      } else {
-        var j = Math.asin(sj), t = Math.atan2(k1, k2), gDesc, gAsc;
-        if (Math.cos(j) < 0) {
-          gDesc = mod(j - t, TWO_PI); gAsc = mod(Math.PI - j - t, TWO_PI);
-        } else {
-          gDesc = mod(Math.PI - j - t, TWO_PI); gAsc = mod(j - t, TWO_PI);
-        }
-        // every circle here is a full circle (gS == gE == 0)
-        this.arc(gAsc, gDesc, this.front);
-        this.arc(gDesc, gAsc, this.back);
-      }
-    }
-  };
-
-  /* ======================================================================
-     The circles used by this sim (colours/tilts VERBATIM from DoAction.as)
-     ====================================================================== */
-  var celestialEquator = new Circle("#505050", 1, 1);    // 5263440  "black"
-  var sunsPath         = new Circle("#FFFFC0", 1, 1.6);  // 16777152 yellow
-  var meridian         = new Circle("#C0C0C0", 1, 1);    // 12632256 gray
-  var ecliptic         = new Circle("#FF5050", 1, 1);    // 16732240 red
-  var allCircles = [celestialEquator, sunsPath, meridian, ecliptic];
-
-  /* ======================================================================
-     Sun + date  (ported from "10 CS Experimental.as" / "2 CS Getter Setter")
-     ====================================================================== */
-  function updateSun() {
-    var raNow = sphere.day * 0.06575342465753424;          // = day*24/365 hours
-    var decNow = 23.5 * Math.sin(sphere.day * 0.01721420632103996); // 2pi/365
-    sphere.sun.ra = raNow; sphere.sun.dec = decNow;
-    sphere.sun.p = parsePointInput({ ra: raNow, dec: decNow });
   }
-  function setDay(arg) {
-    sphere.day = arg % 365;
-    updateSun();
-    sphere.sTime = TWO_PI * (1.0027397260273974 * sphere.day % 1);
-  }
+}
 
-  var MONTHS = [[31, "January"], [59, "February"], [90, "March"], [120, "April"],
-    [151, "May"], [181, "June"], [212, "July"], [243, "August"],
-    [273, "September"], [304, "October"], [334, "November"], [365, "December"]];
-  function getDateString() {
-    var today = mod(sphere.day + 79.5, 365);
-    var i = 0;
-    while (i < 12) { if (today < MONTHS[i][0]) break; i++; }
-    if (i !== 0) today = today - MONTHS[i - 1][0] + 1; else today += 1;
-    return MONTHS[i][1] + " " + Math.floor(today);
-  }
-
-  // sun horizon coordinates (degrees), matching CSObjects getAlt/getAz
-  function sunAltAz() {
-    var hp = CtoMH({ ra: sphere.sun.ra * HRS, dec: sphere.sun.dec * DEG });
-    var alt = hp.alt * RAD;
-    var az = mod(-hp.az * RAD, 360);
-    return { alt: alt, az: az };
-  }
-
-  /* ======================================================================
-     Sky colour (ported from DoInitAction.as). The shadow is computed in
-     drawShadow() from the sun's altitude/azimuth.
-     ====================================================================== */
-  var SKY = "#84CBFF";  // 8702975 inner == outer colour
-  var sky = { backInner: 100, backOuter: 80, frontInner: 10, frontOuter: 40 };
-
-  // alpha ranges (day/night), verbatim
-  var dayBackInner = 100, nightBackInner = 30, dayBackOuter = 80, nightBackOuter = 20;
-  var dayFrontInner = 10, nightFrontInner = 0, dayFrontOuter = 40, nightFrontOuter = 15;
-
-  function setSkyColor() {
-    var aa = sphere.sun._altaz;
-    var intensity = aa.alt / 10 + 0.5;
-    if (intensity > 1) intensity = 1; else if (intensity < 0) intensity = 0;
-    sky.backInner = intensity * (dayBackInner - nightBackInner) + nightBackInner;
-    sky.backOuter = intensity * (dayBackOuter - nightBackOuter) + nightBackOuter;
-    sky.frontInner = intensity * (dayFrontInner - nightFrontInner) + nightFrontInner;
-    sky.frontOuter = intensity * (dayFrontOuter - nightFrontOuter) + nightFrontOuter;
-  }
-
-  /* ======================================================================
-     Rendering on the <canvas>
-     ====================================================================== */
-  var canvas = document.getElementById("sky-canvas");
-  var ctx = canvas.getContext("2d");
-  var dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-
-  function sizeCanvas() {
-    canvas.width = STAGE_W * dpr;
-    canvas.height = STAGE_H * dpr;
-  }
-  sizeCanvas();
-
-  // reusable images (exported assets reused as-is)
-  function loadImg(src) { var im = new Image(); im.src = src; return im; }
-  var imgStickman = loadImg("assets/stickman.svg");
-  var imgShadow = loadImg("assets/shadow.svg");
-  var imgSun = loadImg("assets/sun.svg");
-  var imgGround = loadImg("assets/ground-above.svg");
-  var imgGroundBelow = loadImg("assets/ground-below.svg");
-  var imagesReady = 0, imagesNeeded = 5;
-  [imgStickman, imgShadow, imgSun, imgGround, imgGroundBelow].forEach(function (im) {
-    im.addEventListener("load", function () { imagesReady++; render(); });
-  });
-
-  // Build the above-horizon clip path. side: "front" uses the near rim
-  // (lower ellipse half, +y), "back" uses the far rim (upper half, -y).
-  // This reproduces the Flash masks M1 (front) and M3 (back).
-  function horizonClip(side) {
-    var s = Math.sin(sphere.phi);
-    var sgn = (side === "front") ? 1 : -1;
-    ctx.beginPath();
-    // top outer circle arc, from (-r,0) over the top to (r,0)
-    ctx.moveTo(-sphere.r, 0);
-    ctx.arc(0, 0, sphere.r, Math.PI, TWO_PI, false);  // upper half (y<0)
-    // rim ellipse arc back from (r,0) to (-r,0)
-    var steps = 32;
-    for (var i = 1; i <= steps; i++) {
-      var ang = Math.PI * i / steps;            // 0..pi along the bottom
-      ctx.lineTo(sphere.r * Math.cos(ang), sgn * sphere.r * s * Math.sin(ang));
-    }
-    ctx.closePath();
-  }
-
-  function strokePen(pen, color, alpha, thick) {
-    ctx.strokeStyle = color;
-    ctx.globalAlpha = alpha;
-    ctx.lineWidth = thick;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    for (var s = 0; s < pen.segs.length; s++) {
-      var seg = pen.segs[s];
-      ctx.beginPath();
-      for (var k = 0; k < seg.length; k++) {
-        var cmd = seg[k];
-        if (cmd[0] === "M") ctx.moveTo(cmd[1], cmd[2]);
-        else if (cmd[0] === "Q") ctx.quadraticCurveTo(cmd[1], cmd[2], cmd[3], cmd[4]);
-      }
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function fillSky(side, innerA, outerA) {
-    // radial gradient centred on the sphere, inner -> outer over radius r
-    var g = ctx.createRadialGradient(0, 0, 0, 0, 0, sphere.r);
-    g.addColorStop(0, rgbaFromHex(SKY, innerA / 100));
-    g.addColorStop(1, rgbaFromHex(SKY, outerA / 100));
-    ctx.save();
-    horizonClip(side);
-    ctx.clip();
-    ctx.fillStyle = g;
-    ctx.fillRect(-sphere.r, -sphere.r, 2 * sphere.r, 2 * sphere.r);
-    ctx.restore();
-  }
-
-  function rgbaFromHex(hex, a) {
-    var n = parseInt(hex.slice(1), 16);
-    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
-  }
-
-  function drawGround() {
-    // horizon plane = circle scaled to (r, r*sin(phi)); reuse the exported SVG
-    var s = Math.sin(sphere.phi);
-    var img = (sphere.phi > 0) ? imgGround : imgGroundBelow;
-    if (!img.complete || !img.naturalWidth) {
-      // fallback flat ellipse if the SVG has not loaded yet
-      ctx.save(); ctx.fillStyle = "#3aa53a";
-      ctx.beginPath(); ctx.ellipse(0, 0, sphere.r, sphere.r * Math.abs(s), 0, 0, TWO_PI);
-      ctx.fill(); ctx.restore();
-      return;
-    }
-    ctx.save();
-    ctx.scale(sphere.r / 100, (sphere.r * s) / 100);  // SVG is radius 100
-    ctx.drawImage(img, -100, -100, 200, 200);
-    ctx.restore();
-  }
-
-  // Cardinal direction labels on the horizon plane (the original attaches
-  // "direction labels dark/light" to _hP). Positions are the alt=0 points at
-  // azimuth 0/90/180/270, projected to screen, so they rotate with the view.
-  // Kept upright (not squished with the tilted plane) for legibility, with a
-  // contrasting outline so they read on both the green ground and the sky.
-  var CARDINALS = [{ az: 0, t: "N" }, { az: 90, t: "E" }, { az: 180, t: "S" }, { az: 270, t: "W" }];
-  function drawDirectionLabels() {
-    var rr = 0.92;                       // just inside the horizon rim
-    ctx.save();
-    ctx.font = "bold 13px Arial, Helvetica, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.lineJoin = "round";
-    for (var i = 0; i < CARDINALS.length; i++) {
-      var c = sphere.c, a = CARDINALS[i].az * DEG;
-      var wx = rr * Math.cos(a), wy = -rr * Math.sin(a);     // alt=0, z=0
-      var sx = wx * c.a0 + wy * c.a1;
-      var sy = wx * c.a3 + wy * c.a4;
-      var sz = wx * c.a6 + wy * c.a7;                        // <0 = far (back) rim
-      // far labels light (near the dim dome base), near labels dark (bright grass)
-      if (sz < 0) { ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.fillStyle = "#ffffff"; }
-      else { ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.fillStyle = "#10250f"; }
-      ctx.lineWidth = 3;
-      ctx.strokeText(CARDINALS[i].t, sx, sy);
-      ctx.fillText(CARDINALS[i].t, sx, sy);
-    }
-    ctx.restore();
-  }
-
-  function drawSun() {
-    var aa = sphere.sun._altaz;
-    if (aa.alt <= 0) return;                 // below horizon: hidden (showUnder false)
-    var sp = {}; CtoSz(sphere.sun.p, sp);
-    var size = 16;                           // sun.svg is 16x16 (radius ~7.5)
-    if (imgSun.complete && imgSun.naturalWidth) {
+function drawSun(which) {
+  const useImg = false;
+  const aa     = sun._altaz;
+  if (aa.alt <= 0) return;
+  const sp     = {};
+  S.CtoSz(sun.p, sp);
+  const behind = sp.z < 0;
+  if ((which === 'back' && behind) || (which === 'front' && !behind)) {
+    const size   = 16;
+    if (useImg && imgSun.complete && imgSun.naturalWidth ) {
       ctx.drawImage(imgSun, sp.x - size / 2, sp.y - size / 2, size, size);
     } else {
-      ctx.save(); ctx.fillStyle = "#ffcc00";
-      ctx.beginPath(); ctx.arc(sp.x, sp.y, 7.5, 0, TWO_PI); ctx.fill(); ctx.restore();
+      // Scale hue with altitude (note red #ff0000 is a hue of 0, yellow #ffcc00 is 48)
+      const hue = 50      * Math.cbrt( Math.max( aa.alt, 1 ) / 90 );  //  11 -  50
+      const sat = 40 + 60 * Math.cbrt( Math.max( aa.alt, 1 ) / 90 );  //  53 - 100
+      const lgt = 50;
+      ctx.save();
+      ctx.fillStyle   = "hsl(" + hue + ", " + sat + "%, " + lgt + "%)";
+      ctx.strokeStyle = CSC.SKY_2;
+      ctx.lineWidth   = 0.5;
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 7.5, 0, TWO_PI);
+      ctx.fill();
+      ctx.arc(sp.x, sp.y, 7.5, 0, TWO_PI);
+      ctx.stroke();
+      ctx.restore();
     }
   }
+}
 
-  // Stickman + shadow follow the working sibling sim (Sun Motion Demo): the
-  // observer stands UPRIGHT at the horizon-plane centre (feet at the origin),
-  // foreshortened vertically by cos(viewer altitude) so it stays planted on the
-  // tilting ground; the shadow is the same silhouette laid FLAT on the ground,
-  // pinned at the same feet and pointing away from the sun.
-  function drawStickman() {
-    if (!imgStickman.complete || !imgStickman.naturalWidth) return;
-    var scaleY = Math.max(Math.cos(sphere.phi), 0.12);   // squash as the disk tilts
-    var BASE = 34;
-    var w = BASE * imgStickman.naturalWidth / imgStickman.naturalHeight;
-    var h = BASE * scaleY;
-    ctx.drawImage(imgStickman, -w / 2, -h, w, h);        // feet at the origin
+function drawStickman() {
+  if (!imgStickman.complete || !imgStickman.naturalWidth) return;
+  const BASE = 34;
+  const w    = BASE * imgStickman.naturalWidth / imgStickman.naturalHeight;
+  const h    = BASE;
+  const o    = absOrient(S, { x: 0, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+  ctx.save();
+  ctx.translate(o.sp.x, o.sp.y);
+  ctx.rotate(o.shellRot);
+  ctx.scale(1, o.yscale);
+  ctx.rotate(o.instRot);
+  ctx.drawImage(imgStickman, -w / 2, -h, w, h);
+  ctx.restore();
+}
+
+function drawShadow() {
+  if (!imgShadow.complete || !imgShadow.naturalWidth) return;
+  const aa     = sun._altaz;
+  const alt    = aa.alt;
+  if (alt <= 0) return;
+
+  // Smooth shadow opacity "a" function for low altitudes (0 to 10 degrees)
+  const aMax   = 0.6;
+  const u      = Math.min(Math.max(alt / 10, 0), 1);  // Smoothstep function, u=[0-1]
+  const a      = aMax * (u * u * (3 - 2 * u));
+  if (a < 0.01) return;
+
+  // Define shadow length L to grow for low altitudes
+  let L;
+  const Lmin   = 0.04;
+  const t      = Math.tan( Math.max(alt, 0.5) * D2R );
+  const L0     = 0.5 / t;
+  const doClip = true;        // clip shadow beyond horizon plane or lengthen asymptotically
+  if ( doClip )  { L = L0; } 
+  else           { L = 0.98 * Math.tanh( L0 / 0.98 ); }
+  if (L < Lmin)    L = Lmin;  // keep appreciable shadow when Sun near zenith
+
+  // Transform shadow image
+  const as  = aa.az + 180;
+  const img = imgShadow, W = img.naturalWidth, H = img.naturalHeight;
+  const tip = {}, across = {};
+  S.WtoSz(S.parse({ az: as,      alt: 0, r: L }), tip   );
+  S.WtoSz(S.parse({ az: as + 90, alt: 0, r: 1 }), across);
+  const am   = Math.hypot( across.x, across.y ) || 1;
+  const figW = 13;
+  const wx   = across.x / am * figW;
+  const wy   = across.y / am * figW;
+  const lx   = tip.x;
+  const ly   = tip.y;
+  const A    =  wx / W;
+  const B    =  wy / W;
+  const C    = -lx / H;
+  const D    = -ly / H;
+  const E    = -(A * (W / 2) + C * H)
+  const F    = -(B * (W / 2) + D * H);
+  
+  ctx.save();
+  if ( doClip )  {
+    ctx.clip();  // clip shadow head and shoulders beyond horizon plane
   }
+  ctx.globalAlpha = a;
+  ctx.transform(A, B, C, D, E, F);
+  ctx.drawImage(img, 0, 0, W, H);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
 
-  function drawShadow() {
-    var aa = sphere.sun._altaz;
-    var alt = aa.alt;
-    if (alt < 1) return;                                 // sun at/below horizon: none
-    if (!imgShadow.complete || !imgShadow.naturalWidth) return;
-    var t = Math.tan(alt * DEG);
-    var a = 1 - 1 / (15 * t);                            // alpha (fades near noon)
-    if (a <= 0.03) return;
-    if (a > 0.6) a = 0.6;
-    var L = 0.5 / t;                                     // length grows as the sun lowers
-    if (L > 0.95) L = 0.95; else if (L < 0.07) L = 0.07;
-    var as = aa.az + 180;                                // shadow points away from the sun
-    // Map the silhouette flat onto the ground: feet (W/2,H) -> origin, head
-    // (W/2,0) -> the anti-sun ground point (length L), width along the
-    // perpendicular ground direction. This keeps the shadow attached to the feet
-    // and oriented correctly as the view rotates and the sun moves.
-    var img = imgShadow, W = img.naturalWidth, H = img.naturalHeight;
-    var tip = {}; WtoSz(parsePointInput({ az: as, alt: 0, r: L }), tip);
-    var across = {}; WtoSz(parsePointInput({ az: as + 90, alt: 0, r: 1 }), across);
-    var am = Math.hypot(across.x, across.y) || 1;
-    var figW = 13;                                       // shadow width in stage px
-    var wx = across.x / am * figW, wy = across.y / am * figW;
-    var lx = tip.x, ly = tip.y;
-    var A = wx / W, B = wy / W, C = -lx / H, D = -ly / H;
-    var E = -(A * (W / 2) + C * H), F = -(B * (W / 2) + D * H);
-    ctx.save();
-    ctx.globalAlpha = a;
-    ctx.transform(A, B, C, D, E, F);
-    ctx.drawImage(img, 0, 0, W, H);
-    ctx.restore();
-    ctx.globalAlpha = 1;
+function render() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, STAGE_W, STAGE_H);
+  ctx.fillStyle = CSC.SKY_2;
+  ctx.fillRect( 0, 0, STAGE_W, STAGE_H);
+  ctx.translate(CENTER_X, CENTER_Y);
+
+  fillSky(      'back', sky.backInner, sky.backOuter);
+
+  ctx.save(); horizonClip('back'); ctx.clip();
+  drawCircleBucket(ctx, allCircles, 'back');
+  ctx.restore();
+
+  drawSun(      'back' );
+  drawHorizonPlane();
+  drawCardinals('back' );
+  drawShadow();
+  drawStickman();
+  drawCardinals('front');
+  fillSky(      'front', sky.frontInner, sky.frontOuter);
+
+  ctx.save(); horizonClip('front'); ctx.clip();
+  drawCircleBucket(ctx, allCircles, 'front');
+  ctx.restore();
+
+  drawSun(      'front');
+
+}
+
+/* ======================================================================
+   State recompute + DOM sync (single source of truth)
+   ====================================================================== */
+const elLatNum       = document.getElementById("latitude-value");
+const elLatInput     = document.getElementById("latitude");
+const elCdaySlider   = document.getElementById("cday");
+const elCdayValue    = document.getElementById("cday-value");
+const elCdayStepUp   = document.querySelector( ".sim-cday-step--up"  );
+const elCdayStepDown = document.querySelector( ".sim-cday-step--down");
+const elDate         = document.getElementById("date-string");
+const elDateSr       = document.getElementById("date-sr");
+const elStatus       = document.getElementById("sr-status");
+const elCanvasDesc   = document.getElementById("canvas-desc");
+const elAnimate      = document.getElementById("animate");
+const elLight        = document.getElementById("light");
+const elLightIndex   = document.getElementById("light-index");
+const elSeasonJun    = document.getElementById("season-jun");
+const elSeasonDec    = document.getElementById("season-dec");
+const elSeasonSouth  = document.getElementById("season-south");
+const elSeasonNorth  = document.getElementById("season-north");
+
+const TEMP_TRACK_CLASS = "sim-slider--temp-track";
+
+function initTemperatureBars() {
+  if (!showTemperatures) {
+    elCdaySlider.classList.remove(    TEMP_TRACK_CLASS);
+    elLatInput.classList.remove(      TEMP_TRACK_CLASS);
+    elCdaySlider.style.removeProperty("--temp-track-gradient");
+    elLatInput.style.removeProperty(  "--temp-track-gradient");
+    elCdaySlider.removeAttribute(     "aria-describedby");
+    elLatInput.removeAttribute(       "aria-describedby");
+    updateSliderProgress(             elCdaySlider);
+    updateSliderProgress(             elLatInput);
+    return;
   }
+  elCdaySlider.classList.add(         TEMP_TRACK_CLASS);
+  elLatInput.classList.add(           TEMP_TRACK_CLASS);
+  elCdaySlider.setAttribute(          "aria-describedby", "temp-desc-date");
+  elLatInput.setAttribute(            "aria-describedby", "temp-desc-latitude");
+  initTempColorScale();
+}
 
-  function render() {
-    // backing-store transform: device pixels -> stage coords, origin at centre
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, STAGE_W, STAGE_H);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, STAGE_W, STAGE_H);
-    ctx.translate(CENTER_X, CENTER_Y);
+function latDegrees() {
+  return Math.round(S.lat * R2D * 10) / 10;
+}
 
-    // 1. back sky bowl (far inner surface)
-    fillSky("back", sky.backInner, sky.backOuter);
+function latSpoken() {
+  const v    = Math.abs( latDegrees() );
+  const hemi = (S.lat < 0) ? "south" : "north";
+  return speak(v, 1, "degree") + " " + hemi;
+}
 
-    // 2. back circle arcs (clipped to far rim)
-    ctx.save(); horizonClip("back"); ctx.clip();
-    for (var i = 0; i < allCircles.length; i++) {
-      strokePen(allCircles[i].back, allCircles[i].color, allCircles[i].alpha, allCircles[i].thick);
-    }
-    ctx.restore();
+function recompute() {
+  sun._altaz = sunAltAz();
+  setSkyColor();
+  for (const c of allCircles) c.update();
+  render();
+}
 
-    // 3. ground / horizon plane + cardinal direction labels (N/E/S/W)
-    drawGround();
-    drawDirectionLabels();
-
-    // 4. front sky bowl (near inner surface, faint)
-    fillSky("front", sky.frontInner, sky.frontOuter);
-
-    // 5. front circle arcs (clipped to near rim)
-    ctx.save(); horizonClip("front"); ctx.clip();
-    for (var j = 0; j < allCircles.length; j++) {
-      strokePen(allCircles[j].front, allCircles[j].color, allCircles[j].alpha, allCircles[j].thick);
-    }
-    ctx.restore();
-
-    // 6. objects on top (depth-ordered in the original): shadow, then the
-    //    figure standing over it, then the sun.
-    drawShadow();
-    drawStickman();
-    drawSun();
+function syncReadouts() {
+  if (document.activeElement !== elLatNum) {
+    elLatNum.value = String(latDegrees());
   }
-
-  /* ======================================================================
-     State recompute + DOM sync (single source of truth)
-     ====================================================================== */
-  var elLatValue = document.getElementById("latitude-value");
-  var elLatInput = document.getElementById("latitude");
-  var elDate = document.getElementById("date-string");
-  var elDateSr = document.getElementById("date-sr");
-  var elStatus = document.getElementById("sr-status");
-  var elCanvasDesc = document.getElementById("canvas-desc");
-  var elAnimate = document.getElementById("animate");
-
-  function latText() {
-    var v = Math.round(Math.abs(sphere.lat * RAD) * 10) / 10;
-    var hemi = (sphere.lat < 0) ? "S" : "N";
-    return v.toFixed(1) + "° " + hemi;
+  elLatInput.setAttribute("aria-valuetext", latSpoken());
+  if (!showTemperatures) updateSliderProgress(elLatInput);
+  
+  const ds = getDateString();
+  const cd = simDayToCalendarDay(day);
+  elDate.textContent   = ds;
+  elDateSr.textContent = "Date: " + ds;
+  if (document.activeElement !== elCdayValue) {
+    elCdayValue.value = ds;
   }
-  function latSpoken() {
-    var v = Math.round(Math.abs(sphere.lat * RAD) * 10) / 10;
-    var hemi = (sphere.lat < 0) ? "south" : "north";
-    return v.toFixed(1) + " degrees " + hemi;
+  elCdayValue.setAttribute("aria-valuenow", String(cd));
+  elCdayValue.setAttribute("aria-valuetext", ds);
+  elCdaySlider.value = String(cd);
+  elCdaySlider.setAttribute("aria-valuetext", ds);
+  if (!showTemperatures) updateSliderProgress(elCdaySlider);
+  if (showTemperatures) {
+    const latDeg = S.lat * R2D;
+    showTemperatureForDate(    day, latDeg);
+    showTemperatureForLatitude(day, latDeg);
+    updateLightIndex(latDeg, cd);
+  } else {
+    updateLightIndex();
   }
+  updateSeasonLabels(S.lat * R2D);
+}
 
-  function recompute() {
-    doA(); doM(); doB();
-    sphere.sun._altaz = sunAltAz();
-    setSkyColor();
-    for (var i = 0; i < allCircles.length; i++) allCircles[i].update();
-    render();
-  }
+function commitLatNum() {
+  let v = parseFloat(elLatNum.value);
+  if (!isFinite(v)) { syncReadouts(); return; }
+  if (v > 90) v = 90; else if (v < -90) v = -90;
+  S.setLatitude(v);
+  elLatInput.value = String(Math.round(v * 10) / 10);
+  if (!showTemperatures) updateSliderProgress(elLatInput);
+  recompute();
+  syncReadouts();
+  updateCanvasDesc();
+  announce("Latitude " + latSpoken() + ".");
+}
 
-  function syncReadouts() {
-    // don't clobber the field while the user is typing in it
-    if (document.activeElement !== elLatValue) elLatValue.value = latText();
-    elLatInput.setAttribute("aria-valuetext", latSpoken());
-    var ds = getDateString();
-    elDate.textContent = ds;
-    elDateSr.textContent = "Date: " + ds;
-  }
+function diagramDescription() {
+  const aa     = sun._altaz;
+  const dirOf  = function (az) {
+    const dirs = ["north", "northeast", "east", "southeast",
+                  "south", "southwest", "west", "northwest", "north"];
+    return dirs[ Math.round(pMod(az, 360) / 45) ];
+  };
+  const sunDesc = (aa.alt > 0)
+    ? ("The sun is up at altitude " + speak(aa.alt, 0, "degree") + ", toward the " + dirOf(aa.az) + ". ")
+    : "The sun is below the horizon. ";
 
-  // Parse a typed latitude: accepts "41", "41.5", "-23.5", "23.5 S", "19.5° N".
-  // Negative or a trailing S means south; N (or no suffix) means north.
-  function parseLatitude(str) {
-    if (str == null) return null;
-    var s = ("" + str).trim().toUpperCase();
-    var m = s.match(/-?\d+(\.\d+)?/);
-    if (!m) return null;
-    var v = parseFloat(m[0]);
-    if (!isFinite(v)) return null;
-    if (/S/.test(s)) v = -Math.abs(v);
-    else if (/N/.test(s)) v = Math.abs(v);
-    return v;
-  }
+  const insDesc = ( showTemperatures ) ? "Insolation index is " + TEMP_NOW + " percent. " : "";
 
-  function commitLatInput() {
-    var v = parseLatitude(elLatValue.value);
-    if (v === null) { elLatValue.value = latText(); return; }   // revert bad input
-    if (v > 90) v = 90; else if (v < -90) v = -90;
-    setLatitude(v);
-    elLatInput.value = String(Math.round(v * 10) / 10);          // sync the slider
-    recompute();
-    elLatValue.value = latText();                                // canonical format
-    elLatInput.setAttribute("aria-valuetext", latSpoken());
-    updateCanvasDesc();
-    announce("Latitude " + latSpoken() + ".");
-  }
+  return "Horizon diagram for latitude " + latSpoken() + " on " + getDateString() +
+    ". Sun's declination " + speak(sun.dec, 1, "degree") + ". " + sunDesc + insDesc;
+  // XXX
+}
 
-  function diagramDescription() {
-    var aa = sphere.sun._altaz;
-    var dirOf = function (az) {
-      var dirs = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest", "north"];
-      return dirs[Math.round(mod(az, 360) / 45)];
-    };
-    var sunDesc = (aa.alt > 0)
-      ? ("The sun is up at altitude " + aa.alt.toFixed(0) + " degrees, toward the " + dirOf(aa.az) + ".")
-      : "The sun is below the horizon.";
-    return "Horizon diagram for latitude " + latSpoken() + " on " + getDateString() +
-      ". Sun's declination " + sphere.sun.dec.toFixed(1) + " degrees. " + sunDesc;
-  }
+function announce(msg)      { elStatus.textContent     = msg; }
+function updateCanvasDesc() { elCanvasDesc.textContent = diagramDescription(); }
 
-  function announce(msg) { elStatus.textContent = msg; }
-  function updateCanvasDesc() { elCanvasDesc.textContent = diagramDescription(); }
+/* ======================================================================
+   Controls
+   ====================================================================== */
+function onLatInput() {
+  S.setLatitude(parseFloat(elLatInput.value));
+  recompute();
+  syncReadouts();
+}
 
-  /* ======================================================================
-     Controls
-     ====================================================================== */
-  // Latitude slider (native range => full keyboard support)
-  function onLatInput() {
-    setLatitude(parseFloat(elLatInput.value));
+elLatInput.addEventListener("input",  onLatInput);
+elLatInput.addEventListener("change", function () {
+  updateCanvasDesc();
+  announce("Latitude " + latSpoken() + ".");
+});
+
+elLatNum.addEventListener("change",  commitLatNum);
+elLatNum.addEventListener("keydown", function (ev) {
+  noEinNumber(ev);
+  if (ev.key === "Enter") { ev.preventDefault(); commitLatNum(); }
+});
+
+const reduceMotion = window.matchMedia &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let animating = false, rafId = null, lastT = null, dayAcc = 0;
+const DAYS_PER_SEC = 24;
+
+function stopAnimateSilent() {
+  animating = false;
+  if (rafId) window.cancelAnimationFrame(rafId);
+  rafId = null;
+}
+
+function stopAnimateIfRunning() {
+  if (!animating) return;
+  elAnimate.checked = false;
+  stopAnimateSilent();
+}
+
+function commitCalendarDay(cd, doAnnounce) {
+  stopAnimateIfRunning();
+  cd = wrapCalendarDay(cd);
+  setDay(calendarDayToSimDay(cd));
+  sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+  recompute();
+  syncReadouts();
+  updateCanvasDesc();
+  if (doAnnounce) announce("Date " + getDateString() + ".");
+}
+
+function onCdayInput() {
+  commitCalendarDay(parseInt(elCdaySlider.value, 10), false);
+}
+
+elCdaySlider.addEventListener("input", onCdayInput);
+elCdaySlider.addEventListener("change", function () {
+  commitCalendarDay(parseInt(elCdaySlider.value, 10), true);
+});
+
+elCdayStepUp.addEventListener("click", function () {
+  commitCalendarDay(simDayToCalendarDay(day) - 1, true);
+});
+elCdayStepDown.addEventListener("click", function () {
+  commitCalendarDay(simDayToCalendarDay(day) + 1, true);
+});
+
+function tick(t) {
+  if (!animating) return;
+  if (lastT === null) lastT = t;
+  const dt    = (t - lastT) / 1000; lastT = t;
+  dayAcc     += dt * DAYS_PER_SEC;
+  const whole = Math.floor(dayAcc);
+  if ( whole >= 1 ) {
+    dayAcc   -= whole;
+    setDay(day + whole);
+    sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
     recompute();
     syncReadouts();
   }
-  function setLatitude(deg) {
-    if (deg > 90) deg = 90; else if (deg < -90) deg = -90;
-    sphere.lat = deg * DEG;
-  }
-  elLatInput.addEventListener("input", onLatInput);
-  elLatInput.addEventListener("change", function () {
-    updateCanvasDesc();
-    announce("Latitude " + latSpoken() + ".");
-  });
+  rafId = window.requestAnimationFrame(tick);
+}
 
-  // Editable latitude field: type a value, commit on Enter or blur.
-  elLatValue.addEventListener("change", commitLatInput);
-  elLatValue.addEventListener("keydown", function (ev) {
-    if (ev.key === "Enter") { ev.preventDefault(); commitLatInput(); }
-  });
-  elLatValue.addEventListener("focus", function () {
-    try { elLatValue.select(); } catch (e) {}
-  });
+function startAnimate() {
+  if (animating) return;
+  animating = true; lastT = null; dayAcc = 0;
+  rafId     = window.requestAnimationFrame(tick);
+  announce("Animation started.");
+}
 
-  // Animate checkbox
-  var reduceMotion = window.matchMedia &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var animating = false, rafId = null, lastT = null, dayAcc = 0;
-  var DAYS_PER_SEC = 24;   // ~ original 24 fps, one day per frame
+function stopAnimate() {
+  animating = false;
+  if (rafId) window.cancelAnimationFrame(rafId);
+  rafId     = null;
+  updateCanvasDesc();
+  announce("Animation stopped on " + getDateString() + ".");
+}
 
-  function tick(t) {
-    if (!animating) return;
-    if (lastT === null) lastT = t;
-    var dt = (t - lastT) / 1000; lastT = t;
-    dayAcc += dt * DAYS_PER_SEC;
-    var whole = Math.floor(dayAcc);
-    if (whole >= 1) {
-      dayAcc -= whole;
-      setDay(sphere.day + whole);
-      // sun's path circle tracks the sun's current declination (DoAction.as)
-      sunsPath.setParams({ ra: 0, dec: sphere.sun.dec, tilt: 0 });
-      recompute();
-      syncReadouts();
-    }
-    rafId = window.requestAnimationFrame(tick);
-  }
-  function startAnimate() {
-    if (animating) return;
-    animating = true; lastT = null; dayAcc = 0;
-    rafId = window.requestAnimationFrame(tick);
-    announce("Animation started.");
-  }
-  function stopAnimate() {
-    animating = false;
-    if (rafId) window.cancelAnimationFrame(rafId);
-    rafId = null;
-    updateCanvasDesc();
-    announce("Animation stopped on " + getDateString() + ".");
-  }
-  elAnimate.addEventListener("change", function () {
-    if (elAnimate.checked) {
-      if (reduceMotion) {
-        // Honour reduced motion: step a single day instead of continuous run.
-        setDay(sphere.day + 1);
-        sunsPath.setParams({ ra: 0, dec: sphere.sun.dec, tilt: 0 });
-        recompute(); syncReadouts(); updateCanvasDesc();
-        announce("Reduced motion is on. Stepped one day to " + getDateString() + ".");
-        elAnimate.checked = false;
-      } else {
-        startAnimate();
-      }
+elAnimate.addEventListener("change", function () {
+  if (elAnimate.checked) {
+    if (reduceMotion) {
+      setDay(day + 1);
+      sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+      recompute(); syncReadouts(); updateCanvasDesc();
+      announce("Reduced motion is on. Stepped one day to " + getDateString() + ".");
+      elAnimate.checked = false;
     } else {
-      stopAnimate();
+      startAnimate();
     }
-  });
-
-  /* ---- Pointer drag + keyboard rotation of the view (mouse behaviour:
-          "simple drag" in 4 CS Mouse.as) ----------------------------------- */
-  var MIN_PHI = 7, MAX_PHI = 90;      // sphere.minViewerAltitude = 7
-  function setThetaPhi(thetaDeg, phiDeg) {
-    if (phiDeg > MAX_PHI) phiDeg = MAX_PHI; else if (phiDeg < MIN_PHI) phiDeg = MIN_PHI;
-    sphere.theta = DEG * mod(thetaDeg, 360);
-    sphere.phi = phiDeg * DEG;
+  } else {
+    stopAnimate();
   }
-  function stageCoords(ev) {
-    var rect = canvas.getBoundingClientRect();
-    var x = (ev.clientX - rect.left) * (STAGE_W / rect.width) - CENTER_X;
-    var y = (ev.clientY - rect.top) * (STAGE_H / rect.height) - CENTER_Y;
-    return { x: x, y: y };
-  }
-  // Two interaction targets share the canvas (matching the Sun Motion Demo):
-  //   - clicking/dragging the SUN moves it through the year (changes the day);
-  //   - clicking/dragging elsewhere on the SPHERE rotates the view.
-  // canvasFocus records which one the arrow keys drive after a click (and is
-  // toggled by Enter/Space for keyboard-only users).
-  var dragMode = null;          // null | 'view' | 'sun'  (active pointer drag)
-  var canvasFocus = "view";     // 'view' | 'sun'         (what arrow keys drive)
-  var dragX = 0, dragY = 0, dragTheta = 0, dragPhi = 0;
+});
 
-  function sunVisible() { return sphere.sun._altaz && sphere.sun._altaz.alt > 0; }
-  function hitSun(p) {
-    if (!sunVisible()) return false;
-    var sp = {}; CtoSz(sphere.sun.p, sp);
-    var dx = p.x - sp.x, dy = p.y - sp.y;
-    return (dx * dx + dy * dy) <= 225 && sp.z > 0;   // within ~15px and in front
-  }
+elLight.addEventListener("change", function () {
+  showTemperatures = elLight.checked;
+  initTemperatureBars();
+  syncReadouts();
+  if ( showTemperatures )  { announce("Showing insolation index. "); }
+  else                     { announce("Hiding insolation index. ");  }
 
-  // Apply a day change: keep the sun's-path circle on the sun's declination,
-  // recompute, and refresh the date readout (no announcement — done on commit).
-  function applyDayChange() {
-    sunsPath.setParams({ ra: 0, dec: sphere.sun.dec, tilt: 0 });
+});
+
+/* ---- Pointer drag + keyboard rotation of the view -------------------- */
+function stageCoords(ev) {
+  const rect = canvas.getBoundingClientRect();
+  const x    = (ev.clientX - rect.left) * (STAGE_W / rect.width ) - CENTER_X;
+  const y    = (ev.clientY - rect.top ) * (STAGE_H / rect.height) - CENTER_Y;
+  return { x: x, y: y };
+}
+
+let dragMode    = null;
+let canvasFocus = "view";
+let dragX = 0, dragY = 0, dragTheta = 0, dragPhi = 0;
+
+function sunVisible() { return sun._altaz && sun._altaz.alt > 0; }
+
+function hitSun(p) {
+  if (!sunVisible()) return false;
+  const sp = {};
+  S.CtoSz(sun.p, sp);
+  const dx = p.x - sp.x, dy = p.y - sp.y;
+  return (dx * dx + dy * dy) <= 225 && sp.z > 0;
+}
+
+function applyDayChange() {
+  sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+  recompute();
+  syncReadouts();
+  updateCanvasDesc();
+}
+
+function applyLatChange() {
+  recompute();
+  syncReadouts();
+  updateCanvasDesc();
+}
+
+function announceSun() {
+  announce("Sun on " + getDateString() + ". Declination " +
+    speak(sun.dec, 1, "degree") + ".");
+}
+
+function sunDragToCursor(px, py) {
+  const raHours = S.getSiderealTime();
+  const cur     = day;
+  let   best    = cur;
+  let bestScore = Infinity;
+  for (let d = 0; d < 365; d++) {
+    const dec   = 23.5 * Math.sin(d * 0.01721420632103996);
+    const sp    = {};
+    S.CtoSz(S.parse({ ra: raHours, dec: dec }), sp);
+    if (sp.z <= 0) continue;
+    const dx    = sp.x - px, dy = sp.y - py;
+    let   dd    = Math.abs(d - cur); if (dd > 182.5) dd = 365 - dd;
+    let   score = dx * dx + dy * dy + dd * 0.05;
+    if (score < bestScore) { bestScore = score; best = d; }
+  }
+  setDay(best);
+  applyDayChange();
+}
+
+function moveDay(delta) {
+  setDay(((day + delta) % 365 + 365) % 365);
+  applyDayChange();
+  announceSun();
+}
+
+function moveLat(delta) {
+  const lat = Math.min( Math.max( latDegrees() + delta, -90 ), 90 );
+  S.setLatitude( lat );
+  applyLatChange();
+  latSpoken();
+}
+
+canvas.addEventListener("pointerdown", function (ev) {
+  canvas.focus();
+  try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+  const p            = stageCoords(ev);
+  const allowGrabSun = false;
+  if ( (hitSun(p)) && allowGrabSun ) {
+    dragMode = "sun"; canvasFocus = "sun";
+    if (animating) { elAnimate.checked = false; stopAnimate(); }
+  } else {
+    dragMode = "view"; canvasFocus = "view";
+    dragX    = p.x; dragY = p.y; dragTheta = S.theta; dragPhi = S.phi;
+    canvas.classList.add("dragging");
+  }
+  ev.preventDefault();
+});
+
+canvas.addEventListener("pointermove", function (ev) {
+  const p = stageCoords(ev);
+  if (dragMode === "view") {
+    S.setThetaAndPhi(
+      R2D * (dragTheta - (p.x - dragX) / S.c.r),
+      R2D * (dragPhi   + (p.y - dragY) / S.c.r)
+    );
     recompute();
-    syncReadouts();
-    updateCanvasDesc();
+  } else if (dragMode === "sun") {
+    sunDragToCursor(p.x, p.y);
+  } else {
+    canvas.classList.toggle("sun-hover", hitSun(p));
   }
-  function announceSun() {
-    announce("Sun on " + getDateString() + ". Declination " +
-      sphere.sun.dec.toFixed(1) + " degrees.");
-  }
-  // Drag the sun: pick the day whose (meridian) sun is closest to the cursor,
-  // with a small bias toward the current day so scrubbing stays continuous.
-  function sunDragToCursor(px, py) {
-    var raHours = sphere.sTime * 3.819718634205488;   // RA giving hour-angle 0
-    var cur = sphere.day, best = cur, bestScore = Infinity;
-    for (var d = 0; d < 365; d++) {
-      var dec = 23.5 * Math.sin(d * 0.01721420632103996);
-      var sp = {}; CtoSz(parsePointInput({ ra: raHours, dec: dec }), sp);
-      if (sp.z <= 0) continue;                         // behind the sphere
-      var dx = sp.x - px, dy = sp.y - py;
-      var dd = Math.abs(d - cur); if (dd > 182.5) dd = 365 - dd;
-      var score = dx * dx + dy * dy + dd * 0.05;
-      if (score < bestScore) { bestScore = score; best = d; }
-    }
-    setDay(best);
-    applyDayChange();
-  }
-  function moveDay(delta) {
-    setDay(((sphere.day + delta) % 365 + 365) % 365);
-    applyDayChange();
-    announceSun();
-  }
+});
 
-  canvas.addEventListener("pointerdown", function (ev) {
-    canvas.focus();                                    // clicking focuses for arrow keys
-    try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
-    var p = stageCoords(ev);
-    if (hitSun(p)) {
-      dragMode = "sun"; canvasFocus = "sun";
-      if (animating) { elAnimate.checked = false; stopAnimate(); }
-    } else {
-      dragMode = "view"; canvasFocus = "view";
-      dragX = p.x; dragY = p.y; dragTheta = sphere.theta; dragPhi = sphere.phi;
+function endDrag(ev) {
+  const wasSun = dragMode === "sun";
+  if (dragMode) updateCanvasDesc();
+  dragMode = null;
+  canvas.classList.remove("dragging", "sun-hover");
+  try { canvas.releasePointerCapture(ev.pointerId); } catch (e) {}
+  if (wasSun) announceSun();
+}
+
+canvas.addEventListener("pointerup",     endDrag);
+canvas.addEventListener("pointercancel", endDrag);
+
+// Keyboard control on canvas (for celestial sphere, date, and latitude)
+canvas.addEventListener("keydown", function (ev) {
+  // Change target
+  if ( (ev.key == "Enter") || (ev.key == " ") )  {
+    canvasVar = pMod( canvasVar + 1, 3 );
+    if ( canvasVar == 1 )  { 
+      canvasFocus = "sun";
+      announce( "Date control mode; " +
+                "arrow keys now change the date forward and backward. " +
+                "Press Enter to change latitude." );
+    } else if ( canvasVar == 2 )  {
+      canvasFocus = "lat";
+      announce( "Latitude control mode; " +
+                "arrow keys now move observer north and south. " +
+                "Press Enter to change celestial sphere orientation." );
+    } else  {
+      canvasFocus = "";
+      announce( "Celestial sphere control mode; " +
+                "arrow keys now rotate and tilt viewpoint. " +
+                "Press Enter to change date." );
     }
     ev.preventDefault();
-  });
-  canvas.addEventListener("pointermove", function (ev) {
-    var p = stageCoords(ev);
-    if (dragMode === "view") {
-      setThetaPhi(RAD * (dragTheta - (p.x - dragX) / sphere.r),
-                  RAD * (dragPhi + (p.y - dragY) / sphere.r));
-      recompute();
-    } else if (dragMode === "sun") {
-      sunDragToCursor(p.x, p.y);
-    } else {
-      canvas.style.cursor = hitSun(p) ? "move" : "grab";   // hint: sun vs rotate
-    }
-  });
-  function endDrag(ev) {
-    var wasSun = dragMode === "sun";
-    if (dragMode) updateCanvasDesc();
-    dragMode = null;
-    try { canvas.releasePointerCapture(ev.pointerId); } catch (e) {}
-    if (wasSun) announceSun();
-  }
-  canvas.addEventListener("pointerup", endDrag);
-  canvas.addEventListener("pointercancel", endDrag);
-
-  canvas.addEventListener("keydown", function (ev) {
-    // SUN mode: arrow keys move the sun through the year
-    if (canvasFocus === "sun") {
-      if (animating) return;
-      var used = true;
-      switch (ev.key) {
-        case "ArrowLeft": case "ArrowDown": moveDay(-1); break;
-        case "ArrowRight": case "ArrowUp": moveDay(1); break;
-        case "PageDown": moveDay(-7); break;
-        case "PageUp": moveDay(7); break;
-        case "Home": setDay(0); applyDayChange(); announceSun(); break;
-        case "End": setDay(364); applyDayChange(); announceSun(); break;
-        case "Enter": case " ":
-          canvasFocus = "view";
-          announce("View rotation mode. Arrow keys rotate the diagram.");
-          break;
-        default: used = false;
-      }
-      if (used) ev.preventDefault();
-      return;
-    }
-    // VIEW mode: arrow keys rotate; Enter/Space switches to moving the sun
-    var step = 5, handled = true;
-    var thetaDeg = sphere.theta * RAD, phiDeg = sphere.phi * RAD;
+    return;
+  };
+  // Keyboard control for date
+  let used = true;
+  if (canvasFocus === "sun") {
+    if (animating) return;
+    const dayStep  = keyAccel(ev, 1);
+    const weekStep = keyAccel(ev, 7);
     switch (ev.key) {
-      case "ArrowLeft": thetaDeg -= step; break;
-      case "ArrowRight": thetaDeg += step; break;
-      case "ArrowUp": phiDeg += step; break;
-      case "ArrowDown": phiDeg -= step; break;
-      case "Enter": case " ":
-        if (sunVisible()) {
-          canvasFocus = "sun";
-          announce("Sun control mode. Arrow keys move the sun by day. " +
-            "Press Enter to return to rotating the view.");
-        } else {
-          announce("The sun is below the horizon and cannot be moved right now.");
-        }
-        ev.preventDefault();
-        return;
-      default: handled = false;
+      case "ArrowLeft":  case "ArrowUp":   moveDay(-dayStep );   break;
+      case "ArrowRight": case "ArrowDown": moveDay( dayStep );   break;
+      case "PageUp":                       moveDay(-weekStep);   break;
+      case "PageDown":                     moveDay( weekStep);   break;
+      case "Home": setDay(0);   applyDayChange(); announceSun(); break;
+      default: used = false;
     }
-    if (handled) {
-      ev.preventDefault();
-      setThetaPhi(thetaDeg, phiDeg);
-      recompute(); updateCanvasDesc();
-      announce("View rotated. Azimuth " + Math.round(mod(360 - sphere.theta * RAD, 360)) +
-        " degrees, altitude " + Math.round(sphere.phi * RAD) + " degrees.");
+    if (used) ev.preventDefault();
+    return;
+  // Keyboard control for latitude
+  } else if (canvasFocus === "lat" ) {
+    const latStep  = keyAccel(ev, 0.1);
+    const bigStep  = keyAccel(ev, 0.5);
+    switch (ev.key) {
+      case "ArrowLeft":  case "ArrowUp":   moveLat(-latStep);  break;
+      case "ArrowRight": case "ArrowDown": moveLat( latStep);  break;
+      case "PageUp":                       moveLat(-bigStep);  break;
+      case "PageDown":                     moveLat( bigStep);  break;
+      case "Home": S.setLatitude(-90);     moveLat(0);         break;
+      case "End":  S.setLatitude( 90);     moveLat(0);         break;
+      default: used = false;
     }
-  });
-
-  /* ======================================================================
-     Reset (from the KL-UNL masthead "sim-reset" event) + init
-     ====================================================================== */
-  function resetState() {
-    setThetaPhi(160, 30);        // viewerAzimuth 200 -> theta 160; phi 30
-    setLatitude(41);             // initValue
-    setDay(0);                   // March 21, sun on the celestial equator
-    sphere.sun._altaz = sunAltAz();
-    sunsPath.setParams({ ra: 0, dec: sphere.sun.dec, tilt: 0 });
-    celestialEquator.setParams({ ra: 0, dec: 0, tilt: 0 });
-    meridian.setParams({ az: 0, alt: 0, tilt: 90 });
-    ecliptic.setParams({ ra: 0, dec: 0, tilt: 23.5 });
-    elLatInput.value = "41";
-    if (elAnimate.checked) { elAnimate.checked = false; }
-    stopAnimateSilent();
-    recompute();
-    syncReadouts();
-    updateCanvasDesc();
+    if (used) ev.preventDefault();
+    return;
   }
-  function stopAnimateSilent() {
-    animating = false;
-    if (rafId) window.cancelAnimationFrame(rafId);
-    rafId = null;
+  // Keyboard control for celestial sphere
+  const step   = keyAccel(ev, 1);
+  const stepBg =             15;
+  let handled  = true;
+  let thetaDeg = S.theta * R2D, phiDeg = S.phi * R2D;
+  let s0;
+  switch (ev.key) {
+    case "ArrowLeft":  thetaDeg += step;   break;
+    case "ArrowRight": thetaDeg -= step;   break;
+    case "ArrowUp":    phiDeg   -= step;   break;
+    case "ArrowDown":  phiDeg   += step;   break;
+    case "PageUp":     phiDeg   -= stepBg; break;
+    case "PageDown":   phiDeg   += stepBg; break;
+    default: handled = false;
   }
+  if (handled) {
+    ev.preventDefault();
+    S.setThetaAndPhi(thetaDeg, phiDeg);
+    recompute(); updateCanvasDesc();
+    const az  = Math.round(pMod(360 - S.theta * R2D, 360));
+    const alt = Math.round(S.phi * R2D);
+    announce("View rotated. Azimuth " + speak(az,  0, "degree") +
+                        ", altitude " + speak(alt, 0, "degree") + ".");
+  }
+});
 
-  document.addEventListener("sim-reset", function () {
-    resetState();
-    announce("Simulation reset to latitude 41.0 degrees north on March 21.");
-  });
+/* ======================================================================
+   Reset (from the KL-UNL masthead "sim-reset" event) + init
+   ====================================================================== */
+function resetState() {
+  S.setThetaAndPhi(160, 30);
+  S.setLatitude(41);
+  setDay(0);
+  sun._altaz       = sunAltAz();
+  sunsPath.setParameters(        { ra: 0, dec: sun.dec, tilt:  0   });
+  celestialEquator.setParameters({ ra: 0, dec:       0, tilt:  0   });
+  meridian.setParameters(        { az: 0, alt:       0, tilt: 90   });
+  ecliptic.setParameters(        { ra: 0, dec:       0, tilt: 23.5 });
+  elLatInput.value = "41";
+  elLatNum.value   = "41";
+  elLight.checked  = showTemperatures_0;
+  showTemperatures = showTemperatures_0;
+  initTemperatureBars();
+  if (elAnimate.checked) { elAnimate.checked = false; }
+  stopAnimateSilent();
+  recompute();
+  syncReadouts();
+  updateCanvasDesc();
+}
 
-  // Redefine the foundation equation-init hook (no equations in this sim).
-  window.klunlInitEqn = function () { /* this demonstrator has no equations */ };
-
-  // Initial build
+document.addEventListener("sim-reset", function () {
   resetState();
-  window.addEventListener("resize", render);
+  announce("Simulation reset to latitude " + latSpoken() + " on March 21.");
+});
 
-})();
+window.klunlInitEqn = function () { /* this demonstrator has no equations */ };
+
+elLight.checked = showTemperatures;
+initTemperatureBars();
+resetState();
+window.addEventListener("resize", render);

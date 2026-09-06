@@ -3,6 +3,12 @@
    ---------------------------------------------------------------------------
    Shared mathematical and projection engine for celestial sphere.
 
+   New constants include the celestial sphere colors blocks, containing 
+   default colors that can be overwritten within individual simulations.
+
+   New functionality includes optional hatching of interiors of great circles 
+   (not included in legacy code base).
+
    Matrices on scratch object `c`:
      a0..a8  — world (horizon) → screen projection (scaled by sphere radius r)
      m0..m8  — celestial → world (observer latitude + local sidereal time)
@@ -21,6 +27,12 @@ export const R2D = 57.29577951308232;       /** Radians → degrees (180/π)    
 export const H2R =  0.2617993877991494;     /** Hours   → radians (15° = π/12) */
 export const R2H =  3.819718634205488;      /** Radians → hours                */
 
+/** Conversion factors  */
+export const RA_H    = 0.06575342465753424; /** RA   (hours) from DOY =  24/365 */
+export const DEC_D   = 0.01721420632103996; /** Dec. (deg.)  from DOY = 2PI/365 */
+export const TME_H   = 1.0027397260273974;  /** Time (hours) from DOY = 366/365 */
+
+/** Factors of PI       */
 export const TWO_PI  = 6.283185307179586;   /** 2π   */
 export const PI      = 3.141592653589793;   /**  π   */
 export const HALF_PI = 1.5707963267948966;  /**  π/2 */
@@ -29,29 +41,35 @@ export const SXTH_PI = 0.5235987755982988;  /**  π/6 */
 
 /** Default celestial sphere colors in hex */
 export const CELESTIAL_SPHERE_COLORS = {
-  // Arcs and line segments
-  AZ_ARC:     '#5645f5',  // (slate blue)
+  // Arcs
+  AZ_ARC:     '#5645f5',  // (slate   blue)
   AZ_ARC_BCK: '#ffffff',  // (white)
-  ALT_ARC:    '#a63743',  // (brick red)
-  AZ_CIRC:    '#a0a0a0',  // (medium gray)
-  ALT_CIRC:   '#a0a0a0',  // (medium gray)
-  RA_ARC:     '#4b4bfe',  // (bright blue)
-  DEC_ARC:    '#fe4b4b',  // (bright red)
-  RA_CIRC:    '#a0a0a0',  // (medium gray)
-  DEC_CIRC:   '#a0a0a0',  // (medium gray)
+  ALT_ARC:    '#a63743',  // (brick   red)
+  AZ_CIRC:    '#a0a0a0',  // (medium  grey)
+  ALT_CIRC:   '#a0a0a0',  // (medium  grey)
+  RA_ARC:     '#4b4bfe',  // (bright  blue)
+  DEC_ARC:    '#fe4b4b',  // (bright  red)
+  RA_CIRC:    '#a0a0a0',  // (medium  grey)
+  DEC_CIRC:   '#a0a0a0',  // (medium  grey)
+  MRDN_CIRC:  '#216331',  // (dark    green)
   MRDN2_CIRC: '#000000',  // (black)
-  MRDN_CIRC:  '#216331',  // (dark green)
-  POLE_LNSG:  '#505050',  // (dark gray)
+  MRDN3_CIRC: '#c0c0c0',  // (light   grey)
+  CEL_EQUTR:  '#505050',  // (dark    gray)
+  SUN_PATH:   '#ffffc0',  // (pale    yellow)
+  
+  // Line segments
+  POLE_LNSG:  '#505050',  // (dark    grey)
 
   // Celestial sphere
-  CSPHERE_1:  '#e6e9ec',  // (pale  grayish blue)
-  CSPHERE_2:  '#d0d4d9',  // (light grayish blue)
-  CSPHERE_3:  '#787e86',  // (muted grayish blue)
-  CSPHERE_4:  '#787878',  // (medium grey)
+  CSPHERE_1:  '#e6e9ec',  // (pale    greyish blue)
+  CSPHERE_2:  '#d0d4d9',  // (light   greyish blue)
+  CSPHERE_3:  '#787e86',  // (muted   greyish blue)
+  CSPHERE_4:  '#787878',  // (medium  grey)
 
   // Ecliptic 
   ECLPTC_1:   '#9931DF',  // (violet)
   ECLPTC_2:   '#9408c7',  // (violet)
+  ECLPTC_3:   '#ff5050',  // (bright  red)
 
   // Horizon plane
   HOR_ABV_1:  '#46b446',  // (vibrant green)
@@ -61,12 +79,16 @@ export const CELESTIAL_SPHERE_COLORS = {
   HOR_BLW_2:  '#005000',  // (dark    green)
 
   // Earth
-  EARTH_1:    '#bcd2f5',  // (light  blue)
-  EARTH_2:    '#5b86d6',  // (medium blue)
-  EARTH_3:    '#3f8f4a',  // (medium green)
+  EARTH_1:    '#bcd2f5',  // (light   blue)
+  EARTH_2:    '#5b86d6',  // (medium  blue)
+  EARTH_3:    '#3f8f4a',  // (medium  green)
+
+  // Sky
+  SKY_1:      '#84cbff',  // (light   blue)
+  SKY_2:      '#000000',  // (black)
 
   // North and south pole base markers
-  POLE_MRK1:  '#222222',  // (dark grey)
+  POLE_MRK1:  '#222222',  // (dark    grey)
   POLE_MRK2:  '#ffffff',  // (white)
 
   // General labels (zenith, nadir, horizon, meridian)
@@ -75,13 +97,13 @@ export const CELESTIAL_SPHERE_COLORS = {
   LABEL_HALO: '#ffffff',  // (white)
 
   // Star position labels
-  AZ_LABEL:   '#4a4080',  // (dark blue)
+  AZ_LABEL:   '#4a4080',  // (dark    blue)
   ALT_LABEL:  '#9a2230',  // (scarlet sage)
-  RA_LABEL:   '#4b4bfe',  // (bright blue)
-  DEC_LABEL:  '#fe4b4b',  // (bright red)
+  RA_LABEL:   '#4b4bfe',  // (bright  blue)
+  DEC_LABEL:  '#fe4b4b',  // (bright  red)
 
   // Cardinal direction labels
-  NESW_LINE:  '#1a1a1a',  // (dark grey)
+  NESW_LINE:  '#1a1a1a',  // (dark    grey)
   NESW_FILL:  '#ffffff'   // (white)
 };
 
@@ -660,8 +682,8 @@ export class Circle {
    * Recompute projected ellipse and split [gS, gE] into front/back path buckets.
    */
   update() {
-    this.front.length = 0;
-    this.back.length  = 0;
+    this.front.length      = 0;
+    this.back.length       = 0;
     this.hatchFront.length = 0;
     this.hatchBack.length  = 0;
     if (!this.visible) return;
@@ -693,11 +715,11 @@ export class Circle {
     const computeHatch = () => {
       if (!this.hatch || this.gS !== this.gE) return;
       const R       = pc.r;
-      const spacing = this.hatch.spacing ?? 10;
-      const innerR  = this.hatch.innerR  ?? 0;
-      const psi     = (this.hatch.angle  ?? 0) * D2R;
-      const cosP    = Math.cos(psi), sinP = Math.sin(psi);
-      const frontH  = this.hatchFront, backH = this.hatchBack;
+      const spacing =  this.hatch.spacing ?? 10;
+      const innerR  =  this.hatch.innerR  ??  0;
+      const psi     = (this.hatch.angle   ??  0) * D2R;
+      const cosP    =  Math.cos(psi), sinP = Math.sin(psi);
+      const frontH  =  this.hatchFront, backH = this.hatchBack;
       const p1 = {}, p2 = {}, pm = {};
 
       const planeToScreen = (u, v, out) => {
@@ -715,7 +737,7 @@ export class Circle {
         if (p1.z >= 0 && p2.z >= 0) {
           frontH.push({ move: [p1.x, p1.y], line: [p2.x, p2.y] });
         } else if (p1.z < 0 && p2.z < 0) {
-          backH.push({ move: [p1.x, p1.y], line: [p2.x, p2.y] });
+          backH.push( { move: [p1.x, p1.y], line: [p2.x, p2.y] });
         } else {
           const f  = p1.z / (p1.z - p2.z);
           const tm = t1 + f * (t2 - t1);
@@ -738,10 +760,10 @@ export class Circle {
         const tMax = Math.sqrt(R * R - s * s);
         if (innerR > 0 && Math.abs(s) < innerR) {
           const tIn = Math.sqrt(innerR * innerR - s * s);
-          pushInterval(s, -tMax, -tIn);
-          pushInterval(s,  tIn,  tMax);
+          pushInterval(s, -tMax, -tIn );
+          pushInterval(s,  tIn,   tMax);
         } else {
-          pushInterval(s, -tMax, tMax);
+          pushInterval(s, -tMax,  tMax);
         }
       }
     };

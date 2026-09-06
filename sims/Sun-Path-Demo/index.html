@@ -4,25 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Paths of the Sun Demonstrator</title>
+  <meta name="description" content="College-level astronomy materials">
+  <meta name="keywords" content="Astronomy education, undergraduate astronomy">
+  <!-- KL-UNL shared foundation -->
+  <link href="../foundation/css/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Simulation-specific style -->
+  <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
+  <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
+  <link rel="apple-touch-icon"      href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
-  <!-- KL-UNL shared foundation (copied in unchanged) -->
-  <link rel="stylesheet" href="foundation/kl-unl.css">
-  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
-  <link rel="stylesheet" href="styles/styles.css">
-
-  <script defer src="foundation/kl-unl-masthead.js"></script>
-  <script defer src="foundation/kl-unl.js"></script>
-  <script defer src="simulation.js"></script>
+  <script defer src="../foundation/js/kl-unl-masthead.js"></script>
+  <script type="module" src="simulation.js"></script>
 </head>
 <body>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+
   <!-- aria-live status region: announces state changes (on commit) with units/context -->
   <p id="sr-status" class="sr-only" aria-live="polite"></p>
 
   <main class="app-shell">
-    <!-- Title + Reset / Help / About come from the shared masthead component.
-         It renders the <h1>, reads text from foundation/contents.json by sim-id,
-         and dispatches a "sim-reset" event we listen for. -->
-    <kl-unl-masthead sim-id="sunpaths" json-url="foundation/contents.json"></kl-unl-masthead>
+    <!-- Title bar + Reset / Help / About / Feedback supplied by shared masthead component -->
+    <kl-unl-masthead sim-id="sunpaths" json-url="../foundation/js/kl-unl-masthead.json"></kl-unl-masthead>
 
     <div class="app-layout sim-layout">
 
@@ -31,22 +33,25 @@
         <h2 id="diagram-heading" class="panel__heading">Horizon Diagram</h2>
         <div class="panel__canvas-wrap">
           <div class="sim-canvas-box">
+            <p id="light-index" class="sim-light-index" hidden>insolation: 0</p>
             <!-- Focusable diagram: pointer-drag OR arrow keys rotate the view.
                  The canvas is the visual layer only; the text equivalent below
                  (and the live region) carry the accessible description. -->
-            <canvas id="sky-canvas" width="360" height="268"
-                    role="application"
+            <canvas id="sky-canvas" class="sim-canvas" width="360" height="268"
+                    role="img"
                     tabindex="0"
+                    aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Enter"
                     aria-describedby="canvas-desc canvas-help"></canvas>
           </div>
           <p id="canvas-desc" class="sr-only" aria-live="polite"></p>
           <p id="canvas-help" class="sr-only">
-            Interactive horizon diagram. Drag the sphere, or use the arrow keys,
-            to rotate the view. Drag the sun to move it through the year, or press
-            Enter to switch the arrow keys to moving the sun (Page Up and Page Down
-            jump by a week; Home and End jump to the ends of the year). Press Enter
-            again to return to rotating the view. The latitude slider and the
-            animate control are in the Settings panel.
+            Interactive horizon diagram. Drag the celestial sphere, or use
+            arrow keys, to rotate the view. Press Enter for arrow keys to move
+            the sun (Page Up and Page Down jump by a week; Home and End jump
+            to the ends of the year). Press Enter once more to change
+            observer's latitude. Press Enter again to return to rotating 
+            viewpoint. A date slider, latitude slider, and animate and 
+            insolation controls are in the Settings panel.
           </p>
         </div>
       </section>
@@ -58,48 +63,125 @@
         <!-- Date readout — kept above the latitude control so it stays visible
              with the diagram while animating (important in the mobile single
              column, where controls stack below the diagram). -->
-        <p class="sim-date" id="date-string" aria-live="off">March 21</p>
-        <p class="sr-only" id="date-sr"></p>
+        <p class="sim-date" id="date-string" aria-live="off" style="display:none;">March 21</p>
+        <p class="sr-only"  id="date-sr"></p>
 
+        <!--
         <hr class="sim-rule">
+        -->
 
         <fieldset class="control-fieldset">
-          <legend class="control-fieldset__legend sr-only">Latitude and animation</legend>
+          <legend class="control-fieldset__legend sr-only">Date, latitude, and animation</legend>
+
+          <!-- Animate and light checkboxes -->
+          <div class="sim-check-row">
+            <div class="control-choice sim-animate-row">
+              <input type="checkbox" id="animate" name="animate">
+              <label for="animate">animate</label>
+            </div>
+            <div class="control-choice sim-light-row">
+              <input type="checkbox" id="light" name="light">
+              <label for="light">insolation</label>
+            </div>
+          </div>
+          
+          <!-- Calendar day slider -->
+          <div class="control-row sim-slider-row sim-cday-row">
+            <label class="control-row__label" for="cday">date</label>
+            <span class="sim-field-wrap sim-cday-wrap">
+              <input class="control-row__input sim-num sim-cday-field" id="cday-value"
+                     type="text" readonly role="spinbutton"
+                     value="March 21" autocomplete="off"
+                     aria-label="Date"
+                     aria-valuemin="0" aria-valuemax="364"
+                     aria-valuenow="79" aria-valuetext="March 21">
+              <span class="sim-cday-spinners">
+                <button type="button" class="sim-cday-step sim-cday-step--up"
+                        tabindex="-1" aria-label="Earlier day"></button>
+                <button type="button" class="sim-cday-step sim-cday-step--down"
+                        tabindex="-1" aria-label="Later day"></button>
+              </span>
+            </span>
+            <div class="sim-slider-stack">
+              <p id="temp-desc-date" class="sr-only">
+                Track colors show relative temperature for the year at the current latitude.
+                Blue is colder; red is warmer.
+              </p>
+              <div class="sim-season-labels" aria-hidden="true">
+                <!-- Spacer 1: Jan.  1 to June 21 (171 days) -->
+                <div class="sim-label-spacer" style="flex: 171;">
+                  <span class="sim-season-label" id="season-jun">summer</span>
+                </div>
+                <!-- Spacer 2: June 21 to Dec. 21 (183 days) -->
+                <div class="sim-label-spacer" style="flex: 183;">
+                  <span class="sim-season-label" id="season-dec">winter</span>
+                </div>
+                <!-- Spacer 3: Dec. 21 to Dec. 31 ( 10 days) -->
+                <div class="sim-label-spacer" style="flex: 10;"></div>
+              </div>
+              <input class="control-row__slider sim-slider" type="range"
+                     id="cday" name="cday"
+                     min="0" max="364" step="1" value="79"
+                     aria-valuetext="March 21">
+              <span class="sim-slider-min" aria-hidden="true">Jan. 1</span>
+              <span class="sim-slider-max" aria-hidden="true">Dec. 31</span>
+            </div>
+          </div>
 
           <!-- Latitude slider: native range = full keyboard support for free -->
           <div class="control-row sim-slider-row">
             <label class="control-row__label" for="latitude">latitude</label>
-            <input class="sim-readout" id="latitude-value" type="text"
-                   inputmode="text" value="41.0&deg; N" autocomplete="off" spellcheck="false"
-                   aria-label="Latitude value in degrees. Type a number; add N for north or S for south (or use a minus sign for south). Press Enter to apply.">
-            <input class="control-row__slider sim-slider" type="range"
-                   id="latitude" name="latitude"
-                   min="-90" max="90" step="0.1" value="41"
-                   aria-valuetext="41.0 degrees north">
-            <span class="sim-slider-min" aria-hidden="true">90&deg; S</span>
-            <span class="sim-slider-max" aria-hidden="true">90&deg; N</span>
-          </div>
-
-          <!-- Animate checkbox -->
-          <div class="control-choice sim-animate-row">
-            <input type="checkbox" id="animate" name="animate">
-            <label for="animate">animate</label>
+            <span class="sim-field-wrap">
+              <input class="control-row__input sim-num" id="latitude-value" type="number"
+                     min="-90" max="90" step="0.1" value="41" autocomplete="off"
+                     inputmode="decimal" aria-label="Latitude, degrees">
+              <span class="sim-unit" aria-hidden="true">&nbsp;&#176;</span>
+            </span>
+            <div class="sim-slider-stack">
+              <p id="temp-desc-latitude" class="sr-only">
+                Track colors show relative temperature for all latitudes on the current day.
+                Blue is colder; red is warmer.
+              </p>
+              <div class="sim-season-labels" aria-hidden="true">
+                <!-- Spacer 1: -90   to -66.5 degrees ( 23.5 degrees) -->
+                <div class="sim-label-spacer" style="flex: 23.5;">
+                  <span class="sim-season-label" id="season-south">summer</span>
+                </div>
+                <!-- Spacer 2: -90   to -66.5 degrees ( 23.5 degrees)-->
+                <div class="sim-label-spacer" style="flex: 133;">
+                  <span class="sim-season-label" id="season-north">winter</span>
+                </div>
+                <!-- Spacer 3: -90   to -66.5 degrees ( 23.5 degrees) -->
+                <div class="sim-label-spacer" style="flex: 23.5;"></div>
+              </div>
+              <input class="control-row__slider sim-slider" type="range"
+                     id="latitude" name="latitude"
+                     min="-90" max="90" step="0.1" value="41"
+                     aria-valuetext="41.0 degrees north">
+              <span class="sim-slider-min" aria-hidden="true">90&deg; S</span>
+              <span class="sim-slider-max" aria-hidden="true">90&deg; N</span>
+            </div>
           </div>
         </fieldset>
 
-        <hr class="sim-rule">
+        <!-- <hr class="sim-rule"> -->
 
         <!-- Legend: colour swatch + text label (never colour alone) -->
-        <ul class="sim-legend" aria-label="Diagram legend">
-          <li><span class="sim-swatch" data-key="equator" aria-hidden="true"></span>
-            <span class="sim-legend-text"><span class="sim-legend-color">black</span> &ndash; celestial equator</span></li>
-          <li><span class="sim-swatch" data-key="ecliptic" aria-hidden="true"></span>
-            <span class="sim-legend-text"><span class="sim-legend-color">red</span> &ndash; ecliptic</span></li>
-          <li><span class="sim-swatch" data-key="sunpath" aria-hidden="true"></span>
-            <span class="sim-legend-text"><span class="sim-legend-color">yellow</span> &ndash; sun's path on the given day</span></li>
-          <li><span class="sim-swatch" data-key="meridian" aria-hidden="true"></span>
-            <span class="sim-legend-text"><span class="sim-legend-color">gray</span> &ndash; north-south meridian</span></li>
-        </ul>
+        <h2 id="lines-heading" class="panel__heading sim-legend-heading">Sky Arcs</h2>
+        <div class="sim-legend" aria-labelledby="lines-heading">
+          <span class="sim-swatch" data-key="equator" aria-hidden="true"></span>
+          <span class="sim-legend-color">black:</span>
+          <span class="sim-legend-desc">celestial equator</span>
+          <span class="sim-swatch" data-key="ecliptic" aria-hidden="true"></span>
+          <span class="sim-legend-color">red:</span>
+          <span class="sim-legend-desc">ecliptic</span>
+          <span class="sim-swatch" data-key="sunpath" aria-hidden="true"></span>
+          <span class="sim-legend-color">yellow:</span>
+          <span class="sim-legend-desc">sun's daily path</span>
+          <span class="sim-swatch" data-key="meridian" aria-hidden="true"></span>
+          <span class="sim-legend-color">gray:</span>
+          <span class="sim-legend-desc">north-south meridian</span>
+        </div>
       </section>
 
     </div>
