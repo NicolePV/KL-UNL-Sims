@@ -1,18 +1,11 @@
 /* ===========================================================================
    Ecliptic (Zodiac) Simulator -- sim-specific styles ONLY.
-   The shared palette, panels, control rows, focus ring and the 56rem column
-   collapse all come from foundation/kl-unl.css, which is never edited. Every
-   rule here is additive: it either sizes something the foundation leaves open,
-   or builds a component the foundation does not provide (the year timeline).
+   Shared layout, typography, and control chrome come from
+   ../foundation/css/kl-unl.css. Every rule here is additive: it either sizes
+   something the foundation leaves open, or builds a component the foundation
+   does not provide (the year timeline). Body type, global :focus-visible, and
+   prefers-reduced-motion are owned by the foundation.
    =========================================================================== */
-
-/* --- Type scale ---------------------------------------------------------
-   Comfortably large body copy, sized in rem so it tracks the browser's own
-   font setting and reflows rather than clips at 200% zoom. */
-body {
-  font-size:      1.125rem;
-  line-height:    1.5;
-}
 
 /* --- Spacing scale ------------------------------------------------------
    One gap value drives the space between panels (both directions) and the
@@ -73,7 +66,7 @@ body {
    pixels) and is scaled by CSS, so none of the ported geometry ever sees the
    on-screen size. */
 .sim-canvas-wrap {
-  padding:        0 1rem;
+  padding:        1rem 1rem 0;
 }
 
 .sim-stage {
@@ -120,7 +113,8 @@ body {
 
 .sim-timeline__label {
   display:        block;
-  margin-bottom:  0.25rem;
+  /* margin-bottom:  0.25rem; */
+  margin-bottom: -1rem;
   font-weight:    bold;
 }
 
@@ -163,7 +157,7 @@ body {
   width:          0.928rem;
   height:         2.791rem;
   margin-left:    -0.464rem;
-  background:     url("../assets/shape-13.svg") no-repeat center / 100% 100%;
+  background:     url("images/shape-13.svg") no-repeat center / 100% 100%;
   pointer-events: none;
 }
 
@@ -212,27 +206,19 @@ body {
   border:         0;
 }
 
-/* The focus ring belongs around the whole timeline, not the invisible thumb. */
-.sim-timeline__input:focus-visible {
-  outline-width:  0.125rem;
-  outline-style:  solid;
-  outline-color:  var(--outline-color, #005fcc);
-  outline-offset: 0.125rem;
-}
-
 /* --- Control rows --------------------------------------------------------
    One shared grid so every label, slider and value line up down the panel:
    a fixed label column, a flexible middle, and a fixed value column with
    right-aligned numbers. */
 /* A fieldset's UA default min-inline-size is min-content, which stops these
    panels shrinking on narrow screens and forces the page to scroll sideways.
-   Grid children default to min-width:auto for the same reason. */
+   Grid children default to min-width:auto for the same reason.
+   Foundation already sets min-width:0 on .app-layout__right. */
 .control-fieldset {
   min-inline-size: 0;
 }
 
-.app-layout__left,
-.app-layout__right {
+.app-layout__left {
   min-width:      0;
 }
 
@@ -376,13 +362,36 @@ body {
   }
 }
 
-/* --- Reduced motion ------------------------------------------------------
-   The simulation has no self-running animation: every change of the picture
-   is the direct result of a user action, so there is nothing to suppress.
-   This keeps any incidental transition out of the way all the same. */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+/* --- Day of year cursor  -------------------------------------------------
+   Cursor appears as pointer on track, and grab/grabbing on thumb */
+
+/* 1. Base Track Cursor */
+input[type="range"] {
+  width: 100%;
+  cursor: pointer; /* Cursor when hovering over the track */
+}
+
+/* Optional: Specific Track Selectors for cleaner cross-browser support */
+input[type="range"]::-webkit-slider-runnable-track {
+  cursor: pointer; 
+}
+input[type="range"]::-moz-range-track {
+  cursor: pointer;
+}
+
+/* 2. WebKit Thumb Cursor (Chrome, Safari, Edge) */
+input[type="range"]::-webkit-slider-thumb {
+  cursor: grab; /* Different cursor when hovering directly over the thumb */
+  /* If you are using grab, active state creates a nice "holding" effect */
+}
+input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing; 
+}
+
+/* 3. Mozilla Thumb Cursor (Firefox) */
+input[type="range"]::-moz-range-thumb {
+  cursor: grab;
+}
+input[type="range"]::-moz-range-thumb:active {
+  cursor: grabbing;
 }
