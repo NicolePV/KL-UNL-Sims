@@ -7,12 +7,19 @@
    default colors that can be overwritten within individual simulations.
 
    New functionality includes optional hatching of interiors of great circles 
-   (not included in legacy code base).
+   (not included in legacy code base). 
+
+   Viewing matrix `doA` matches Flash: signed `sin(phi)` on `a3`/`a4`/`a8` so
+   tilt is continuous through phi &lt; 0. `viewSign` / `isInFront` helpers exist
+   for sims that need below-horizon drag or front/back corrections.
 
    Matrices on scratch object `c`:
      a0..a8  — world (horizon) → screen projection (scaled by sphere radius r)
      m0..m8  — celestial → world (observer latitude + local sidereal time)
      b0..b8  — celestial → screen (a · m composite)
+
+   Also exports `Circle`, `Line`, full `CSObject` (Flash `7 CS Objects.as`),
+   and a lighter `SphereObject` kept for existing absolute-only callers.
 
    Angle conventions:
      RA is in hours when passed to parse / setParameters; stored internally
@@ -28,9 +35,10 @@ export const H2R =  0.2617993877991494;     /** Hours   → radians (15° = π/1
 export const R2H =  3.819718634205488;      /** Radians → hours                */
 
 /** Conversion factors  */
-export const RA_H    = 0.06575342465753424; /** RA   (hours) from DOY =  24/365 */
-export const DEC_D   = 0.01721420632103996; /** Dec. (deg.)  from DOY = 2PI/365 */
-export const TME_H   = 1.0027397260273974;  /** Time (hours) from DOY = 366/365 */
+export const RA_H    =  0.06575342465753424; /** RA    (hours) from DOY =  24/365 */
+export const DEC_D   =  0.01721420632103996; /** Dec.   (deg.) from DOY = 2PI/365 */
+export const TME_H   =  1.0027397260273974;  /** Time  (hours) from DOY = 366/365 */
+export const AZ_D    = -0.9863013698630136   /** Azimuth (deg) from DOY = 360/365 */
 
 /** Factors of PI       */
 export const TWO_PI  = 6.283185307179586;   /** 2π   */
@@ -86,6 +94,11 @@ export const CELESTIAL_SPHERE_COLORS = {
   // Sky
   SKY_1:      '#84cbff',  // (light   blue)
   SKY_2:      '#000000',  // (black)
+
+  // Constellations
+  CNSTLN_1:   '#dfdfdf',  // (light   grey)
+  CNSTLN_2:   '#aecdff',  // (light   blue)
+  CNSTLN_3:   '#474747',  // (dark    grey)
 
   // North and south pole base markers
   POLE_MRK1:  '#222222',  // (dark    grey)
@@ -177,7 +190,7 @@ export class CelestialSphere {
    * Viewer azimuth as used by Hour Angle Demo (`360 - theta`).
    * @returns {number} Degrees [0, 360).
    */
-  getViewerAzimuth() { return mod(360 - this.getTheta(), 360); }
+  getViewerAzimuth() { return pMod(360 - this.getTheta(), 360); }
 
   /**
    * @returns {number} Observer latitude in degrees.
@@ -241,6 +254,40 @@ export class CelestialSphere {
   setViewerAzimuth(az) { this.setTheta(360 - az); }
 
   /**
+   * Set viewer altitude / tilt (degrees), clamped to min/maxPhi.
+   * AS `setPhi` from "2 CS Getter Setter.as" (depth-swap side effects omitted).
+   * @param {number} newPhi - Viewer altitude in degrees.
+   */
+  setPhi(newPhi) {
+    let p = newPhi;
+    if      (p > this.maxPhi) p = this.maxPhi;
+    else if (p < this.minPhi) p = this.minPhi;
+    this.phi = p * D2R;
+    this.doA();
+    this.doB();
+  }
+
+  /**
+   * Handedness for screen-front tests and pointer drag when looking from below.
+   * Flash left phi &lt; 0 buggy (inverted drag / front-back); HTML5 corrects with this sign.
+   * @returns {1|-1} −1 when viewer altitude is below the horizon plane.
+   */
+  viewSign() { return this.phi < 0 ? -1 : 1; }
+
+  /**
+   * Whether a projected screen-z is on the camera-near hemisphere for the current view.
+   * @param {number} screenZ - Screen-space z from WtoSz / CtoSz.
+   * @returns {boolean}
+   */
+  isInFront(screenZ) { return this.viewSign() * screenZ > 0; }
+
+  /**
+   * Sphere diameter in screen units (Flash `size` getter).
+   * @returns {number} `2 * c.r`.
+   */
+  getSize() { return 2 * this.c.r; }
+
+  /**
    * @param {number} arg - Observer latitude in degrees [-90, 90].
    */
   setLatitude(arg) {
@@ -268,6 +315,8 @@ export class CelestialSphere {
     const c  = this.c;
     const ct = Math.cos(this.theta), st = Math.sin(this.theta);
     const cp = Math.cos(this.phi),   sp = Math.sin(this.phi);
+    // Signed sin(phi) on a3/a4/a8 matches Flash `3 CS Geometry.as` p.doA and
+    // keeps continuous tilt through phi < 0 (abs on a3/a4 made ±phi share x,y).
     c.a0 = -c.r * st;
     c.a1 =  c.r * ct;
     c.a3 =  c.r * ct * sp;
@@ -342,11 +391,15 @@ export class CelestialSphere {
     } else if (inP.x !== undefined && inP.y !== undefined && inP.z !== undefined) {
       if      (inP.system === 'horizon')   { out.sys = 0; out.system = 'horizon';   }
       else if (inP.system === 'celestial') { out.sys = 1; out.system = 'celestial'; }
+      else if (inP.sys === 0)              { out.sys = 0; out.system = 'horizon';   }
+      else if (inP.sys === 1)              { out.sys = 1; out.system = 'celestial'; }
       else { out.sys = -1; out.system = 'unknown'; }
       out.x = inP.x;
       out.y = inP.y;
       out.z = inP.z;
-      out.r = Math.sqrt(inP.x * inP.x + inP.y * inP.y + inP.z * inP.z);
+      out.r = (inP.r !== undefined && inP.r !== null)
+        ? inP.r
+        : Math.sqrt(inP.x * inP.x + inP.y * inP.y + inP.z * inP.z);
       if (out.r < 1.000001 && out.r > 0.999999) out.r = 1;
     } else {
       out.sys    = null;
@@ -397,24 +450,102 @@ export class CelestialSphere {
    * Celestial Cartesian → world (horizon) Cartesian.
    * @param {{x:number,y:number,z:number}} p - Celestial point.
    * @param {{x?:number,y?:number,z?:number}} wp - Output world point.
+   * @returns {object} `wp` after mutation.
    */
   CtoW(p, wp) {
     const c = this.c;
     wp.x = p.x * c.m0 + p.y * c.m1 + p.z * c.m2;
     wp.y = p.x * c.m3 + p.y * c.m4;
     wp.z = p.x * c.m6 + p.y * c.m7 + p.z * c.m8;
+    return wp;
   }
 
   /**
    * World (horizon) Cartesian → celestial Cartesian.
    * @param {{x:number,y:number,z:number}} p - World point.
    * @param {{x?:number,y?:number,z?:number}} cp - Output celestial point.
+   * @returns {object} `cp` after mutation.
    */
   WtoC(p, cp) {
     const c = this.c;
     cp.x = p.x * c.m0 + p.y * c.m3 + p.z * c.m6;
     cp.y = p.x * c.m1 + p.y * c.m4 + p.z * c.m7;
     cp.z = p.x * c.m2 + p.z * c.m8;
+    return cp;
+  }
+
+  /**
+   * Project a horizon or celestial point to screen (AS `toScreen`).
+   * @param {object} up - `{az,alt}`, `{ra,dec}`, or Cartesian with `sys`/`system`.
+   * @param {{x?:number,y?:number,z?:number}} sp - Output screen point.
+   * @returns {object} `sp` after mutation.
+   */
+  toScreen(up, sp) {
+    const p = {};
+    this.parsePointInput(up, p);
+    if (p.sys === 1) this.CtoSz(p, sp);
+    else if (p.sys === 0 || p.sys === -1) this.WtoSz(p, sp);
+    else { sp.x = null; sp.y = null; sp.z = null; }
+    return sp;
+  }
+
+  /**
+   * Cartesian / spherical point → horizon az/alt in degrees (AS `pointToHorizon`).
+   * @param {object} up - Point spec (same forms as {@link parsePointInput}).
+   * @param {{az?:number,alt?:number,r?:number}} hp - Output horizon point.
+   * @returns {object} `hp` after mutation.
+   */
+  pointToHorizon(up, hp) {
+    const p = {};
+    this.parsePointInput(up, p);
+    if (p.sys === 0 || p.sys === -1) {
+      let s = p.z / p.r;
+      if (s < -1) s = -1; else if (s > 1) s = 1;
+      hp.az  = pMod(-R2D * Math.atan2(p.y, p.x), 360);
+      hp.alt = R2D * Math.asin(s);
+      hp.r   = p.r;
+    } else if (p.sys === 1) {
+      const hpt = {};
+      this.CtoW(p, hpt);
+      let s = hpt.z / p.r;
+      if (s < -1) s = -1; else if (s > 1) s = 1;
+      hp.az  = pMod(-R2D * Math.atan2(hpt.y, hpt.x), 360);
+      hp.alt = R2D * Math.asin(s);
+      hp.r   = p.r;
+    } else {
+      hp.az = null; hp.alt = null; hp.r = null;
+    }
+    return hp;
+  }
+
+  /**
+   * Cartesian / spherical point → celestial RA (hours) / Dec (degrees)
+   * (AS `pointToCelestial`).
+   * @param {object} up - Point spec (same forms as {@link parsePointInput}).
+   * @param {{ra?:number,dec?:number,r?:number}} cp - Output celestial point.
+   * @returns {object} `cp` after mutation.
+   */
+  pointToCelestial(up, cp) {
+    const p = {};
+    this.parsePointInput(up, p);
+    if (p.sys === 0 || p.sys === -1) {
+      const cpt = {};
+      this.WtoC(p, cpt);
+      let s = cpt.z / p.r;
+      if (s > 1) s = 1; else if (s < -1) s = -1;
+      cp.ra  = pMod(R2H * Math.atan2(cpt.y, cpt.x), 24);
+      cp.dec = R2D * Math.asin(s);
+      cp.r   = p.r;
+    } else if (p.sys === 1) {
+      let s = p.z / p.r;
+      if (s > 1) s = 1; else if (s < -1) s = -1;
+      cp.ra  = pMod(R2H * Math.atan2(p.y, p.x), 24);
+      cp.dec = R2D * Math.asin(s);
+      cp.r   = p.r;
+    } else {
+      cp.ra = null; cp.dec = null; cp.r = null;
+    }
+    return cp;
   }
 
   /**
@@ -628,6 +759,40 @@ export class Circle {
   setGamma(gStartDeg, gEndDeg) {
     this.gS = D2R * pMod(gStartDeg, 360);
     this.gE = D2R * pMod(gEndDeg,   360);
+  }
+
+  /**
+   * Compose the projected circle V matrix (AS `8 CS Circles.as` inner `v`).
+   * Horizon circles use world→screen `a*`; celestial circles use `b*`.
+   * @returns {number[]} Flat `[v0..v8]` for screen projection of the circle frame.
+   */
+  computeV() {
+    const pc = this.sphere.c;
+    const tc = this.c;
+    if (this.sys === 0) {
+      return [
+        pc.a0 * tc.w0 + pc.a1 * tc.w3,
+        pc.a0 * tc.w1 + pc.a1 * tc.w4,
+        pc.a0 * tc.w2 + pc.a1 * tc.w5,
+        pc.a3 * tc.w0 + pc.a4 * tc.w3,
+        pc.a3 * tc.w1 + pc.a4 * tc.w4 + pc.a5 * tc.w7,
+        pc.a3 * tc.w2 + pc.a4 * tc.w5 + pc.a5 * tc.w8,
+        pc.a6 * tc.w0 + pc.a7 * tc.w3,
+        pc.a6 * tc.w1 + pc.a7 * tc.w4 + pc.a8 * tc.w7,
+        pc.a6 * tc.w2 + pc.a7 * tc.w5 + pc.a8 * tc.w8
+      ];
+    }
+    return [
+      pc.b0 * tc.w0 + pc.b1 * tc.w3,
+      pc.b0 * tc.w1 + pc.b1 * tc.w4 + pc.b2 * tc.w7,
+      pc.b0 * tc.w2 + pc.b1 * tc.w5 + pc.b2 * tc.w8,
+      pc.b3 * tc.w0 + pc.b4 * tc.w3,
+      pc.b3 * tc.w1 + pc.b4 * tc.w4 + pc.b5 * tc.w7,
+      pc.b3 * tc.w2 + pc.b4 * tc.w5 + pc.b5 * tc.w8,
+      pc.b6 * tc.w0 + pc.b7 * tc.w3,
+      pc.b6 * tc.w1 + pc.b7 * tc.w4 + pc.b8 * tc.w7,
+      pc.b6 * tc.w2 + pc.b7 * tc.w5 + pc.b8 * tc.w8
+    ];
   }
 
   /**
@@ -1385,7 +1550,167 @@ export function drawGlass(ctx, S, CSC) {
 }
 
 /**
- * Port of Flash "7 CS Objects.as": screen position + orientation for sphere sprites.
+ * Item pinned to (or inside) the celestial sphere — full port of Flash
+ * `7 CS Objects.as` (`CSObjectsClass`). Supports flat/skewed and absolute
+ * orientation, foreshortening (`yScale`), and shell/instance rotations.
+ * Prefer this over {@link SphereObject} for new work; {@link SphereObject}
+ * remains for callers that only need absolute orientation under a different API.
+ */
+export class CSObject {
+  /**
+   * @param {CelestialSphere} sphere - Parent projection engine.
+   * @param {string} [name] - Optional label for debugging / sim bookkeeping.
+   */
+  constructor(sphere, name) {
+    this.sphere = sphere;
+    this.name   = name;
+    this.p      = {};
+    this.sp     = {};                    // screen position
+    this.o      = { x: 0, y: 0, z: 0 };  // "flat"/"skewed" orientation vector
+    this.n      = { x: 0, y: 0, z: 0 };  // "absolute" normal
+    this.u      = { x: 0, y: 0, z: 0 };  // "absolute" up
+    this.oType  = 0;
+    // Draw-time transform, filled in by update()
+    this.rotation = 0;                  // shell._rotation,    radians
+    this.yScale   = 1;                  // shell._yscale / 100
+    this.innerRotation = 0;             // instance._rotation, radians
+  }
+
+  /**
+   * Set Cartesian / spherical position (AS `p.setPosition`).
+   * @param {object} arg - Same forms as {@link CelestialSphere#parse}.
+   */
+  setPosition(arg) {
+    const q  = this.sphere.parse(arg);
+    this.sys = q.sys;
+    this.p   = q;
+    this.r   = q.r;
+    this.recomputeOffsets();
+  }
+
+  /** Refresh `p_o` / `p_n` / `p_u` after position or orientation vectors change. */
+  recomputeOffsets() {
+    const p  = this.p;
+    this.p_o = { x: p.x + this.o.x, y: p.y + this.o.y, z: p.z + this.o.z };
+    this.p_n = { x: p.x + this.n.x, y: p.y + this.n.y, z: p.z + this.n.z };
+    this.p_u = { x: p.x + this.u.x, y: p.y + this.u.y, z: p.z + this.u.z };
+  }
+
+  /**
+   * Absolute orientation (AS `p.setOrientationType("absolute", …)`).
+   * With no / non-object arguments, normal is radial and up is derived from it.
+   * With two point specs, those define normal and up (converted into this
+   * object's celestial/horizon frame as needed).
+   * @param {object} [arg2] - Normal reference point.
+   * @param {object} [arg3] - Up reference point.
+   */
+  setAbsoluteOrientation(arg2, arg3) {
+    this.oType   = 2;
+    const sphere = this.sphere;
+
+    if (typeof arg2 !== 'object' || typeof arg3 !== 'object') {
+      const p  = this.p;
+      const nm = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+      this.n   = { x: p.x / nm, y: p.y / nm, z: p.z / nm };
+      if (!(this.n.x === 0 && this.n.y === 0)) {
+        const u = {
+          x: -this.n.x * this.n.z,
+          y: -this.n.z * this.n.y,
+          z:  this.n.x * this.n.x + this.n.y * this.n.y
+        };
+        const nu = Math.sqrt(u.x * u.x + u.y * u.y + u.z * u.z);
+        this.u   = { x: u.x / nu, y: u.y / nu, z: u.z / nu };
+      } else {
+        this.u   = { x: 0, y: 1, z: 0 };
+      }
+    } else {
+      // Both reference points are converted into THIS object's frame first.
+      let v1 = sphere.parse(arg2);
+      if      (v1.sys === 0 && this.sys === 1) v1 = sphere.WtoC(v1, {});
+      else if (v1.sys === 1 && this.sys === 0) v1 = sphere.CtoW(v1, {});
+
+      let v2 = sphere.parse(arg3);
+      if      (v2.sys === 0 && this.sys === 1) v2 = sphere.WtoC(v2, {});
+      else if (v2.sys === 1 && this.sys === 0) v2 = sphere.CtoW(v2, {});
+
+      const nm = Math.sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z);
+      this.n   = { x: v1.x / nm, y: v1.y / nm, z: v1.z / nm };
+      const nx = this.n.x, ny = this.n.y, nz = this.n.z;
+      const ax = v2.x, ay = v2.y, az = v2.z;
+      // (I - n n^T) a — the part of "up" perpendicular to the normal
+      const ux = ny * ny * ax - nx * ny * ay - nx * nz * az + nz * nz * ax;
+      const uy = nz * nz * ay - ny * nz * az - nx * ny * ax + nx * nx * ay;
+      const uz = nx * nx * az - nx * nz * ax - ny * nz * ay + ny * ny * az;
+      const un = Math.sqrt(ux * ux + uy * uy + uz * uz);
+      this.u = { x: ux / un, y: uy / un, z: uz / un };
+    }
+    this.recomputeOffsets();
+  }
+
+  /**
+   * Compute shell/instance transform for the current view (AS `p.update`).
+   * Caller must have already written `sp` (e.g. via WtoSz/CtoSz) when using
+   * depth sorting; absolute mode reads `sp` as the object centre.
+   */
+  update() {
+    const sphere = this.sphere;
+    const c      = sphere.c;
+    const sp     = this.sp;
+
+    if (this.oType === 2) {
+      const sp_n = {}, sp_u = {};
+      let npz;
+      if (this.sys === 0) {
+        npz = (this.n.x * c.a6 + this.n.y * c.a7 + this.n.z * c.a8) / c.r;
+        sphere.WtoSz(this.p_n, sp_n);
+        sphere.WtoSz(this.p_u, sp_u);
+      } else {
+        npz = (this.n.x * c.b6 + this.n.y * c.b7 + this.n.z * c.b8) / c.r;
+        sphere.CtoSz(this.p_n, sp_n);
+        sphere.CtoSz(this.p_u, sp_u);
+      }
+      this.yScale = npz;
+      const A       = Math.atan2(sp_n.y - sp.y, sp_n.x - sp.x) + HALF_PI;
+      this.rotation = A;
+      const cA      = Math.cos(A), sA = Math.sin(A);
+      const x0      = sp_u.x - sp.x, y0 = sp_u.y - sp.y;
+      const x1      =  cA * x0 + sA * y0;
+      const y1      = -sA * x0 + cA * y0;
+      this.innerRotation = Math.atan2(y1 / npz, x1) + HALF_PI;
+    } else {
+      // "flat"/"skewed": one branch for oType 0 and 1.
+      const sp_o = {};
+      let opz;
+      if (this.sys === 0) {
+        opz = this.o.x * c.a6 + this.o.y * c.a7 + this.o.z * c.a8;
+        sphere.WtoSz(this.p_o, sp_o);
+      } else {
+        opz = this.o.x * c.b6 + this.o.y * c.b7 + this.o.z * c.b8;
+        sphere.CtoSz(this.p_o, sp_o);
+      }
+      this.yScale = Math.sqrt(1 - (opz * opz) / c.r2);
+      // Default zero orientation ⇒ sp_o === sp ⇒ atan2(0,0). Flash yielded
+      // NaN and ignored the _rotation assignment; skip the write when dx=dy=0.
+      const dx = sp_o.x - sp.x, dy = sp_o.y - sp.y;
+      if (dx !== 0 || dy !== 0) this.rotation = Math.atan2(dy, dx) + HALF_PI;
+      this.innerRotation = 0;
+    }
+  }
+
+  /** @returns {number} Horizon azimuth (degrees). */
+  get az()  { return this.sphere.pointToHorizon(  this.p, {}).az;  }
+  /** @returns {number} Horizon altitude (degrees). */
+  get alt() { return this.sphere.pointToHorizon(  this.p, {}).alt; }
+  /** @returns {number} Right ascension (hours). */
+  get ra()  { return this.sphere.pointToCelestial(this.p, {}).ra;  }
+  /** @returns {number} Declination (degrees). */
+  get dec() { return this.sphere.pointToCelestial(this.p, {}).dec; }
+}
+
+/**
+ * Lighter absolute-orientation helper (subset of `7 CS Objects.as`).
+ * Prefer {@link CSObject} for full flat/skewed + absolute parity; this class
+ * remains for existing sims (e.g. RA–Dec Demonstrator) that use its API.
  */
 export class SphereObject {
   constructor(sphere, position, opts) {
