@@ -63,6 +63,7 @@ export const CELESTIAL_SPHERE_COLORS = {
   MRDN2_CIRC: '#000000',  // (black)
   MRDN3_CIRC: '#c0c0c0',  // (light   grey)
   CEL_EQUTR:  '#505050',  // (dark    gray)
+  CEL_EQUTR2: '#ffe375',  // (bright  yellow)
   SUN_PATH:   '#ffffc0',  // (pale    yellow)
   
   // Line segments
@@ -85,11 +86,13 @@ export const CELESTIAL_SPHERE_COLORS = {
   HOR_ABV_3:  '#2f8a2f',  // (forest  green)
   HOR_BLW_1:  '#0a7a14',  // (deep    green)
   HOR_BLW_2:  '#005000',  // (dark    green)
+  HOR_MRK:    '#ffffff',  // (white)
 
   // Earth
   EARTH_1:    '#bcd2f5',  // (light   blue)
   EARTH_2:    '#5b86d6',  // (medium  blue)
   EARTH_3:    '#3f8f4a',  // (medium  green)
+  EARTH_4:    '#707070',  // (medium  dark grey)
 
   // Sky
   SKY_1:      '#84cbff',  // (light   blue)
@@ -103,6 +106,7 @@ export const CELESTIAL_SPHERE_COLORS = {
   // North and south pole base markers
   POLE_MRK1:  '#222222',  // (dark    grey)
   POLE_MRK2:  '#ffffff',  // (white)
+  POLE_MRK3:  '#75a9ff',  // (light   blue)
 
   // General labels (zenith, nadir, horizon, meridian)
   LABEL_LNSG: '#1f1f1f',  // (charcoal grey)
@@ -1643,6 +1647,33 @@ export class CSObject {
       const uz = nx * nx * az - nx * nz * ax - ny * nz * ay + ny * ny * az;
       const un = Math.sqrt(ux * ux + uy * uy + uz * uz);
       this.u = { x: ux / un, y: uy / un, z: uz / un };
+    }
+    this.recomputeOffsets();
+  }
+
+  /**
+   * Skewed orientation (AS `p.setOrientationType("skewed", arg)` from
+   * "7 CS Objects.as"). Sets `oType = 1` and the foreshortening axis `o`.
+   * With no / non-object argument, `o` is the unit radial at the object's
+   * position; with a point spec, that direction is converted into this
+   * object's frame.
+   * @param {object} [arg2] - Optional direction point (`{az,alt}`, `{ra,dec}`,
+   *   or Cartesian). Omit to use the radial through `p`.
+   */
+  setSkewedOrientation(arg2) {
+    this.oType   = 1;
+    const sphere = this.sphere;
+
+    if (typeof arg2 !== 'object') {
+      const p = this.p;
+      const m = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z) || 1;
+      this.o  = { x: p.x / m, y: p.y / m, z: p.z / m };
+    } else {
+      let v = sphere.parse(arg2);
+      if      (v.sys === 0 && this.sys === 1) v = sphere.WtoC(v, {});
+      else if (v.sys === 1 && this.sys === 0) v = sphere.CtoW(v, {});
+      const m = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) || 1;
+      this.o  = { x: v.x / m, y: v.y / m, z: v.z / m };
     }
     this.recomputeOffsets();
   }

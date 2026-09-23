@@ -13,7 +13,8 @@
      q0..q8  — composite q = p · r used when projecting shores to the disk
 
    Sims supply water/land artwork and call `buildShorePath` / `buildNightSide`
-   at draw time; this module does not load images.
+   at draw time; this module does not load images. Use {@link drawGlobeDisk}
+   for the common water → shore-clip → land draw recipe.
    =========================================================================== */
 
 import { pMod }            from './kl-unl-utils.js';
@@ -249,4 +250,34 @@ export class GlobeComponent {
     path.closePath();
     return { path, rotation };
   }
+}
+
+/**
+ * Draw the little-Earth disk: water art, land clipped to {@link GlobeComponent#buildShorePath}.
+ * Flash `GlobeComponent` water (depth 10) + land under shores mask (depth 20).
+ *
+ * `water` / `land` are draw callables invoked in globe-local units (typically
+ * an 80×80 SVG registered at the disk center, matching `DEFAULT_GLOBE_RADIUS`).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {GlobeComponent} globe
+ * @param {{water?: function(CanvasRenderingContext2D): void,
+ *          land?: function(CanvasRenderingContext2D): void,
+ *          scale?: number}} [opts] - `scale` defaults to 1 (Flash `_globeScale/100`).
+ */
+export function drawGlobeDisk(ctx, globe, opts = {}) {
+  const scale = opts.scale != null ? opts.scale : 1;
+  const water = opts.water;
+  const land  = opts.land;
+
+  ctx.save();
+  ctx.scale(scale, scale);
+  if (typeof water === 'function') water(ctx);
+  if (typeof land === 'function') {
+    ctx.save();
+    ctx.clip(globe.buildShorePath());
+    land(ctx);
+    ctx.restore();
+  }
+  ctx.restore();
 }

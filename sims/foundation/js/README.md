@@ -11,7 +11,10 @@ common functions, and set up MathJax for displayed equations.
     * Celestial Sphere:  kl-unl-celestial-sphere.js
       (includes drawCircleArcBack, projectPointScreen / isScreenFront,
        drawSphereRim, drawStarSprite, drawCircleHatch for optional plane hatching)
+    * Globe:             kl-unl-globe.js
     * Earth coastlines:  kl-unl-earth-shores.js
+    * Constellations:    kl-unl-zodiacal-constellations.js
+    * Shading:           kl-unl-sphere-shading.js
     * Style:             ../css/kl-unl.css
     * Style (utilities): ../css/kl-unl-utils.css
     * Icon:      ../images/klunl_favicon_32.png

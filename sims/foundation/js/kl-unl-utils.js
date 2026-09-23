@@ -202,6 +202,15 @@ export function announceLive(liveEl, message, delayMs=100) {
   }, delayMs);
 };
 
+/** Accessibility adaptation for MacOS + Voiceover users keyboard control */
+export const VO_FIX_LGND =
+  'MacOS Voiceover users wishing to use arrow keys must first type '                   + 
+  'control + option + space to transfer DOM focus to the canvas element, then '        + 
+  'press the left and right arrow keys together to toggle single-key navigation off, ' + 
+  'and then type control + option + shift + tab to set a pass-through lock. '          + 
+  'Alternatively, they may use the A and D keys to rotate the view left and right, '   + 
+  'and the W and S keys to rotate the viewing angle up and down.';
+
 
 /* ===========================================================================
    Drawing functions
