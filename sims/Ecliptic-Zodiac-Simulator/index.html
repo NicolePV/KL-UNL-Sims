@@ -34,9 +34,19 @@
         <div class="panel__canvas-wrap sim-canvas-wrap">
           <!-- Band is drag-rotatable: click or tab, then arrow keys. -->
           <div class="sim-stage" id="stage" tabindex="0" role="application"
-               aria-label="Wide band of zodiac constellations. Drag with the pointer, or use the left and right arrow keys to swing the view around and the up and down arrow keys to change the viewing elevation."
+               aria-label="Wide band of zodiac constellations. Drag with the
+               pointer, or use the left and right arrow keys to rotate the
+               view and the up and down arrow keys to change the viewing
+               angle. MacOS Voiceover users wishing to use arrow keys must
+               first type control + option + space to transfer DOM focus to
+               the canvas element, then press the left and right arrow keys
+               together to toggle single-key navigation off, and then type
+               control + option + shift + tab to set a pass-through
+               lock. Alternatively, they may use the A and D keys to rotate
+               the view left and right, and the W and S keys to rotate the
+               viewing angle up and down."
                aria-describedby="stage-desc"
-               aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown">
+               aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown A D W S a d w s">
             <canvas id="stage-canvas" class="sim-canvas" aria-hidden="true"></canvas>
           </div>
         </div>
@@ -48,8 +58,9 @@
               <span class="sim-timeline__marker" aria-hidden="true"></span>
               <div class="sim-timeline__months" id="timeline-months" aria-hidden="true"></div>
               <input class="sim-timeline__input" type="range" id="day-range"
-                     min="0" max="365" step="0.01" value="0"
-                     aria-valuetext="Day 0 of the year, January 1">
+                min="0" max="365" step="0.01" value="0"
+                aria-valuetext="Day 0 of the year, January 1"
+                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown A D W S a d w s">
             </div>
           </div>
         </div>
