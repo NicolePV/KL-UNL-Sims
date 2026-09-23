@@ -30,7 +30,7 @@
 
       <!-- DIAGRAM PANEL (left, wide) : the horizon-diagram dome -->
       <section class="panel panel--size sim-diagram" aria-labelledby="diagram-heading">
-        <h2 id="diagram-heading" class="panel__heading">Horizon Diagram</h2>
+        <h2 id="diagram-heading" class="panel__heading">The Horizon Diagram</h2>
         <div class="panel__canvas-wrap">
           <div class="sim-canvas-box">
             <p id="light-index" class="sim-light-index" hidden>insolation: 0</p>
@@ -46,8 +46,14 @@
           <p id="canvas-desc" class="sr-only" aria-live="polite"></p>
           <p id="canvas-help" class="sr-only">
             Interactive horizon diagram. Drag the celestial sphere, or use
-            arrow keys, to rotate the view. Press Enter for arrow keys to move
-            the sun (Page Up and Page Down jump by a week; Home and End jump
+            arrow keys, to rotate the view. MacOS Voiceover users wishing to use
+            arrow keys must first type control + option + space to transfer DOM
+            focus to the canvas element, then press the left and right arrow keys
+            together to toggle single-key navigation off, and then type control +
+            option + shift + tab to set a pass-through lock. Alternatively, they may
+            use the A and D keys to rotate the view left and right, and the W and S
+            keys to rotate the viewing angle up and down. Press Enter for arrow keys 
+            to move the sun (Page Up and Page Down jump by a week; Home and End jump
             to the ends of the year). Press Enter once more to change
             observer's latitude. Press Enter again to return to rotating 
             viewpoint. A date slider, latitude slider, and animate and 
@@ -122,7 +128,7 @@
               <input class="control-row__slider sim-slider" type="range"
                      id="cday" name="cday"
                      min="0" max="364" step="1" value="79"
-                     aria-valuetext="March 21">
+                     aria-valuetext="March 21" aria-hidden="true" tabindex="-1">
               <span class="sim-slider-min" aria-hidden="true">Jan. 1</span>
               <span class="sim-slider-max" aria-hidden="true">Dec. 31</span>
             </div>
@@ -157,7 +163,7 @@
               <input class="control-row__slider sim-slider" type="range"
                      id="latitude" name="latitude"
                      min="-90" max="90" step="0.1" value="41"
-                     aria-valuetext="41.0 degrees north">
+                     aria-valuetext="41.0 degrees north" aria-hidden="true" tabindex="-1">
               <span class="sim-slider-min" aria-hidden="true">90&deg; S</span>
               <span class="sim-slider-max" aria-hidden="true">90&deg; N</span>
             </div>

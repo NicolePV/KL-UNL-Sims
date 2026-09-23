@@ -597,7 +597,6 @@ function diagramDescription() {
 
   return "Horizon diagram for latitude " + latSpoken() + " on " + getDateString() +
     ". Sun's declination " + speak(sun.dec, 1, "degree") + ". " + sunDesc + insDesc;
-  // XXX
 }
 
 function announce(msg)      { elStatus.textContent     = msg; }
@@ -624,6 +623,7 @@ elLatNum.addEventListener("keydown", function (ev) {
   if (ev.key === "Enter") { ev.preventDefault(); commitLatNum(); }
 });
 
+// Note user can use date box to shift date one day at a time
 const reduceMotion = window.matchMedia &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let animating = false, rafId = null, lastT = null, dayAcc = 0;
@@ -875,6 +875,11 @@ canvas.addEventListener("keydown", function (ev) {
       case "PageUp":                       moveDay(-weekStep);   break;
       case "PageDown":                     moveDay( weekStep);   break;
       case "Home": setDay(0);   applyDayChange(); announceSun(); break;
+      // MacOS+Voiceover users need an alternative to arrow keys
+      case 'a': moveDay(-dayStep ); break; case 'A': moveDay(-dayStep ); break; 
+      case 'd': moveDay( dayStep ); break; case 'D': moveDay( dayStep ); break; 
+      case 'w': moveDay(-weekStep); break; case 'W': moveDay(-weekStep); break; 
+      case 's': moveDay( weekStep); break; case 'S': moveDay( weekStep); break; 
       default: used = false;
     }
     if (used) ev.preventDefault();
@@ -890,6 +895,11 @@ canvas.addEventListener("keydown", function (ev) {
       case "PageDown":                     moveLat( bigStep);  break;
       case "Home": S.setLatitude(-90);     moveLat(0);         break;
       case "End":  S.setLatitude( 90);     moveLat(0);         break;
+      // MacOS+Voiceover users need an alternative to arrow keys
+      case 'a': moveLat(-latStep); break; case 'A': moveLat(-latStep); break; 
+      case 'd': moveLat( latStep); break; case 'D': moveLat( latStep); break; 
+      case 'w': moveLat(-bigStep); break; case 'W': moveLat(-bigStep); break; 
+      case 's': moveLat( bigStep); break; case 'S': moveLat( bigStep); break; 
       default: used = false;
     }
     if (used) ev.preventDefault();
@@ -908,6 +918,11 @@ canvas.addEventListener("keydown", function (ev) {
     case "ArrowDown":  phiDeg   += step;   break;
     case "PageUp":     phiDeg   -= stepBg; break;
     case "PageDown":   phiDeg   += stepBg; break;
+    // MacOS+Voiceover users need an alternative to arrow keys
+    case 'a': thetaDeg += step; break; case 'A': thetaDeg += step; break; 
+    case 'd': thetaDeg -= step; break; case 'D': thetaDeg -= step; break; 
+    case 'w': phiDeg   -= step; break; case 'W': phiDeg   -= step; break; 
+    case 's': phiDeg   += step; break; case 'S': phiDeg   += step; break; 
     default: handled = false;
   }
   if (handled) {
