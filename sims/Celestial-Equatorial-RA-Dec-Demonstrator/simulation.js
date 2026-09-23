@@ -17,7 +17,7 @@ import {
 
 import {
   legToFixed, stepToPrec, speak, pMod, noEinNumber, updateSliderProgress, hexToRGBA, 
-  logAct, updateShowHideLabelButtons
+  VO_FIX_LGND, logAct, updateShowHideLabelButtons
 } from '../foundation/js/kl-unl-utils.js';
 
 import { EARTH_SHORES } from '../foundation/js/kl-unl-earth-shores.js';
@@ -635,7 +635,8 @@ class App {
                                ', declination ' + speak(this.star.dec, stepToPrec( this.decField.step ), 'degree') +
       ', with its right ascension and declination shown as coloured arcs. ' +
       (shown.length ? 'Labels shown: ' + shown.join(', ') + '.' : 'No labels shown.') +
-      ' Arrow keys rotate this view; Tab to the star marker to move the star with the arrow keys instead.';
+      ' Arrow keys rotate this view; Tab to the star marker to move the star with the arrow keys instead.' +
+      VO_FIX_LGND;
   }
 
   announce(msg) {
@@ -747,6 +748,11 @@ class App {
         case 'ArrowRight': this.S.setThetaAndPhi(t - step, p); break;
         case 'ArrowUp':    this.S.setThetaAndPhi(t, p - step); break;
         case 'ArrowDown':  this.S.setThetaAndPhi(t, p + step); break;
+        // MacOS+Voiceover users need an alternative to arrow keys
+        case 'a': this.S.setThetaAndPhi(t + step, p); break; case 'A': this.S.setThetaAndPhi(t + step, p); break; 
+        case 'd': this.S.setThetaAndPhi(t - step, p); break; case 'D': this.S.setThetaAndPhi(t - step, p); break; 
+        case 'w': this.S.setThetaAndPhi(t, p - step); break; case 'W': this.S.setThetaAndPhi(t, p - step); break; 
+        case 's': this.S.setThetaAndPhi(t, p + step); break; case 'S': this.S.setThetaAndPhi(t, p + step); break; 
         default: used = false;
       }
       if (used) {
@@ -778,6 +784,11 @@ class App {
           case 'ArrowUp':    dec = this.clampDec(dec + step ); break;
           case 'ArrowDown':  dec = this.clampDec(dec - step ); break;
           case 'Enter': case ' ': ev.preventDefault(); return;
+          // MacOS+Voiceover users need an alternative to arrow keys
+          case 'a': ra  = this.clampRa( ra  - step ); break; case 'A': ra  = this.clampRa( ra  - step ); break; 
+          case 'd': ra  = this.clampRa( ra  + step ); break; case 'D': ra  = this.clampRa( ra  + step ); break; 
+          case 'w': dec = this.clampDec(dec + step ); break; case 'W': dec = this.clampDec(dec + step ); break; 
+          case 's': dec = this.clampDec(dec - step ); break; case 'S': dec = this.clampDec(dec - step ); break; 
           default: used = false;
         }
         if (used) {
