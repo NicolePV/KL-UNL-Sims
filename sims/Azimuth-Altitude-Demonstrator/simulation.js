@@ -25,7 +25,7 @@ import {
 
 import {
   legToFixed, stepToPrec, speak, pMod, snapFixed, noEinNumber, amplifyArrowKey,
-  updateSliderProgress, hexToRGBA, soon, announceLive, logAct,
+  updateSliderProgress, hexToRGBA, soon, announceLive, VO_FIX_LGND, logAct,
   updateShowHideLabelButtons
 } from '../foundation/js/kl-unl-utils.js';
 
@@ -39,6 +39,12 @@ const mediaCheck1 = window.matchMedia('(min-width: ' + brkpt1 + 'rem)');
 const mediaCheck2 = window.matchMedia('(min-width: ' + brkpt2 + 'rem)');
 updateControlLabels(mediaCheck1);
 updateControlLabels(mediaCheck2);
+
+// Update screen reader help for MacOS+Voiceover issues
+document.getElementById('skyHelp').innerHTML =
+  'Drag, or use the arrow keys, to rotate the view. ' + VO_FIX_LGND;
+document.getElementById('starHandleHelp').innerHTML =
+  'Drag, or use the arrow keys, to move star in azimuth and altitude. ' + VO_FIX_LGND;
 
 /* =========================================================================
    App: controller, canvas renderer, UI wiring.
@@ -772,6 +778,11 @@ class App {
       case 'ArrowDown':  dPhi   =     step;  break;
       case 'PageUp':     dPhi   = -15*dStp;  break;
       case 'PageDown':   dPhi   =  15*dStp;  break;
+      // MacOS+Voiceover users need an alternative to arrow keys
+      case 'a': dTheta =     step; break; case 'A': dTheta =     step; break; 
+      case 'd': dTheta =    -step; break; case 'D': dTheta =    -step; break; 
+      case 'w': dPhi   =    -step; break; case 'W': dPhi   =    -step; break; 
+      case 's': dPhi   =     step; break; case 'S': dPhi   =     step; break; 
       default: return;
     }
     ev.preventDefault();
@@ -794,6 +805,11 @@ class App {
       case 'ArrowDown':  dAlt =    -step;  break;
       case 'PageUp':     dAlt =  15*dStp;  break;
       case 'PageDown':   dAlt = -15*dStp;  break;
+      // MacOS+Voiceover users need an alternative to arrow keys
+      case 'a': dAz  =     step; break; case 'A': dAz  =     step; break; 
+      case 'd': dAz  =    -step; break; case 'D': dAz  =    -step; break; 
+      case 'w': dAlt =     step; break; case 'W': dAlt =     step; break; 
+      case 's': dAlt =    -step; break; case 'S': dAlt =    -step; break; 
       default: return;
     }
     ev.preventDefault();

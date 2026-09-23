@@ -66,10 +66,8 @@
           <!--
           Trimmed help messages as they get repeated to users many times.
           -->
-          <p id="skyHelp" class="sr-only">Arrow keys rotate sphere; shift
-          increases step size.</p>
-          <p id="starHandleHelp" class="sr-only">Arrow keys move star in
-          azimuth and altitude; shift increases step size.</p>
+          <p id="skyHelp" class="sr-only">Drag, or use the arrow keys, to rotate the view.</p>
+          <p id="starHandleHelp" class="sr-only">Drag, or use the arrow keys, to move star in azimuth and altitude.</p>
           <!-- Live, screen-reader-only description of the current diagram state -->
           <p id="diagramDesc" class="sr-only" aria-live="polite"></p>
         </section>
@@ -91,7 +89,8 @@
                 <span class="sim-unit" id="azUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="azSlider" type="range"
                        min="0" max="360" step="1" value="140"
-                       aria-label="Azimuth" aria-valuetext="Azimuth 140.0 degrees">
+                       aria-label="Azimuth" aria-valuetext="Azimuth 140.0 degrees"
+                       aria-hidden="true" tabindex="-1">
               </div>
 
               <!-- Altitude -->
@@ -103,7 +102,8 @@
                 <span class="sim-unit" id="altUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="altSlider" type="range"
                        min="-90" max="90" step="1" value="45"
-                       aria-label="Altitude" aria-valuetext="Altitude 45.0 degrees">
+                       aria-label="Altitude" aria-valuetext="Altitude 45.0 degrees"
+                       aria-hidden="true" tabindex="-1">
               </div>
             </fieldset>
           </section>
