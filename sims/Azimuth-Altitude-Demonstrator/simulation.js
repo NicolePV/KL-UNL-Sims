@@ -251,7 +251,7 @@ class App {
     }
     // Spoken values include angle name and degrees unit.
     this.azSlider.setAttribute ('aria-valuetext', 'Azimuth '  + speak(pt.az,  0, 'degree'));
-    this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 1, 'degree'));
+    this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 0, 'degree'));
   }
 
   // ----------------------------------------------------------------------
@@ -615,8 +615,8 @@ class App {
     this.starHandle.style.left = ((this.CENTER + this.star.sp.x) / this.STAGE * 100) + '%';
     this.starHandle.style.top  = ((this.CENTER + this.star.sp.y) / this.STAGE * 100) + '%';
     this.starHandle.setAttribute('aria-label',
-      'Star position. Azimuth ' + speak(this.star.az,  1, 'degree') +
-                  ', altitude ' + speak(this.star.alt, 1, 'degree') + '.');
+      'Star position. Azimuth ' + speak(this.star.az,  0, 'degree') +
+                  ', altitude ' + speak(this.star.alt, 0, 'degree') + '.');
   }
 
   updateCanvasDescription() {
@@ -629,14 +629,14 @@ class App {
     const labelText = onLabels.length ? onLabels.join(', ') : 'none';
     this.canvas.setAttribute('aria-label',
       'Horizon diagram. Cardinal directions N, E, S, and W shown on the horizon. ' +
-      'Star at azimuth ' + speak(this.star.az,  1, 'degree') +
-           ', altitude ' + speak(this.star.alt, 1, 'degree') + '. ' + 
+      'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
+           ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' + 
       locateStar(this.star.az,this.star.alt, 0) + 'Visible labels: ' + labelText + '.');
   }
 
   announce(includeOrientation) {
-    let msg = 'Star at azimuth ' + speak(this.star.az,  1, 'degree') +
-                   ', altitude ' + speak(this.star.alt, 1, 'degree') + '. ' +
+    let msg = 'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
+                   ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' +
               locateStar(this.star.az,this.star.alt, 0);
     if (includeOrientation) {
       msg += ' View reset.';
@@ -825,8 +825,8 @@ class App {
     const az  = pMod(360 - this.S.getTheta(), 360);   // viewer azimuth
     const alt = this.S.getPhi();                      // viewer altitude
     this.desc.textContent = 'View rotated. ' +
-         'Viewing azimuth ' + speak(az,  1, 'degree') +
-      ', viewing altitude ' + speak(alt, 1, 'degree') + '.';
+         'Viewing azimuth ' + speak(az,  0, 'degree') +
+      ', viewing altitude ' + speak(alt, 0, 'degree') + '.';
   }
 }
 

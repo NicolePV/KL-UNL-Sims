@@ -529,7 +529,7 @@ function latDegrees() {
 function latSpoken() {
   const v    = Math.abs( latDegrees() );
   const hemi = (S.lat < 0) ? "south" : "north";
-  return speak(v, 1, "degree") + " " + hemi;
+  return speak(v, 0, "degree") + " " + hemi;
 }
 
 function recompute() {
@@ -575,6 +575,7 @@ function commitLatNum() {
   if (v > 90) v = 90; else if (v < -90) v = -90;
   S.setLatitude(v);
   elLatInput.value = String(Math.round(v * 10) / 10);
+  elLatInput.value = String(Math.round(v));
   if (!showTemperatures) updateSliderProgress(elLatInput);
   recompute();
   syncReadouts();
@@ -596,7 +597,7 @@ function diagramDescription() {
   const insDesc = ( showTemperatures ) ? "Insolation index is " + TEMP_NOW + " percent. " : "";
 
   return "Horizon diagram for latitude " + latSpoken() + " on " + getDateString() +
-    ". Sun's declination " + speak(sun.dec, 1, "degree") + ". " + sunDesc + insDesc;
+    ". Sun's declination " + speak(sun.dec, 0, "degree") + ". " + sunDesc + insDesc;
 }
 
 function announce(msg)      { elStatus.textContent     = msg; }
@@ -761,7 +762,7 @@ function applyLatChange() {
 
 function announceSun() {
   announce("Sun on " + getDateString() + ". Declination " +
-    speak(sun.dec, 1, "degree") + ".");
+    speak(sun.dec, 0, "degree") + ".");
 }
 
 function sunDragToCursor(px, py) {

@@ -100,15 +100,18 @@
         </fieldset>
 
         <fieldset class="control-fieldset">
-          <legend class="control-fieldset__legend" aria-hidden="true">Observer's latitude</legend>
+          <legend class="control-fieldset__legend" id="latLgnd">Observer's latitude</legend>
 
           <div class="control-row sim-control-row">
-            <label class="control-row__label" for="latNumber">latitude:</label>
+            <!-- <label class="control-row__label" for="latNumber">latitude:</label> -->
+            <!-- <label class="control-row__label"
+            for="latNumber">latitude:</label> -->
             <input class="control-row__input sim-number" id="latNumber"
-                   type="number" min="-90" max="90" step="0.1" value="41.0"
-                   inputmode="decimal" autocomplete="off">
+                   type="number" min="-90" max="90" step="1" value="41"
+                   inputmode="decimal" autocomplete="off" aria-labelledby="latLgnd">
+            <span class="sim-unit" aria-hidden="true">&deg;</span>
             <input class="control-row__slider sim-slider" id="latSlider"
-                   type="range" min="-90" max="90" step="0.1" value="41"
+                   type="range" min="-90" max="90" step="1" value="41"
                    aria-hidden="true" tabindex="-1">
           </div>
 

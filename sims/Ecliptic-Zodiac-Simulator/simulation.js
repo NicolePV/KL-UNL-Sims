@@ -962,7 +962,7 @@ function describeScene() {
   return [
     `${dayAriaText(viewer.dayInput)}.`,
     `Earth sits at the center of the zodiac band of constellations; the Sun is at`,
-    `right ascension ${raWords(sun.ra)}, declination ${speak(sun.dec, 1, 'degree')},`,
+    `right ascension ${raWords(sun.ra)}, declination ${speak(sun.dec, 0, 'degree')},`,
     `close to ${near.text}.`,
     front.length
       ? `The constellations on the near side of the band are ${cnames}.`
@@ -1104,15 +1104,23 @@ function onStageKeyDown(event) {
 
   switch (event.key) {
     case 'ArrowLeft':
+    case 'A':
+    case 'a':
       sphere.setViewerAzimuth(pMod(sphere.getViewerAzimuth() - step, 360));
       break;
     case 'ArrowRight':
+    case 'D':
+    case 'd':
       sphere.setViewerAzimuth(pMod(sphere.getViewerAzimuth() + step, 360));
       break;
     case 'ArrowUp':
+    case 'W':
+    case 'w':
       sphere.setPhi(sphere.getPhi() - step);
       break;
     case 'ArrowDown':
+    case 'S':
+    case 's':
       sphere.setPhi(sphere.getPhi() + step);
       break;
     case 'PageUp':
@@ -1341,7 +1349,8 @@ function wireControls() {
   // keyboard arrows use whole days so the control stays usable.
   range.addEventListener('keydown', (event) => {
     const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-                  'PageUp', 'PageDown', 'Home', 'End'];
+                  'PageUp', 'PageDown', 'Home', 'End',
+                  'a', 'd', 'w', 's', 'A', 'D', 'W', 'S' ];
     if (!keys.includes(event.key)) return;
     event.preventDefault();
     cancelDayTween();
@@ -1352,10 +1361,18 @@ function wireControls() {
     switch (event.key) {
       case 'ArrowLeft':
       case 'ArrowUp':
+      case 'A':
+      case 'a':
+      case 'W':
+      case 'w':
         day -= step;
         break;
       case 'ArrowRight':
       case 'ArrowDown':
+      case 'D':
+      case 'd':
+      case 'S':
+      case 's':
         day += step;
         break;
       case 'PageUp':

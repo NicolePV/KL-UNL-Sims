@@ -52,8 +52,8 @@ const INIT_PHI          =   30;
 const INIT_LATITUDE     =   41;
 const LAT_MIN           =  -90;
 const LAT_MAX           =   90;
-const LAT_INCREMENT     =    0.1;
-const LAT_PRECISION     =    1;
+const LAT_INCREMENT     =    1;
+const LAT_PRECISION     =    0;
 
 const STAGE             =  380;
 const ORIGIN            = STAGE / 2;
