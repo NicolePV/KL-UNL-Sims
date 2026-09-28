@@ -1,823 +1,252 @@
-/* ===========================================================================
-   Sun Motions Overview -- HTML5 port of sunmotionsoverview.swf (Flash / AS1)
-   ---------------------------------------------------------------------------
-   Behavior is a direct port of the decompiled ActionScript:
-     scripts/CelestialSphere.as        sphere construction + update pipeline
-     scripts/2 CS Getter Setter.as     theta/phi/latitude/siderealTime accessors
-     scripts/3 CS Geometry.as          coordinate transforms, doA/doM/doB
-     scripts/4 CS Mouse.as             "simple drag" view rotation
-     scripts/5 CS Horizon Plane.as     horizon plane scaling/rotation
-     scripts/6 CS Shading.as           mask geometry + shading layers
-     scripts/7 CS Objects.as           positioned objects + orientation
-     scripts/8 CS Circles.as           great/small circles, front/back split
-     scripts/9 CS Lines.as             line segmentation by sphere + horizon
-     scripts/DefineSprite_105/frame_1/DoAction.as   the main controller
-     scripts/SliderV3Latitude.as       latitude slider value formatting
+/* ==========================================================================
+   Sun Motions Overview — HTML5 port of sunmotionsoverview.swf (Flash / AS1)
 
-   All constants, colors, angles and formulas below are verbatim from that
-   source. Presentation (controls, palette, focus handling) follows KL-UNL +
-   WCAG 2.1 AA; see ACCESSIBILITY.md and CONVERSION_NOTES.md.
-   =========================================================================== */
+   Projection engine: foundation/js/kl-unl-celestial-sphere.js
+   Behavior parity: decompiled DefineSprite_105 + CS Geometry / Circles / Lines
+   / Objects / Mouse / Horizon Plane / Shading.
+   ========================================================================== */
 
-'use strict';
+import {
+  CelestialSphere, Circle, Line,
+  CELESTIAL_SPHERE_COLORS,
+  R2D, TWO_PI,
+  drawLineLayer, drawCircleBucket,
+  absOrient,
+  DEC_TEXT_FONT, DEC_TEXT_GAP,
+  layoutDeclinationText, drawDeclinationLetters
+} from '../foundation/js/kl-unl-celestial-sphere.js';
 
-/* ---------------------------------------------------------------------------
-   Constants carried over verbatim from the ActionScript
-   --------------------------------------------------------------------------- */
+import {
+  legToFixed, speak, noEinNumber, keyAccel,
+  updateSliderProgress, announceLive, VO_FIX_LGND, logAct
+} from '../foundation/js/kl-unl-utils.js';
 
-const DEG2RAD  = 0.017453292519943295;   // pi/180
-const RAD2DEG  = 57.29577951308232;      // 180/pi
-const HR2RAD   = 0.2617993877991494;     // pi/12   (hours of RA -> radians)
-const RAD2HR   = 3.819718634205488;      // 12/pi
-const TWO_PI   = 6.283185307179586;
-const HALF_PI  = 1.5707963267948966;
+logAct('INIT_sunmotionsoverview');
 
-// sphere.size = 250  ->  CelestialSphereClass._c.r = size / 2
-const SPHERE_R  = 125;
-const SPHERE_R2 = SPHERE_R * SPHERE_R;
+/* ---- constants (Flash parity) ------------------------------------------ */
 
-// CSCirclesClass.prototype._minStep
-const MIN_STEP = 0.7853981633974483;     // pi/4
+const CSC = CELESTIAL_SPHERE_COLORS;
 
-// Mask geometry from "6 CS Shading.as" (base units; scaled by _c.r / 100)
-const MASK_R = 100;
-const MASK_D = 120;
-const MASK_HALF_N = 4;                   // hnp
+const SPHERE_SIZE = 250;                 // Flash sphereMC.size → r = 125
+const MASK_R      = 100;
+const MASK_D      = 120;
+const MASK_HALF_N =   4;
 
-// Initial view, from DefineSprite_105/frame_1/DoAction.as
-const INIT_VIEWER_AZIMUTH  = 200;        // sphere.viewerAzimuth = 200
-const INIT_VIEWER_ALTITUDE = 40;         // sphere.viewerAltitude = 40
-const INIT_LATITUDE        = 41;         // sphere.setLatitude(41)
+const INIT_VIEWER_AZIMUTH  = 200;
+const INIT_VIEWER_ALTITUDE =  40;
+const INIT_LATITUDE        =  41;
+let   xLat                 = INIT_LATITUDE;
 
-// Colors, verbatim as AS decimal RGB integers
-const COLOR_POLE_AXIS        = 7711231;  // 0x75A9FF  ncpAxis / scpAxis
-const COLOR_CELESTIAL_EQUATOR= 16769909; // 0xFFE375  celestialEquator
-const COLOR_SUN_PATH         = 16711680; // 0xFF0000  equinox + solstice paths
-const COLOR_MERIDIAN         = 16777215; // 0xFFFFFF  meridianCircle1 / 2
+const COLOR_POLE_AXIS = CSC.POLE_MRK3;   // #75a9ff (light  blue)
+const COLOR_CELESTIAL = CSC.CEL_EQUTR2;  // #ffe375 (bright yellow)
+const COLOR_SUN_PATH  = '#ff0000';       // red
+const COLOR_MERIDIAN  = CSC.MRDN4_CIRC;  // #ffffff (white)
+const COLOR_UNDRNETH  = '#999999';       // medium grey
 
-// Declinations of the sun's paths (verbatim from stepFourChanged)
 const DEC_SUMMER_SOLSTICE =  23.5;
 const DEC_WINTER_SOLSTICE = -23.5;
 
-// Canvas stage. The sphere's own coordinate system is unchanged from Flash
-// (origin at the sphere centre, radius 125); only the origin's placement inside
-// the canvas differs, so that the sphere sits centred in its panel.
-//
-// The stage is sized to leave room for the captions. A caption anchored at the
-// sphere's limb reaches 125 + 11 px out, plus half the width of the longest
-// string ("Summer Solstice Path", ~60 px), so a half-extent of 210 keeps every
-// label fully on the canvas at every orientation. CSS scales the whole thing to
-// fit the panel, so this costs nothing on screen.
-const STAGE_W = 420;
-const STAGE_H = 420;
+const STAGE_W  = 420;
+const STAGE_H  = 420;
 const STAGE_CX = 210;
 const STAGE_CY = 210;
 
-// Verdana at 12 px, matching the "Verdana Letter" symbol (fontHeight 240 twips)
-const LETTER_FONT = '12px Verdana, "DejaVu Sans", Geneva, sans-serif';
-const LETTER_COLOR = '#ffffff';
+const LETTER_COLOR = CSC.LABEL_HALO;  // white
 
-/* ---------------------------------------------------------------------------
-   Small helpers
-   --------------------------------------------------------------------------- */
+const LAT_PRECISION = 0;
+const LAT_STEP      = 1;
+const LAT_PAGE      = 5;
+const VIEW_STEP     = 1;
 
-// CelestialSphereClass.prototype.mod -- always returns a non-negative result
-function mod(n, m) {
-  return ((n % m) + m) % m;
-}
+/* ---- sphere + checkbox flags ------------------------------------------- */
 
-// AS colors are decimal RGB ints; AS alpha is 0-100.
-function rgba(color, alpha100) {
-  const r = (color >> 16) & 0xff;
-  const g = (color >> 8) & 0xff;
-  const b = color & 0xff;
-  return 'rgba(' + r + ',' + g + ',' + b + ',' + (alpha100 / 100) + ')';
-}
+const S = new CelestialSphere();
+S.setSize(SPHERE_SIZE);
+S.setMinPhi(-90);
+S.setMaxPhi(90);
+S.setViewerAzimuth(INIT_VIEWER_AZIMUTH);
+S.setPhi(INIT_VIEWER_ALTITUDE);
+S.setLatitude(INIT_LATITUDE);
+S.setSiderealTime(0);
 
-/* ---------------------------------------------------------------------------
-   Single source of truth for simulation state
-   --------------------------------------------------------------------------- */
-
-const state = {
-  // View orientation. theta is derived from viewerAzimuth via
-  // setViewerAzimuth: setTheta(360 - azimuth). phi is the viewer altitude.
-  theta: mod(360 - INIT_VIEWER_AZIMUTH, 360) * DEG2RAD,
-  phi:   INIT_VIEWER_ALTITUDE * DEG2RAD,
-  lat:   INIT_LATITUDE * DEG2RAD,
-  sTime: 0,                       // sphere.setSiderealTime(0)
-
-  // The four "Step" checkboxes; all start unchecked (initialValue = false)
-  showPoles:     false,
-  showCE:        false,
-  showEquinox:   false,
-  showSolstice:  false
+const flags = {
+  showPoles:    false,
+  showCE:       false,
+  showEquinox:  false,
+  showSolstice: false
 };
 
-// _maxPhi / _minPhi from the CelestialSphereClass constructor
-const MAX_PHI = 90;
-const MIN_PHI = -90;
+function sphereR() { return S.c.r; }
 
-/* ---------------------------------------------------------------------------
-   Transformation matrices -- doA / doM / doB from "3 CS Geometry.as"
-   --------------------------------------------------------------------------- */
+const CARDINAL_R = 0.88;
+const CARDINALS  = [
+  { t: 'N', az:   0 },
+  { t: 'E', az:  90 },
+  { t: 'S', az: 180 },
+  { t: 'W', az: 270 }
+];
 
-const c = {};   // mirrors CelestialSphereClass._c
-
-function doA() {
-  const ct = Math.cos(state.theta), st = Math.sin(state.theta);
-  const cp = Math.cos(state.phi),   sp = Math.sin(state.phi);
-  const r = SPHERE_R;
-  c.a0 = -r * st;
-  c.a1 =  r * ct;
-  c.a3 =  r * ct * sp;
-  c.a4 =  r * st * sp;
-  c.a5 = -r * cp;
-  c.a6 =  r * ct * cp;
-  c.a7 =  r * st * cp;
-  c.a8 =  r * sp;
-}
-
-function doM() {
-  c.m2 =  Math.cos(state.lat);
-  c.m3 =  Math.sin(state.sTime);
-  c.m4 = -Math.cos(state.sTime);
-  c.m8 =  Math.sin(state.lat);
-  c.m0 =  c.m4 * c.m8;
-  c.m1 = -c.m3 * c.m8;
-  c.m6 = -c.m2 * c.m4;
-  c.m7 =  c.m2 * c.m3;
-}
-
-function doB() {
-  c.b0 = c.a0 * c.m0 + c.a1 * c.m3;
-  c.b1 = c.a0 * c.m1 + c.a1 * c.m4;
-  c.b2 = c.a0 * c.m2;
-  c.b3 = c.a3 * c.m0 + c.a4 * c.m3 + c.a5 * c.m6;
-  c.b4 = c.a3 * c.m1 + c.a4 * c.m4 + c.a5 * c.m7;
-  c.b5 = c.a3 * c.m2 + c.a5 * c.m8;
-  c.b6 = c.a6 * c.m0 + c.a7 * c.m3 + c.a8 * c.m6;
-  c.b7 = c.a6 * c.m1 + c.a7 * c.m4 + c.a8 * c.m7;
-  c.b8 = c.a6 * c.m2 + c.a8 * c.m8;
-}
-
-function updateMatrices() {
-  doA();
-  doM();
-  doB();
-}
-
-/* --- point transforms ----------------------------------------------------- */
-
-// World (horizon) -> screen, with depth
-function WtoSz(p, sp) {
-  sp.x = p.x * c.a0 + p.y * c.a1;
-  sp.y = p.x * c.a3 + p.y * c.a4 + p.z * c.a5;
-  sp.z = p.x * c.a6 + p.y * c.a7 + p.z * c.a8;
-  return sp;
-}
-
-// Celestial -> screen, with depth
-function CtoSz(p, sp) {
-  sp.x = p.x * c.b0 + p.y * c.b1 + p.z * c.b2;
-  sp.y = p.x * c.b3 + p.y * c.b4 + p.z * c.b5;
-  sp.z = p.x * c.b6 + p.y * c.b7 + p.z * c.b8;
-  return sp;
-}
-
-// Celestial -> world (horizon)
-function CtoW(p, wp) {
-  wp.x = p.x * c.m0 + p.y * c.m1 + p.z * c.m2;
-  wp.y = p.x * c.m3 + p.y * c.m4;
-  wp.z = p.x * c.m6 + p.y * c.m7 + p.z * c.m8;
-  return wp;
-}
-
-// Screen -> "math horizon" (az/alt in radians). Port of p.StoMH.
-function StoMH(sp, hp) {
-  const M = Math;
-  let d = M.sqrt(sp.x * sp.x + sp.y * sp.y) / SPHERE_R;
-  if (d > 1) { d = 1; }
-  const b = M.asin(d);
-  const A = M.atan2(sp.x, -sp.y);
-  if (state.phi === HALF_PI) {
-    hp.alt = HALF_PI - b;
-    hp.az  = state.theta + Math.PI - A;
-  } else if (state.phi === -HALF_PI) {
-    hp.alt = -HALF_PI + b;
-    hp.az  = state.theta + A;
-  } else {
-    const cc = M.cos(HALF_PI - state.phi);
-    const sc = M.sin(HALF_PI - state.phi);
-    const cb = M.cos(b);
-    const sb = M.sin(b);
-    const ca = cb * cc + sb * sc * M.cos(A);
-    hp.alt = HALF_PI - M.acos(ca);
-    hp.az  = state.theta + M.atan2(sb * M.sin(A), (cb - ca * cc) / sc);
-  }
-  hp.az = mod(hp.az, TWO_PI);
-  return hp;
-}
-
-// p.parsePointInput -- accepts {az,alt}, {ra,dec} or {x,y,z,system}
-function parsePointInput(p1, p2) {
-  if (p1.az !== undefined && p1.alt !== undefined) {
-    p2.sys = 0;
-    const r = (p1.r !== undefined) ? p1.r : 1;
-    const d = r * Math.cos(p1.alt * DEG2RAD);
-    p2.x = d * Math.cos(p1.az * DEG2RAD);
-    p2.y = d * Math.sin(-p1.az * DEG2RAD);
-    p2.z = r * Math.sin(p1.alt * DEG2RAD);
-    p2.r = Math.abs(r);
-  } else if (p1.ra !== undefined && p1.dec !== undefined) {
-    p2.sys = 1;
-    const r = (p1.r !== undefined) ? p1.r : 1;
-    const d = r * Math.cos(p1.dec * DEG2RAD);
-    p2.x = d * Math.cos(p1.ra * HR2RAD);
-    p2.y = d * Math.sin(p1.ra * HR2RAD);
-    p2.z = r * Math.sin(p1.dec * DEG2RAD);
-    p2.r = Math.abs(r);
-  } else if (p1.x !== undefined && p1.y !== undefined && p1.z !== undefined) {
-    if (p1.system === 'horizon')       { p2.sys = 0; }
-    else if (p1.system === 'celestial'){ p2.sys = 1; }
-    else                               { p2.sys = -1; }
-    p2.x = p1.x; p2.y = p1.y; p2.z = p1.z;
-    p2.r = Math.sqrt(p2.x * p2.x + p2.y * p2.y + p2.z * p2.z);
-    if (p2.r < 1.000001 && p2.r > 0.999999) { p2.r = 1; }
-  } else {
-    p2.sys = null; p2.x = null; p2.y = null; p2.z = null; p2.r = null;
-  }
-  return p2;
-}
-
-/* ---------------------------------------------------------------------------
-   Circles -- port of CSCirclesClass ("8 CS Circles.as")
-
-   A circle is defined by tilt / lambda / beta in one of the two coordinate
-   systems. doW() builds the circle's own basis; update() projects it and
-   splits it into the arc in front of the sphere and the arc behind it.
-   --------------------------------------------------------------------------- */
-
-function Circle(opts) {
-  this.sys   = opts.sys;                 // 0 horizon, 1 celestial
-  this.tilt  = (opts.tilt   || 0) * DEG2RAD;
-  this.color = opts.color;
-  this.thick = opts.thickness;
-  this.alpha = opts.alpha;
-  this.gS = 0;                           // gammaStart / gammaEnd both default
-  this.gE = 0;                           // to 0 -> the full circle is drawn
-  this.w = {};
-
-  // setParameters: lambda from dec/alt, beta from ra/az
-  if (this.sys === 1) {
-    this.lambda = (opts.dec || 0) * DEG2RAD;
-    this.beta   = HR2RAD * mod(opts.ra || 0, 24);
-  } else {
-    this.lambda = (opts.alt || 0) * DEG2RAD;
-    this.beta   = DEG2RAD * mod(-(opts.az || 0), 360);
-  }
-  this.doW();
-}
-
-Circle.prototype.doW = function () {
-  const st = Math.sin(this.tilt),   ct = Math.cos(this.tilt);
-  const sb = Math.sin(this.beta),   cb = Math.cos(this.beta);
-  const cl = Math.cos(this.lambda), sl = Math.sin(this.lambda);
-  const w = this.w;
-  w.w0 =  cl * cb;
-  w.w1 = -cl * sb * ct;
-  w.w2 =  sl * sb * st;
-  w.w3 =  cl * sb;
-  w.w4 =  cl * cb * ct;
-  w.w5 = -sl * cb * st;
-  w.w7 =  cl * st;
-  w.w8 =  sl * ct;
-};
-
-// Returns { front: [[g1,g2], ...], back: [[g1,g2], ...] } plus the projection
-// coefficients v0..v5 needed to draw those arcs.
-Circle.prototype.project = function () {
-  const w = this.w;
-  let v0, v1, v2, v3, v4, v5, v6, v7, v8;
-
-  if (this.sys === 0) {
-    v0 = c.a0 * w.w0 + c.a1 * w.w3;
-    v1 = c.a0 * w.w1 + c.a1 * w.w4;
-    v2 = c.a0 * w.w2 + c.a1 * w.w5;
-    v3 = c.a3 * w.w0 + c.a4 * w.w3;
-    v4 = c.a3 * w.w1 + c.a4 * w.w4 + c.a5 * w.w7;
-    v5 = c.a3 * w.w2 + c.a4 * w.w5 + c.a5 * w.w8;
-    v6 = c.a6 * w.w0 + c.a7 * w.w3;
-    v7 = c.a6 * w.w1 + c.a7 * w.w4 + c.a8 * w.w7;
-    v8 = c.a6 * w.w2 + c.a7 * w.w5 + c.a8 * w.w8;
-  } else {
-    v0 = c.b0 * w.w0 + c.b1 * w.w3;
-    v1 = c.b0 * w.w1 + c.b1 * w.w4 + c.b2 * w.w7;
-    v2 = c.b0 * w.w2 + c.b1 * w.w5 + c.b2 * w.w8;
-    v3 = c.b3 * w.w0 + c.b4 * w.w3;
-    v4 = c.b3 * w.w1 + c.b4 * w.w4 + c.b5 * w.w7;
-    v5 = c.b3 * w.w2 + c.b4 * w.w5 + c.b5 * w.w8;
-    v6 = c.b6 * w.w0 + c.b7 * w.w3;
-    v7 = c.b6 * w.w1 + c.b7 * w.w4 + c.b8 * w.w7;
-    v8 = c.b6 * w.w2 + c.b7 * w.w5 + c.b8 * w.w8;
-  }
-
-  const front = [], back = [];
-  const A = Math.sqrt(v6 * v6 + v7 * v7);
-
-  if (A === 0) {
-    // Circle lies in a plane parallel to the screen: entirely front or back.
-    (v8 < 0 ? back : front).push([this.gS, this.gE]);
-  } else {
-    const sj = -v8 / A;
-    if (sj <= -1) {
-      front.push([this.gS, this.gE]);
-    } else if (sj >= 1) {
-      back.push([this.gS, this.gE]);
-    } else {
-      const j = Math.asin(sj);
-      const t = Math.atan2(v6, v7);
-      let gDesc, gAsc;
-      if (Math.cos(j) < 0) {
-        gDesc = mod(j - t, TWO_PI);
-        gAsc  = mod(Math.PI - j - t, TWO_PI);
-      } else {
-        gDesc = mod(Math.PI - j - t, TWO_PI);
-        gAsc  = mod(j - t, TWO_PI);
-      }
-      if (this.gS === this.gE) {
-        // Full circle: ascending->descending is in front, the rest behind.
-        front.push([gAsc, gDesc]);
-        back.push([gDesc, gAsc]);
-      } else {
-        // Partial arc: walk the four boundary angles in order. (Retained for
-        // parity with the source; this sim only ever uses full circles.)
-        const gArray = [[gAsc, 0], [gDesc, 1], [this.gS, 2], [this.gE, 3]];
-        gArray.sort(function (a, b) { return a[0] - b[0]; });
-        let draw = false, isFront = true;
-        for (let s = 0; s < 4; s++) {
-          if (gArray[s][1] === 0)      { isFront = true; }
-          else if (gArray[s][1] === 1) { isFront = false; }
-          else if (gArray[s][1] === 2) { draw = true; }
-          else                         { draw = false; }
-        }
-        let g2 = gArray[3];
-        for (let i = 0; i < 4; i++) {
-          const g1 = g2;
-          g2 = gArray[i];
-          if (draw && g1[0] !== g2[0]) {
-            (isFront ? front : back).push([g1[0], g2[0]]);
-          }
-          if (g2[1] === 0)      { isFront = true; }
-          else if (g2[1] === 1) { isFront = false; }
-          else if (g2[1] === 2) { draw = true; }
-          else                  { draw = false; }
-        }
-      }
-    }
-  }
-
-  // v0..v5 place a point on screen; v6..v8 give its depth, which captions use
-  // to find the point on this circle nearest the viewer.
-  return {
-    front: front, back: back,
-    v: [v0, v1, v2, v3, v4, v5],
-    vz: [v6, v7, v8]
-  };
-};
-
-// Port of the local drawArc() inside CSCirclesClass.update -- tessellates the
-// ellipse with quadratic curves, exactly as the AS did with curveTo.
-function strokeCircleArc(ctx, v, g1, g2) {
-  if (g2 < g1) { g2 += TWO_PI; }
-  let arc = g2 - g1;
-  if (arc === 0) { arc = TWO_PI; }
-  const n = Math.ceil(arc / MIN_STEP);
-  const step = arc / n;
-  const halfStep = step / 2;
-  const cRad = 1 / Math.cos(halfStep);
-  const v0 = v[0], v1 = v[1], v2 = v[2], v3 = v[3], v4 = v[4], v5 = v[5];
-
-  let ax = Math.cos(g1), ay = Math.sin(g1);
-  ctx.moveTo(v0 * ax + v1 * ay + v2, v3 * ax + v4 * ay + v5);
-
-  let aAngle = g1 + step;
-  let cAngle = aAngle - halfStep;
-  for (let i = 0; i < n; i++) {
-    ax = Math.cos(aAngle); ay = Math.sin(aAngle);
-    const cx = cRad * Math.cos(cAngle), cy = cRad * Math.sin(cAngle);
-    ctx.quadraticCurveTo(
-      v0 * cx + v1 * cy + v2, v3 * cx + v4 * cy + v5,
-      v0 * ax + v1 * ay + v2, v3 * ax + v4 * ay + v5
-    );
-    aAngle += step;
-    cAngle += step;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Lines -- port of CSLinesClass ("9 CS Lines.as")
-
-   A line is split at every crossing of the sphere's surface and of the
-   horizon plane, so each piece can be drawn in the correct depth layer:
-     bE / fE  outside the sphere, behind / in front
-     bI / aI  inside the sphere, below / above the horizon plane
-   --------------------------------------------------------------------------- */
-
-function Line(opts) {
-  this.color = opts.color;
-  this.thick = opts.thickness;
-  this.alpha = opts.alpha;
-  this.head = parsePointInput(opts.head, {});
-  this.tail = parsePointInput(opts.tail, {});
-  if (this.head.sys === -1) { this.head.sys = 0; }
-  if (this.tail.sys === -1) { this.tail.sys = 0; }
-}
-
-// Returns [{ layer:'bE'|'fE'|'bI'|'aI', x1,y1,x2,y2 }, ...]
-Line.prototype.segments = function () {
-  const head = {}, tail = {};
-  (this.head.sys === 0 ? WtoSz : CtoSz)(this.head, head);
-  (this.tail.sys === 0 ? WtoSz : CtoSz)(this.tail, tail);
-
-  const mx = head.x - tail.x;
-  const my = head.y - tail.y;
-  const mz = head.z - tail.z;
-  const A = mx * mx + my * my + mz * mz;
-  const B = 2 * (mx * tail.x + my * tail.y + mz * tail.z);
-  const C = tail.x * tail.x + tail.y * tail.y + tail.z * tail.z;
-  const rad2 = SPHERE_R2;
-  const phi = state.phi;
-
-  const stmp = [];
-  const D = B * B - 4 * A * (C - rad2);
-  if (D > 0) {
-    const sD = Math.sqrt(D);
-    stmp.push((-B + sD) / (2 * A));
-    stmp.push((-B - sD) / (2 * A));
-  }
-
-  let tp;                              // tan(phi); only defined when |phi| < 90
-  if (phi > -HALF_PI && phi < HALF_PI) {
-    tp = Math.tan(phi);
-    if (my !== tp * mz) {
-      stmp.push((tp * tail.z - tail.y) / (my - tp * mz));
-    }
-    if (mz !== 0) {
-      const tmp = -tail.z / mz;
-      if (tmp * (tmp * A + B) + C >= rad2) { stmp.push(tmp); }
-    }
-  } else if (mz !== 0) {
-    stmp.push(-tail.z / mz);
-  }
-
-  // Insert the split parameters into [0, 1], keeping them sorted and unique.
-  const s = [0, 1];
-  for (let i = 0; i < stmp.length; i++) {
-    if (stmp[i] > 0 && stmp[i] < 1) {
-      let k = 1;
-      while (stmp[i] > s[k]) { k++; }
-      if (stmp[i] !== s[k]) { s.splice(k, 0, stmp[i]); }
-    }
-  }
-
-  // _showUnder is true throughout this sim, so only that branch is needed.
-  const out = [];
-  for (let i = 0; i < s.length - 1; i++) {
-    const s1 = s[i], s2 = s[i + 1];
-    const u = s1 + (s2 - s1) / 2;              // midpoint classifies the piece
-    const r2 = u * (u * A + B) + C;
-    let layer;
-    if (r2 < rad2) {                            // inside the sphere
-      if (phi === -HALF_PI) {
-        layer = (u * mz + tail.z > 0) ? 'bI' : 'aI';
-      } else if (phi === HALF_PI) {
-        layer = (u * mz + tail.z > 0) ? 'aI' : 'bI';
-      } else if (u * my + tail.y - (u * mz + tail.z) * tp > 1e-9) {
-        layer = 'bI';
-      } else {
-        layer = 'aI';
-      }
-    } else {                                    // outside the sphere
-      layer = (u * mz + tail.z < 0) ? 'bE' : 'fE';
-    }
-    out.push({
-      layer: layer,
-      x1: s1 * mx + tail.x, y1: s1 * my + tail.y,
-      x2: s2 * mx + tail.x, y2: s2 * my + tail.y
-    });
-  }
-  return out;
-};
-
-/* ---------------------------------------------------------------------------
-   Positioned objects -- port of CSObjectsClass ("7 CS Objects.as")
-
-   Only two kinds appear in this sim: the stick figure at the centre of the
-   sphere ("skewed" orientation) and the individual letters of the declination
-   labels ("absolute" orientation).
-   --------------------------------------------------------------------------- */
-
-function SphereObject(kind, position, data) {
-  this.kind = kind;                    // 'stickman' | 'letter'
-  this.data = data || {};
-  this.visible = true;
-  this.oType = 0;
-  this.o = { x: 0, y: 0, z: 0 };
-  this.setPosition(position);
-}
-
-SphereObject.prototype.setPosition = function (arg) {
-  const pt = parsePointInput(arg, {});
-  this.sys = pt.sys;
-  this.p = pt;
-  this.r = pt.r;
-};
-
-// setOrientationType("skewed", vector)
-SphereObject.prototype.setSkewed = function (vec) {
-  this.oType = 1;
-  const v = parsePointInput(vec, {});
-  const m = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-  this.o = { x: v.x / m, y: v.y / m, z: v.z / m };
-  this.p_o = { x: this.p.x + this.o.x, y: this.p.y + this.o.y, z: this.p.z + this.o.z };
-};
-
-// The original's third orientation type, "absolute", is not ported: it existed
-// only to orient the individual caption letters, and captions are now single
-// level strings positioned by Caption.resolve() instead. See CONVERSION_NOTES.md,
-// deviation 3, for the source bug that made that orientation path unusable.
-
-// Computes screen position, rotation and vertical squash for this object.
-// Mirrors CSObjectsClass.update() cases 1 and 2.
-SphereObject.prototype.resolve = function () {
-  const sp = {}, wp = {};
-
-  if (this.r < 1) {
-    // Interior object (the stick figure sits at r = 0).
-    if (this.sys === 0) { wp.x = this.p.x; wp.y = this.p.y; wp.z = this.p.z; }
-    else                { CtoW(this.p, wp); }
-    WtoSz(wp, sp);
-    this.region = (wp.z < 0) ? 'bI' : 'aI';
-  } else {
-    (this.sys === 0 ? WtoSz : CtoSz)(this.p, sp);
-    this.region = (sp.z < 0) ? 'bS' : 'fS';
-  }
-  this.sp = sp;
-
-  if (this.oType === 1) {
-    const sp_o = {};
-    let opz;
-    if (this.sys === 0) {
-      opz = this.o.x * c.a6 + this.o.y * c.a7 + this.o.z * c.a8;
-      WtoSz(this.p_o, sp_o);
-    } else {
-      opz = this.o.x * c.b6 + this.o.y * c.b7 + this.o.z * c.b8;
-      CtoSz(this.p_o, sp_o);
-    }
-    this.yScale  = Math.sqrt(1 - (opz * opz) / SPHERE_R2);
-    this.rotation = Math.atan2(sp_o.y - sp.y, sp_o.x - sp.x) + Math.PI / 2;
-  } else {
-    this.yScale = 1;
-    this.rotation = 0;
-  }
-};
-
-/* ---------------------------------------------------------------------------
-   Captions
-
-   The original spread a caption's individual letters along its line of constant
-   declination, so the text curved with the sphere. Because each letter was
-   pinned to its own right ascension, the whole string swept round as the view
-   turned -- reading at any angle, and backwards through half the rotation.
-
-   Here a caption is instead ONE horizontal string, anchored to the point of its
-   circle nearest the viewer. It still slides around with the sphere, so it
-   stays visibly attached to the circle it names, but it is always level and
-   always reads left to right. See CONVERSION_NOTES.md, deviation 3.
-   --------------------------------------------------------------------------- */
-
-const CAPTION_OFFSET = 11;      // px clear of the circle, along its outward normal
-const CAPTION_MARGIN = 4;       // px kept between a caption and the stage edge
-const CAPTION_HALF_HEIGHT = 7;  // half the 12px line box, for edge clamping
-
-// Text widths are needed before anything is painted, so they are measured on a
-// scratch context and cached -- the set of captions is small and fixed.
-let measureCtx = null;
-const captionWidths = Object.create(null);
-
-function captionHalfWidth(text) {
-  if (captionWidths[text] === undefined) {
-    if (!measureCtx) {
-      measureCtx = document.createElement('canvas').getContext('2d');
-      measureCtx.font = LETTER_FONT;
-    }
-    captionWidths[text] = measureCtx.measureText(text).width;
-  }
-  return captionWidths[text] / 2;
-}
-
-// Anchoring every caption to the point nearest the viewer would stack them all
-// on the same meridian: at some azimuths the sun-path circles are seen
-// symmetrically and their nearest points share an x, piling the labels on top
-// of one another. Each caption is therefore anchored a fixed angle AROUND its
-// own circle instead, which fans them apart while keeping every label on the
-// circle it names. The poles need no spread -- their circles are tiny and sit
-// at opposite ends of the axis.
-// These values were chosen by sweeping the whole viewing range (every azimuth,
-// viewing altitudes from -75 to +75, latitudes from -90 to +90) and picking a
-// combination where no two visible captions ever overlap.
-const CAPTION_SPREAD_DEG = {
-  'Summer Solstice Path': -60,
-  'Winter Solstice Path':  60,
-  'Equinox Path':           0,
-  'Celestial Equator':      0,
-  'NCP':                    0,
-  'SCP':                    0
-};
-
-function Caption(text, dec) {
-  this.kind = 'caption';
-  this.text = text;
-  this.dec = dec;
-  this.visible = true;
-  this.spread = (CAPTION_SPREAD_DEG[text] || 0) * DEG2RAD;
-  // A stand-in for the circle this caption annotates, used only to locate the
-  // anchor point; it is never drawn.
-  this.circle = new Circle({
-    sys: 1, ra: 0, dec: dec, tilt: 0,
-    thickness: 1, color: 0, alpha: 100
-  });
-}
-
-Caption.prototype.resolve = function () {
-  const proj = this.circle.project();
-  const v = proj.v, vz = proj.vz;
-
-  // Depth along the circle is  z(g) = v6·cos g + v7·sin g + v8,
-  // which peaks at g = atan2(v7, v6) -- the point closest to the viewer. The
-  // per-caption spread shifts the anchor around the circle from there.
-  const g = Math.atan2(vz[1], vz[0]) + this.spread;
-  const cg = Math.cos(g), sg = Math.sin(g);
-
-  const x = v[0] * cg + v[1] * sg + v[2];
-  const y = v[3] * cg + v[4] * sg + v[5];
-  const z = vz[0] * cg + vz[1] * sg + vz[2];
-
-  // Nudge the label clear of the circle, along the outward-pointing normal of
-  // the projected ellipse, so it never sits on top of the line it labels.
-  const tx = -v[0] * sg + v[1] * cg;         // tangent
-  const ty = -v[3] * sg + v[4] * cg;
-  let nx = -ty, ny = tx;                     // normal
-  const n = Math.hypot(nx, ny);
-  if (n > 1e-9) {
-    nx /= n; ny /= n;
-    if (nx * x + ny * y < 0) { nx = -nx; ny = -ny; }   // point away from centre
-  } else {
-    nx = 0; ny = -1;
-  }
-
-  let cx = x + nx * CAPTION_OFFSET;
-  let cy = y + ny * CAPTION_OFFSET;
-
-  // A whole caption is far wider than a single letter was, so one anchored near
-  // the left or right limb of the sphere would otherwise run off the stage and
-  // be cut in half. Keep the text box inside the canvas; the nudge is at most a
-  // couple of dozen pixels, so the label stays next to the circle it names.
-  const halfW = captionHalfWidth(this.text);
-  const limitX = STAGE_W / 2 - CAPTION_MARGIN - halfW;
-  const limitY = STAGE_H / 2 - CAPTION_MARGIN - CAPTION_HALF_HEIGHT;
-  if (limitX > 0) { cx = Math.max(-limitX, Math.min(limitX, cx)); }
-  if (limitY > 0) { cy = Math.max(-limitY, Math.min(limitY, cy)); }
-
-  this.sp = { x: cx, y: cy, z: z };
-  this.region = (z < 0) ? 'bS' : 'fS';
-};
-
-/* ---------------------------------------------------------------------------
-   Scene assembly -- mirrors the main frame script's construction order
-   --------------------------------------------------------------------------- */
+/* ---- scene assembly ---------------------------------------------------- */
 
 const scene = {
-  circles: [],       // { circle, key }
-  lines:   [],       // { line, key }
-  objects: []        // SphereObject
+  circles:    [],
+  lines:      [],
+  decLetters: []   // { ch, ra, dec, color } — Flash-style curved captions
 };
 
-// Labels currently shown, for the screen-reader description
 let activeLabels = [];
 
+function makeCircle(style, def) {
+  return new Circle(S, style, def);
+}
+
+function makeLine(style, head, tail) {
+  return new Line(S, style, head, tail);
+}
+
 function buildScene() {
-  scene.circles.length = 0;
-  scene.lines.length = 0;
-  scene.objects.length = 0;
-  activeLabels = [];
+  scene.circles.length    = 0;
+  scene.lines.length      = 0;
+  scene.decLetters.length = 0;
+  activeLabels            = [];
 
-  // --- always present -----------------------------------------------------
-  // sphere.addObject("Stickman","stickman",{x:0,y:0,z:0,system:"horizon"})
-  // sphere.stickman.setOrientationType("skewed",{alt:90,az:0})
-  const stickman = new SphereObject('stickman',
-    { x: 0, y: 0, z: 0, system: 'horizon' });
-  stickman.setSkewed({ alt: 90, az: 0 });
-  scene.objects.push(stickman);
+  scene.circles.push({
+    key: 'meridian1',
+    circle: makeCircle(
+      { thickness: 2, color: COLOR_MERIDIAN, alpha: 0.40 },
+      { ra: 0, dec: 0, tilt: 90 })
+  });
+  scene.circles.push({
+    key: 'meridian2',
+    circle: makeCircle(
+      { thickness: 2, color: COLOR_MERIDIAN, alpha: 0.40 },
+      { ra: 6, dec: 0, tilt: 90 })
+  });
+  scene.circles.push({
+    key: 'edge',
+    circle: makeCircle(
+      { thickness: 2, color: COLOR_MERIDIAN, alpha: 0.40 },
+      { az: 0, alt: 0, tilt: 0 })
+  });
 
-  // Two faint meridian circles (thickness 1, white, alpha 20)
-  scene.circles.push({ key: 'meridian1', circle: new Circle({
-    sys: 1, ra: 0, dec: 0, tilt: 90,
-    thickness: 1, color: COLOR_MERIDIAN, alpha: 20 }) });
-  scene.circles.push({ key: 'meridian2', circle: new Circle({
-    sys: 1, ra: 6, dec: 0, tilt: 90,
-    thickness: 1, color: COLOR_MERIDIAN, alpha: 20 }) });
-
-  // --- Step 1: Show Poles -------------------------------------------------
-  if (state.showPoles) {
-    scene.lines.push({ key: 'ncpAxis', line: new Line({
-      thickness: 3, color: COLOR_POLE_AXIS, alpha: 100,
-      head: { x: 0, y: 0, z: 0,   system: 'celestial' },
-      tail: { x: 0, y: 0, z: 1.2, system: 'celestial' } }) });
-    scene.lines.push({ key: 'scpAxis', line: new Line({
-      thickness: 3, color: COLOR_POLE_AXIS, alpha: 100,
-      head: { x: 0, y: 0, z: 0,    system: 'celestial' },
-      tail: { x: 0, y: 0, z: -1.2, system: 'celestial' } }) });
-
-    // The original placed NCP and SCP twice each (at ra 0 and ra 12) so that
-    // one copy was always on the visible side. A caption anchored to the
-    // nearest point of its circle is always on the visible side by
-    // construction, so one of each is enough -- two would simply overlap.
-    pushLabel('NCP', 85);
-    pushLabel('SCP', -85);
+  if (flags.showPoles) {
+    scene.lines.push({
+      key: 'ncpAxis',
+      line: makeLine(
+        { thickness: 3, color: COLOR_POLE_AXIS, alpha: 1 },
+        { x: 0, y: 0, z: 0,   system: 'celestial' },
+        { x: 0, y: 0, z: 1.2, system: 'celestial' })
+    });
+    scene.lines.push({
+      key: 'scpAxis',
+      line: makeLine(
+        { thickness: 3, color: COLOR_POLE_AXIS, alpha: 1 },
+        { x: 0, y: 0, z: 0,    system: 'celestial' },
+        { x: 0, y: 0, z: -1.2, system: 'celestial' })
+    });
+    // Two copies each (RA 0h and 12h)
+    pushDecText('NCP',  0,  85, LETTER_COLOR, false);
+    pushDecText('NCP', 12,  85, LETTER_COLOR, false);
+    pushDecText('SCP',  0, -85, LETTER_COLOR, false);
+    pushDecText('SCP', 12, -85, LETTER_COLOR, false);
   }
 
-  // --- Step 2: Show CE ----------------------------------------------------
-  if (state.showCE) {
-    scene.circles.push({ key: 'celestialEquator', circle: new Circle({
-      sys: 1, ra: 0, dec: 0, tilt: 0,
-      thickness: 3, color: COLOR_CELESTIAL_EQUATOR, alpha: 100 }) });
+  if (flags.showCE) {
+    scene.circles.push({
+      key: 'celestialEquator',
+      circle: makeCircle(
+        { thickness: 3, color: COLOR_CELESTIAL, alpha: 1 },
+        { ra: 0, dec: 0, tilt: 0 })
+    });
   }
 
-  // --- Step 3: Show Equinox Path ------------------------------------------
-  if (state.showEquinox) {
-    scene.circles.push({ key: 'equinoxPath', circle: new Circle({
-      sys: 1, ra: 0, dec: 0, tilt: 0,
-      thickness: 3, color: COLOR_SUN_PATH, alpha: 100 }) });
+  if (flags.showEquinox) {
+    scene.circles.push({
+      key: 'equinoxPath',
+      circle: makeCircle(
+        { thickness: 3, color: COLOR_SUN_PATH, alpha: 1 },
+        { ra: 0, dec: 0, tilt: 0 })
+    });
   }
 
-  // The "Celestial Equator" and "Equinox Path" captions occupy the same spot
-  // on the sphere (ra 0, dec 0.7), so the original showed only one at a time:
-  // Step 3's caption wins while it is on, otherwise Step 2's is restored.
-  if (state.showEquinox) {
-    pushLabel('Equinox Path', 0.7);
-  } else if (state.showCE) {
-    pushLabel('Celestial Equator', 0.7);
+  // Equinox caption wins over CE when both are on.
+  if (flags.showEquinox) {
+    pushDecText('Equinox Path',      0, 0.7, LETTER_COLOR, false);
+  } else if (flags.showCE) {
+    pushDecText('Celestial Equator', 0, 0.7, LETTER_COLOR, false);
   }
 
-  // --- Step 4: Show Solstice Paths ----------------------------------------
-  if (state.showSolstice) {
-    scene.circles.push({ key: 'sSolsticePath', circle: new Circle({
-      sys: 1, ra: 0, dec: DEC_SUMMER_SOLSTICE, tilt: 0,
-      thickness: 3, color: COLOR_SUN_PATH, alpha: 100 }) });
-    scene.circles.push({ key: 'wSolsticePath', circle: new Circle({
-      sys: 1, ra: 0, dec: DEC_WINTER_SOLSTICE, tilt: 0,
-      thickness: 3, color: COLOR_SUN_PATH, alpha: 100 }) });
-    pushLabel('Summer Solstice Path', DEC_SUMMER_SOLSTICE);
-    pushLabel('Winter Solstice Path', DEC_WINTER_SOLSTICE);
+  if (flags.showSolstice) {
+    scene.circles.push({
+      key: 'sSolsticePath',
+      circle: makeCircle(
+        { thickness: 3, color: COLOR_SUN_PATH, alpha: 1 },
+        { ra: 0, dec: DEC_SUMMER_SOLSTICE, tilt: 0 })
+    });
+    scene.circles.push({
+      key: 'wSolsticePath',
+      circle: makeCircle(
+        { thickness: 3, color: COLOR_SUN_PATH, alpha: 1 },
+        { ra: 0, dec: DEC_WINTER_SOLSTICE, tilt: 0 })
+    });
+    // Swap winter and summer solstice labels for northern and southern latitudes
+    if ( S.getLatitude() >= 0 )  { 
+      pushDecText('Summer Solstice Path', 0, DEC_SUMMER_SOLSTICE, LETTER_COLOR, false);
+      pushDecText('Winter Solstice Path', 0, DEC_WINTER_SOLSTICE, LETTER_COLOR, false);
+    } else  { 
+      pushDecText('Winter Solstice Path', 0, DEC_SUMMER_SOLSTICE, LETTER_COLOR, false);
+      pushDecText('Summer Solstice Path', 0, DEC_WINTER_SOLSTICE, LETTER_COLOR, false);
+    }
+  }
+  // Swap winter and summer solstice declination labels for northern and southern latitudes
+  if ( S.getLatitude() >= 0 )  { 
+    document.getElementById('smrSol').innerHTML = 'summer solstice';
+    document.getElementById('wntSol').innerHTML = 'winter solstice';
+  } else  { 
+    document.getElementById('smrSol').innerHTML = 'winter solstice';
+    document.getElementById('wntSol').innerHTML = 'summer solstice';
   }
 }
 
-function pushLabel(text, dec) {
-  scene.objects.push(new Caption(text, dec));
-  if (activeLabels.indexOf(text) === -1) { activeLabels.push(text); }
+function pushDecText(str, ra, dec, color, reverseRa) {
+  const laid = layoutDeclinationText(str, ra, dec, {
+    sphereSize: SPHERE_SIZE,
+    gap:        DEC_TEXT_GAP,
+    reverseRa:  !!reverseRa,
+    font:       DEC_TEXT_FONT
+  });
+  for (let i = 0; i < laid.length; i++) {
+    scene.decLetters.push({
+      ch:    laid[i].ch,
+      ra:    laid[i].ra,
+      dec:   laid[i].dec,
+      color: color
+    });
+  }
+  if (activeLabels.indexOf(str) === -1) activeLabels.push(str);
 }
 
-/* ---------------------------------------------------------------------------
-   Reused exported artwork (shapes/*.svg from the JPEXS export)
-
-   These are drawn with drawImage at their original position and size; they
-   are never redrawn by hand.
-   --------------------------------------------------------------------------- */
+/* ---- artwork (images/) ------------------------------------------------- */
 
 const ART = {
-  // chid 24 "CSAboveHorizonPlane" -- green gradient, 199.95 x 200, origin (99.95, 100)
-  aboveHorizon: { src: 'assets/shapes/23.svg', w: 199.95, h: 200, ox: 99.95, oy: 100 },
-  // chid 22 "CSBelowHorizonPlane" -- flat #006600
-  belowHorizon: { src: 'assets/shapes/21.svg', w: 199.95, h: 200, ox: 99.95, oy: 100 },
-  // chid 68 "sphere outside"  -- grey radial gradient on the front inner surface
-  sphereOutside:  { src: 'assets/shapes/67.svg', w: 200, h: 200, ox: 100, oy: 100 },
-  // chid 66 "sphere outside2" -- dark radial gradient below the horizon
-  sphereOutside2: { src: 'assets/shapes/65.svg', w: 200, h: 200, ox: 100, oy: 100 },
-  // chid 60 "Stickman" -> shape 59, 9.2 x 21.65, origin (4.6, 20.65)
-  stickman: { src: 'assets/shapes/59.svg', w: 9.2, h: 21.65, ox: 4.6, oy: 20.65 }
+  aboveHorizon:   { src: 'images/23.svg',    w: 199.95, h: 200,    ox:  99.95, oy: 100    },
+  belowHorizon:   { src: 'images/21.svg',    w: 199.95, h: 200,    ox:  99.95, oy: 100    },
+  sphereOutside:  { src: 'images/67.svg',    w: 200,    h: 200,    ox: 100,    oy: 100    },
+  sphereOutside2: { src: 'images/65.svg',    w: 200,    h: 200,    ox: 100,    oy: 100    },
+//stickman:       { src: 'images/59.svg',    w:   9.2,  h:  21.65, ox:   4.6,  oy:  20.65 }
+  stickman:       { src: 'images/fox02.png', w:  34.5,  h:  50,    ox:  17.25, oy:  42.5  }
 };
 
 let artReady = false;
 
 function loadArt() {
-  const keys = Object.keys(ART);
+  const keys  = Object.keys(ART);
   let pending = keys.length;
-  return new Promise(function (resolve) {
-    keys.forEach(function (k) {
-      const img = new Image();
+  return new Promise((resolve) => {
+    keys.forEach((k) => {
+      const img    = new Image();
       img.decoding = 'sync';
-      img.onload = img.onerror = function () {
+      img.onload   = img.onerror = () => {
         ART[k].img = img;
         if (--pending === 0) { artReady = true; resolve(); }
       };
@@ -827,25 +256,18 @@ function loadArt() {
 }
 
 function drawArt(ctx, spec) {
-  if (!spec.img || !spec.img.complete || !spec.img.naturalWidth) { return; }
+  if (!spec.img || !spec.img.complete || !spec.img.naturalWidth) return;
   ctx.drawImage(spec.img, -spec.ox, -spec.oy, spec.w, spec.h);
 }
 
-/* ---------------------------------------------------------------------------
-   Masks -- port of updateMasks from "6 CS Shading.as"
-
-   Only mask M2 is actually consumed by this sim (it clips the "sphere
-   outside2" shading to the region below the front half of the horizon
-   ellipse). The base geometry is in 100-unit space and is scaled by _c.r/100.
-   --------------------------------------------------------------------------- */
-
 function clipMaskM2(ctx) {
-  const scale = SPHERE_R / 100;          // _M2._xscale = _M2._yscale = _c.r
-  const r = MASK_R, d = MASK_D;
-  const step = Math.PI / MASK_HALF_N;
+  const scale    = sphereR() / 100;          // _M2._xscale = _M2._yscale = _c.r
+  const r        = MASK_R,
+        d        = MASK_D;
+  const step     = Math.PI / MASK_HALF_N;
   const halfStep = step / 2;
-  const cRad = r / Math.cos(halfStep);
-  const s = Math.sin(state.phi);
+  const cRad     = r / Math.cos(halfStep);
+  const s        =     Math.sin(S.phi);
 
   ctx.save();
   ctx.scale(scale, scale);
@@ -857,41 +279,32 @@ function clipMaskM2(ctx) {
   for (let i = 0; i < MASK_HALF_N; i++) {
     ctx.quadraticCurveTo(
       cRad * Math.cos(cAngle), s * cRad * Math.sin(cAngle),
-      r * Math.cos(aAngle),    s * r * Math.sin(aAngle)
+      r    * Math.cos(aAngle), s * r    * Math.sin(aAngle)
     );
     aAngle += step;
     cAngle += step;
   }
   ctx.lineTo(-d, 0);
   ctx.lineTo(-d, d);
-  ctx.lineTo(d, d);
+  ctx.lineTo( d, d);
   ctx.closePath();
   ctx.restore();
   ctx.clip();
 }
 
-/* ---------------------------------------------------------------------------
-   The canvas
-   --------------------------------------------------------------------------- */
+/* ---- canvas / paint ---------------------------------------------------- */
 
-const canvas = document.getElementById('sim-canvas');
-const ctx = canvas.getContext('2d');
-
-// Sets the backing-store resolution from the element's CSS size and the device
-// pixel ratio, then installs a transform so that ALL drawing code below works
-// in the original Flash sphere coordinates (origin at the sphere centre).
+const canvas   = document.getElementById('sim-canvas');
+const ctx      = canvas.getContext('2d');
 let stageScale = 1;
 
-// The element's height is left to CSS (height:auto), which derives it from the
-// backing store's intrinsic ratio. Setting it here too would fight the CSS and
-// skew the stage whenever the two disagreed.
 function sizeCanvas() {
-  const cssW = canvas.clientWidth || STAGE_W;
-  const dpr = window.devicePixelRatio || 1;
-  stageScale = cssW / STAGE_W;
-
-  const bw = Math.max(1, Math.round(cssW * dpr));
-  const bh = Math.max(1, Math.round(cssW * (STAGE_H / STAGE_W) * dpr));
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth      || STAGE_W;
+  const cssH = canvas.clientHeight     || STAGE_H;
+  stageScale = Math.min(cssW / STAGE_W, cssH / STAGE_H);
+  const bw   = Math.round(STAGE_W * stageScale * dpr);
+  const bh   = Math.round(STAGE_H * stageScale * dpr);
   if (canvas.width !== bw || canvas.height !== bh) {
     canvas.width  = bw;
     canvas.height = bh;
@@ -900,656 +313,495 @@ function sizeCanvas() {
 
 function applyStageTransform() {
   const dpr = window.devicePixelRatio || 1;
-  const k = stageScale * dpr;
+  const k   = stageScale * dpr;
   ctx.setTransform(k, 0, 0, k, STAGE_CX * k, STAGE_CY * k);
 }
 
-/* --- painting ------------------------------------------------------------- */
+/** Stick figure facing south; hidden when viewing from below the horizon. */
+function paintStick(ctx2) {
+  if (S.phi < 0) return;
+  const spec = ART.stickman;
+  if (!spec.img || !spec.img.complete || !spec.img.naturalWidth) return;
+  const o = absOrient(
+    S,
+    { x: 0, y: 0, z: 0 },
+    { x: -1, y: 0, z: 0 },   // normal = south
+    { x:  0, y: 0, z: 1 }    // up = zenith
+  );
+  ctx2.save();
+  ctx2.translate(o.sp.x, o.sp.y);
+  ctx2.rotate(o.shellRot);
+  ctx2.scale(1, o.yscale === 0 ? 1e-6 : o.yscale);
+  ctx2.rotate(o.instRot);
+  drawArt(ctx2, spec);
+  ctx2.restore();
+}
 
-function strokeSegments(ctx, segs, want, line) {
-  let started = false;
-  for (let i = 0; i < segs.length; i++) {
-    if (segs[i].layer !== want) { continue; }
-    if (!started) {
-      ctx.beginPath();
-      ctx.lineWidth = line.thick;
-      ctx.strokeStyle = rgba(line.color, line.alpha);
-      started = true;
+/** NESW letters inlaid on the horizon plane (visible above and below). */
+function paintCardinalLabel(ctx2, az, text, fillColor) {
+  const p = {};
+  S.parsePointInput({ az, alt: 0, r: CARDINAL_R }, p);
+  const n = { x: 0, y: 0, z: 1 };
+  const u = { x: 1, y: 0, z: 0 };
+  const o = absOrient(S, p, n, u);
+  ctx2.save();
+  ctx2.translate(o.sp.x, o.sp.y);
+  ctx2.rotate(o.shellRot);
+  ctx2.scale(1, o.yscale === 0 ? 1e-6 : o.yscale);
+  ctx2.rotate(o.instRot);
+  ctx2.lineJoin     = 'round';
+  ctx2.miterLimit   = 2;
+  ctx2.font         = '600 14px Verdana, "DejaVu Sans", Geneva, sans-serif';
+  ctx2.textAlign    = 'center';
+  ctx2.textBaseline = 'middle';
+  ctx2.lineWidth    = 3;
+  ctx2.strokeStyle  = CSC.NESW_LINE;
+  ctx2.fillStyle    = fillColor;
+  ctx2.strokeText(text, 0, 0);
+  ctx2.fillText(text, 0, 0);
+  ctx2.restore();
+}
+
+function paintCardinals(ctx2, which) {
+  // Dim when viewing from below the horizon (Celhor below-frame style).
+  const fillColor = (S.phi < 0) ? COLOR_UNDRNETH : CSC.NESW_FILL;
+  for (const c of CARDINALS) {
+    const p = {}, sp = {};
+    S.parsePointInput({ az: c.az, alt: 0, r: CARDINAL_R }, p);
+    S.WtoSz(p, sp);
+    const isBack = sp.z < 0;
+    if ((which === 'back' && isBack) || (which === 'front' && !isBack)) {
+      paintCardinalLabel(ctx2, c.az, c.t, fillColor);
     }
-    ctx.moveTo(segs[i].x1, segs[i].y1);
-    ctx.lineTo(segs[i].x2, segs[i].y2);
-  }
-  if (started) { ctx.stroke(); }
-}
-
-function paintLineLayer(ctx, cache, want) {
-  for (let i = 0; i < cache.length; i++) {
-    strokeSegments(ctx, cache[i].segs, want, cache[i].line);
   }
 }
 
-function paintCircleLayer(ctx, cache, side) {
-  for (let i = 0; i < cache.length; i++) {
-    const entry = cache[i];
-    const arcs = entry.proj[side];
-    if (!arcs.length) { continue; }
-    ctx.beginPath();
-    ctx.lineWidth = entry.circle.thick;
-    ctx.strokeStyle = rgba(entry.circle.color, entry.circle.alpha);
-    for (let a = 0; a < arcs.length; a++) {
-      strokeCircleArc(ctx, entry.proj.v, arcs[a][0], arcs[a][1]);
-    }
-    ctx.stroke();
-  }
+/** Green horizon disk only (NESW painted separately via absOrient). */
+function paintHorizonPlane(ctx2) {
+  const r  = sphereR();
+  const sx = r / 100;
+  const sy = (r * Math.sin(S.phi)) / 100;
+  if (sy === 0) return;
+
+  const above = S.phi > 0;
+  const A     = Math.PI + S.theta;
+
+  ctx2.save();
+  ctx2.scale(sx, sy);
+  ctx2.rotate(A);
+  drawArt(ctx2, above ? ART.aboveHorizon : ART.belowHorizon);
+  ctx2.restore();
 }
 
-function paintObject(ctx, obj) {
-  ctx.save();
-  ctx.translate(obj.sp.x, obj.sp.y);
-
-  if (obj.kind === 'stickman') {
-    ctx.rotate(obj.rotation);
-    // A negative y-scale is a genuine vertical flip in the original, and canvas
-    // reproduces it; guard only against an exact zero, which is not invertible.
-    const ys = (obj.yScale === 0) ? 1e-6 : obj.yScale;
-    ctx.scale(1, ys);
-    drawArt(ctx, ART.stickman);
-  } else {
-    // Captions: one level, left-to-right string. No rotation or scale is
-    // applied, so the text reads the same at every viewing angle.
-    drawCaptionText(ctx, obj.text, 0, 0);
-  }
-  ctx.restore();
-}
-
-// A dark halo keeps the white caption legible wherever it lands -- over the
-// bright celestial equator, the red sun paths, or the light green horizon
-// plane -- without which contrast would depend on what happened to be behind
-// the text at that rotation.
-function drawCaptionText(ctx, text, x, y) {
-  ctx.font = LETTER_FONT;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-  ctx.strokeText(text, x, y);
-  ctx.fillStyle = LETTER_COLOR;
-  ctx.fillText(text, x, y);
-}
-
-function paintObjectsIn(ctx, region) {
-  for (let i = 0; i < scene.objects.length; i++) {
-    const obj = scene.objects[i];
-    if (obj.visible && obj.region === region) { paintObject(ctx, obj); }
-  }
-}
-
-// The horizon plane clip: _hP is scaled by (_c.r, _c.r * sin(phi)) as a
-// percentage of the 100-unit base art, and the visible half is rotated by
-// 180 + theta degrees. Only one half is visible at a time.
-const DIRECTION_LABELS = [
-  { ch: 'N', x: -5.15, y: -92.3 },
-  { ch: 'S', x: -4.35, y:  76.7 },
-  { ch: 'E', x: 79.15, y:  -7.25 },
-  { ch: 'W', x: -89.8, y:  -7.25 }
-];
-
-function paintHorizonPlane(ctx) {
-  const sx = SPHERE_R / 100;
-  const sy = (SPHERE_R * Math.sin(state.phi)) / 100;
-  if (sy === 0) { return; }              // edge-on: nothing to show
-
-  const above = state.phi > 0;
-  const A = Math.PI + state.theta;       // 180 + theta, in radians
-
-  ctx.save();
-  ctx.scale(sx, sy);
-  ctx.rotate(A);
-  drawArt(ctx, above ? ART.aboveHorizon : ART.belowHorizon);
-  ctx.restore();
-
-  // The N/S/E/W markers keep their PLACE on the plane -- north stays at the
-  // horizon's north point and swings round as the view turns -- but the glyphs
-  // themselves are painted upright rather than being rotated and squashed flat
-  // with the plane. Riding the plane transform would mirror them at half the
-  // viewing angles, which made them unreadable. The plane transform is applied
-  // to the anchor point by hand so only the position, not the glyph, inherits
-  // it.
-  const cosA = Math.cos(A), sinA = Math.sin(A);
-  ctx.save();
-  ctx.font = LETTER_FONT;
-  ctx.fillStyle = above ? '#ffffff' : '#999999';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  for (let i = 0; i < DIRECTION_LABELS.length; i++) {
-    const L = DIRECTION_LABELS[i];
-    const rx = L.x * cosA - L.y * sinA;
-    const ry = L.x * sinA + L.y * cosA;
-    ctx.fillText(L.ch, sx * rx, sy * ry);
-  }
-  ctx.restore();
-}
-
-// CSGradientDisk "celestialBowl": innerColor white at alpha 0 -> outerColor
-// black at alpha 20, filling the disk on the front inner surface.
-function paintCelestialBowl(ctx) {
-  const scale = SPHERE_R / 100;
-  ctx.save();
-  ctx.scale(scale, scale);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 100);
+function paintCelestialBowl(ctx2) {
+  const scale = sphereR() / 100;
+  ctx2.save();
+  ctx2.scale(scale, scale);
+  const g = ctx2.createRadialGradient(0, 0, 0, 0, 0, 100);
   g.addColorStop(0, 'rgba(255,255,255,0)');
   g.addColorStop(1, 'rgba(0,0,0,0.2)');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, 100, 0, TWO_PI);
-  ctx.fill();
-  ctx.restore();
+  ctx2.fillStyle = g;
+  ctx2.beginPath();
+  ctx2.arc(0, 0, 100, 0, TWO_PI);
+  ctx2.fill();
+  ctx2.restore();
 }
 
-function paintShadingScaled(ctx, spec) {
-  const scale = SPHERE_R / 100;          // _fISF._xscale = _fISF._yscale = _c.r
-  ctx.save();
-  ctx.scale(scale, scale);
-  drawArt(ctx, spec);
-  ctx.restore();
+function paintShadingScaled(ctx2, spec) {
+  const scale = sphereR() / 100;
+  ctx2.save();
+  ctx2.scale(scale, scale);
+  drawArt(ctx2, spec);
+  ctx2.restore();
 }
-
-/* ---------------------------------------------------------------------------
-   render() -- the single place that redraws everything from state
-   --------------------------------------------------------------------------- */
 
 function render() {
-  // Re-derive the backing size every frame. sizeCanvas only touches the canvas
-  // when the size actually changed, so this is cheap, and it means the stage
-  // can never be left drawing at a stale scale if a resize notification is
-  // missed or coalesced by the browser.
   sizeCanvas();
-  updateMatrices();
 
-  // Resolve every scene item once, then paint in Flash depth order.
-  const lineCache = scene.lines.map(function (e) {
-    return { line: e.line, segs: e.line.segments() };
-  });
-  const circleCache = scene.circles.map(function (e) {
-    return { circle: e.circle, proj: e.circle.project() };
-  });
-  for (let i = 0; i < scene.objects.length; i++) { scene.objects[i].resolve(); }
+  const circles = scene.circles.map((e) => e.circle);
+  const lines   = scene.lines.map((e)   => e.line);
+  for (let i = 0; i < circles.length; i++) circles[i].update();
+  for (let i = 0; i < lines.length;   i++) lines[i].update();
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   applyStageTransform();
   ctx.lineCap = 'round';
 
-  // When the viewer is below the horizon plane the inner-line layers swap
-  // depths (_iLA.swapDepths(3N-2) in setPhi), so the plane covers the other
-  // set of segments.
-  const innerFirst  = (state.phi < 0) ? 'aI' : 'bI';
-  const innerSecond = (state.phi < 0) ? 'bI' : 'aI';
+  const innerFirst  = (S.phi < 0) ? 'aI' : 'bI';
+  const innerSecond = (S.phi < 0) ? 'bI' : 'aI';
 
-  //  1. _bEL   external lines behind the sphere
-  paintLineLayer(ctx, lineCache, 'bE');
-  //  2. _bC    back halves of the circles
-  paintCircleLayer(ctx, circleCache, 'back');
-  //  3. objects on the back surface
-  paintObjectsIn(ctx, 'bS');
-  //  4. _iLB   interior lines on the far side of the horizon plane
-  paintLineLayer(ctx, lineCache, innerFirst);
-  //  5. _hP    the horizon plane itself
-  paintHorizonPlane(ctx);
-  //  6. interior objects on the near side of the plane (the stick figure)
-  paintObjectsIn(ctx, (state.phi < 0) ? 'bI' : 'aI');
-  //  7. _iLA   interior lines on the near side of the plane
-  paintLineLayer(ctx, lineCache, innerSecond);
-  //  8. _fISF  front inner shading: celestial bowl, then "sphere outside"
+  // Flash depth order with AzAlt-style cardinals around the stick
+  drawLineLayer(     ctx, lines, 'bE');
+  drawCircleBucket(  ctx, circles, 'back', { dim: 1, lineCap: 'round' });
+  drawDeclinationLetters(ctx, S, scene.decLetters, 'back',  { font: DEC_TEXT_FONT });
+  drawLineLayer(     ctx, lines, innerFirst);
+  paintHorizonPlane( ctx);
+  paintCardinals(    ctx, 'back');
+  paintStick(        ctx);
+  paintCardinals(    ctx, 'front');
+  drawLineLayer(     ctx, lines, innerSecond);
+
   paintCelestialBowl(ctx);
   paintShadingScaled(ctx, ART.sphereOutside);
-  //  9. _fC    front halves of the circles
-  paintCircleLayer(ctx, circleCache, 'front');
-  // 10. objects on the front surface
-  paintObjectsIn(ctx, 'fS');
-  // 11. _fOSB  "sphere outside2", clipped to mask M2
+  drawCircleBucket(  ctx, circles, 'front', { dim: 1, lineCap: 'round' });
+  drawDeclinationLetters(ctx, S, scene.decLetters, 'front', { font: DEC_TEXT_FONT });
+
   ctx.save();
   clipMaskM2(ctx);
   paintShadingScaled(ctx, ART.sphereOutside2);
   ctx.restore();
-  // 12. _fEL   external lines in front of the sphere
-  paintLineLayer(ctx, lineCache, 'fE');
+
+  drawLineLayer(ctx, lines, 'fE');
 
   syncDom();
 }
 
-/* ---------------------------------------------------------------------------
-   DOM: controls, readouts, screen-reader narration
-   --------------------------------------------------------------------------- */
+/* ---- DOM / a11y -------------------------------------------------------- */
 
 const el = {
-  latSlider:   document.getElementById('latitude-slider'),
-  latNumber:   document.getElementById('latitude-number'),
-  latReadout:  document.getElementById('latitude-readout'),
-  latReadoutSr:document.getElementById('latitude-readout-sr'),
-  latMin:      document.getElementById('latitude-min'),
-  latMax:      document.getElementById('latitude-max'),
-  viewProxy:   document.getElementById('sphere-view'),
-  status:      document.getElementById('sim-status'),
-  canvasDesc:  document.getElementById('canvas-description'),
-  step1: document.getElementById('step-1'),
-  step2: document.getElementById('step-2'),
-  step3: document.getElementById('step-3'),
-  step4: document.getElementById('step-4')
+  latSlider:    document.getElementById('latitude-slider'),
+  latNumber:    document.getElementById('latitude-number'),
+  viewProxy:    document.getElementById('sphere-view'),
+  status:       document.getElementById('sim-status'),
+  canvasDesc:   document.getElementById('canvas-description'),
+  step1:        document.getElementById('step-1'),
+  step2:        document.getElementById('step-2'),
+  step3:        document.getElementById('step-3'),
+  step4:        document.getElementById('step-4')
 };
 
-/* --- number formatting, ported from SliderV3LatitudeClass ----------------- */
-
-// SliderV3Latitude was created with initPrecision = 1, so the value is
-// rounded to one decimal place and rendered with exactly one decimal.
-const LAT_PRECISION = 1;
-
-function latToFixed(x) {
-  const f = LAT_PRECISION;
-  let s = '';
-  if (x < 0) { s = '-'; x = -x; }
-  let m;
-  const n = Math.round(x * Math.pow(10, f));
-  m = (n === 0) ? '0' : n.toString();
-  let k = m.length;
-  if (k <= f) {
-    let z = '';
-    for (let i = 0; i < f + 1 - k; i++) { z += '0'; }
-    m = z + m;
-    k = f + 1;
-  }
-  m = m.substr(0, k - f) + '.' + m.substr(k - f);
-  return s + m;
-}
-
-// The slider label reads e.g. "41.0° N" / "5.0° S" -- the hemisphere letter
-// carries the sign, exactly as SliderV3LatitudeClass.setValue did.
 function latHemisphere(v) { return v < 0 ? '° S' : '° N'; }
-function latText(v)       { return latToFixed(Math.abs(v)) + latHemisphere(v); }
+function latText(v)       { return legToFixed(Math.abs(v), LAT_PRECISION) + latHemisphere(v); }
 
-// Spoken form: quantity name + number + unit, never a bare number.
 function latSpoken(v) {
   const hemi = v < 0 ? 'south' : 'north';
-  return 'Latitude ' + latToFixed(Math.abs(v)) + ' degrees ' + hemi;
+  return 'Latitude ' + speak(Math.abs(v), LAT_PRECISION, 'degree') + ' ' + hemi;
 }
 
-/* --- MathJax readouts ----------------------------------------------------- */
+function klunlInitEqn() {}
+window.klunlInitEqn = klunlInitEqn;
 
-// Every piece of mathematical notation shown in the page (the degree symbol,
-// the signed declinations, the latitude value) is typeset by MathJax so that
-// it is exposed through MathJax's own accessibility layer and context menu.
-function typesetLatitude() {
-  const v = latValue();
-  klunlShowEquation(
-    ['latitude-readout', '\\(' + latToFixed(Math.abs(v)) + '^\\circ\\,\\mathrm{' +
-      (v < 0 ? 'S' : 'N') + '}\\)'],
-    ['latitude-readout-sr', latSpoken(v)]
-  );
-}
-
-/* Keeping MathJax out of the tab order.
-
-   With the contextual menu enabled MathJax marks every <mjx-container> with
-   tabindex="0", which would put display-only math into the keyboard tab
-   order. Typeset math is output the user reads, not a control, so we force
-   tabindex="-1" instead. Right-clicking still opens the MathJax menu, because
-   the contextmenu handler is left untouched. */
-function suppressMathTabstops() {
-  document.querySelectorAll('mjx-container[tabindex]').forEach(function (c) {
-    if (c.getAttribute('tabindex') !== '-1') { c.setAttribute('tabindex', '-1'); }
-  });
-}
-
-const mathObserver = new MutationObserver(suppressMathTabstops);
-mathObserver.observe(document.body, {
-  childList: true, subtree: true,
-  attributes: true, attributeFilter: ['tabindex']
-});
-
-/* --- state <-> DOM -------------------------------------------------------- */
-
-function latValue() { return state.lat * RAD2DEG; }
-
-// setLatitude clamps to [-90, 90] and the slider rounds to the precision.
 function setLatitude(deg) {
   const k = Math.pow(10, LAT_PRECISION);
-  let v = Math.round(k * deg) / k;
-  if (v < -90) { v = -90; } else if (v > 90) { v = 90; }
-  state.lat = v * DEG2RAD;
-  // The declination labels are laid out differently in the two hemispheres,
-  // so they must be rebuilt whenever latitude crosses the equator.
+  let   v = Math.round(k * deg) / k;
+  if      (v < -90) v = -90;
+  else if (v >  90) v =  90;
+  S.setLatitude(v);
   buildScene();
   render();
 }
 
-// setThetaAndPhi from "2 CS Getter Setter.as", including the phi clamp.
 function setThetaAndPhi(thetaDeg, phiDeg) {
-  state.theta = DEG2RAD * mod(thetaDeg, 360);
-  if (phiDeg > MAX_PHI)      { phiDeg = MAX_PHI; }
-  else if (phiDeg < MIN_PHI) { phiDeg = MIN_PHI; }
-  state.phi = phiDeg * DEG2RAD;
+  S.setThetaAndPhi(thetaDeg, phiDeg);
   render();
 }
 
-function viewerAzimuth()  { return mod(360 - state.theta * RAD2DEG, 360); }
-function viewerAltitude() { return state.phi * RAD2DEG; }
-
 function syncDom() {
-  const v = latValue();
-  if (document.activeElement !== el.latSlider) { el.latSlider.value = v; }
-  if (document.activeElement !== el.latNumber) { el.latNumber.value = latToFixed(v); }
+  const v = S.getLatitude();
+  if (document.activeElement !== el.latSlider) el.latSlider.value = String(v);
+  if (document.activeElement !== el.latNumber) {
+    el.latNumber.value = legToFixed(v, LAT_PRECISION);
+  }
   el.latSlider.setAttribute('aria-valuetext', latSpoken(v));
-  el.latNumber.setAttribute('aria-label', latSpoken(v));
+  el.latNumber.setAttribute('aria-label',     latSpoken(v));
+  updateSliderProgress(el.latSlider);
 
-  el.step1.checked = state.showPoles;
-  el.step2.checked = state.showCE;
-  el.step3.checked = state.showEquinox;
-  el.step4.checked = state.showSolstice;
-
-  const az = viewerAzimuth(), alt = viewerAltitude();
-  el.viewProxy.setAttribute('aria-valuenow', Math.round(az));
-  el.viewProxy.setAttribute('aria-valuetext',
-    'Viewing direction: azimuth ' + Math.round(az) + ' degrees, ' +
-    'viewing altitude ' + Math.round(alt) + ' degrees');
+  el.step1.checked = flags.showPoles;
+  el.step2.checked = flags.showCE;
+  el.step3.checked = flags.showEquinox;
+  el.step4.checked = flags.showSolstice;
 
   el.canvasDesc.textContent = describeScene();
 }
 
-// A concise, continuously-updated description of what the canvas shows, so an
-// audio-only user gets the same "what's happening" a sighted user does.
 function describeScene() {
-  const v = latValue();
+  const v     = S.getLatitude();
   const parts = [];
-  parts.push('Celestial sphere seen from ' + latToFixed(Math.abs(v)) +
-             ' degrees ' + (v < 0 ? 'south' : 'north') + ' latitude, ' +
-             'looking toward azimuth ' + Math.round(viewerAzimuth()) +
-             ' degrees from a viewing altitude of ' +
-             Math.round(viewerAltitude()) + ' degrees.');
-  parts.push('A stick figure stands at the centre, on the green horizon plane, ' +
-             'with north, south, east and west marked around its edge.');
+  parts.push('Celestial sphere seen from ' +
+             speak( Math.abs(v), LAT_PRECISION, 'degree' ) + 
+             (v < 0 ? ' south' : ' north') + ' latitude, ' +
+             'looking toward azimuth ' + speak( S.getViewerAzimuth(), 0, 'degree' ) +
+        ' from a viewing altitude of ' + speak(S.getPhi(),            0, 'degree' ) +
+             '. ');
+  parts.push('An observer is at the center of the green horizon plane, ' +
+             'with north, east, south, and west marked around its border. ');
+
+  const sayWhere = [];
+  const v2       = Math.abs( v );
+  let   v3       = ( v >= 0 ) ? 'northern' : 'southern';
+  let   v4       = ( v >= 0 ) ? 'southern' : 'northern';
+  if (flags.showPoles)  {
+    if      ( v  >=   0 )  { sayWhere[0]   = 'The North Celestial Pole is ';      }
+    else                   { sayWhere[0]   = 'The South Celestial Pole is ';      }
+    if      ( v2 ==  90 )  { sayWhere[0]  += 'directly overhead ';                }
+    else if ( v2 >=  80 )  { sayWhere[0]  += 'almost directly overhead';          }
+    else if ( v2 >=  45 )  { sayWhere[0]  += 'high in the '    + v3 + ' sky';     }
+    else if ( v2 >=  10 )  { sayWhere[0]  += 'visible in the ' + v3 + ' sky';     }
+    else if ( v2 >    0 )  { sayWhere[0]  += 'above the '      + v3 + ' horizon'; }
+    else if ( v2 ==   0 )  { sayWhere[0]  += 'on the northern horizon ' +
+      'and the South Celestial Pole is on the southern horizon'; }
+    sayWhere[0] += ' for the observer. ';
+  }
+  if (flags.showCE || flags.showEquinox)  {
+    if (!flags.showEquinox)  { sayWhere[1]   = 'The celestial equator ';            }
+    else                     { sayWhere[1]   = 'The Sun\'s path on the equinoxes '; }
+    if      ( v2 ==  90 )    { sayWhere[1]  += 'is on the horizon'; }
+    else if ( v2 >=  80 )    { sayWhere[1]  += 'is on the '                          + v4 + ' horizon'; }
+    else if ( v2 >=  45 )    { sayWhere[1]  += 'stretches across the sky above the ' + v4 + ' horizon'; }
+    else if ( v2 >=  10 )    { sayWhere[1]  += 'is high in the '                     + v4 + ' sky';     }
+    else                     { sayWhere[1]  += 'spans the observer\'s sky from east to west.'; }
+    if (v2 >= 10)  { 
+      if (!flags.showPoles)  { sayWhere[1] += ' for the observer'; }
+      sayWhere[1] += '. ';
+    }
+  }
+  if (flags.showSolstice)  {
+    sayWhere[2] = ' On the summer solstice '; 
+    if      ( v2 >= 66.5 )  { sayWhere[2] += 'the Sun never sets below the horizon';      }
+    else if ( v2 >  33.5 )  { sayWhere[2] += 'the Sun stays mostly above the horizon, transiting high in the ' + v4 + ' sky'; }
+    else if ( v2 >  23.5 )  { sayWhere[2] += 'the Sun transits almost directly overhead'; }
+    else if ( v2 == 23.5 )  { sayWhere[2] += 'the Sun transits directly overhead';        }
+    else if ( v2 >  13.5 )  { sayWhere[2] += 'the Sun transits almost directly overhead'; }
+    else if ( v2 >   0   )  { sayWhere[2] += 'the day is barely longer than twelve hours'; }
+    else if ( v2 ==  0   )  { sayWhere[2] += 'the day is twelve hours long';      }
+    if (!flags.showPoles && !flags.showCE && !flags.showEquinox)  { sayWhere[2] += ' for the observer. '; }
+    else  { sayWhere[2] += '. '; }
+  
+    sayWhere[2] += 'On the winter solstice '; 
+    if      ( v2 >= 66.5 )  { sayWhere[2] += 'the Sun never rises above the horizon';     }
+    else if ( v2 >  43.5 )  { sayWhere[2] += 'the Sun stays mostly below the horizon, transiting low in the ' + v4 + ' sky'; }
+    else if ( v2 >  13.5 )  { sayWhere[2] += 'the day is shorter than twelve hours'; }
+    else if ( v2 >   0   )  { sayWhere[2] += 'the day is barely shorter than twelve hours'; }
+    else if ( v2 ==  0   )  { sayWhere[2] += 'the day is twelve hours long';      }
+    sayWhere[2] += '. ';
+  }
 
   const shown = [];
-  if (state.showPoles) {
-    shown.push('the axis through the north and south celestial poles, ' +
+  if (flags.showPoles) {
+    shown.push('the axis through the North and South Celestial Poles, ' +
                'labelled N C P and S C P');
   }
-  if (state.showCE)      { shown.push('the celestial equator'); }
-  if (state.showEquinox) { shown.push('the sun’s path on the equinoxes, ' +
-                                      'at declination 0 degrees'); }
-  if (state.showSolstice) {
-    shown.push('the sun’s paths on the summer and winter solstices, ' +
-               'at declinations plus 23.5 degrees and minus 23.5 degrees');
+  if (flags.showCE && !flags.showEquinox) shown.push('the celestial equator');
+  if (flags.showEquinox) {
+    shown.push('the Sun\'s path on the autumnal and spring equinoxes, ' +
+               'at declination 0 degrees');
+  }
+  if (flags.showSolstice) {
+    if ( el.latSlider.value >= 0 )  { 
+    shown.push('the Sun\'s paths on the summer and winter solstices, ' +
+               'at declinations plus and minus ' +
+               speak(DEC_SUMMER_SOLSTICE, 1, 'degree' ) );
+    } else  {
+    shown.push('the Sun\'s paths on the winter and summer solstices, ' +
+               'at declinations plus and minus ' +
+               speak(DEC_SUMMER_SOLSTICE, 1, 'degree' ) );
+    }
   }
   parts.push(shown.length
-    ? 'Also shown: ' + shown.join('; ') + '.'
-    : 'No sun paths are shown yet. Turn on the four steps to build up the picture.');
+    ? 'Also shown: ' + shown.join('; ') + '. ' + sayWhere.join('')
+             : 'No Sun paths currently shown. Click through the steps to build up the picture.');
+
   return parts.join(' ');
 }
 
-// aria-live announcements are made on commit (release / change), never per
-// tick, so the region is not flooded during a drag.
-let lastAnnouncement = '';
 function announce(msg) {
-  if (msg === lastAnnouncement) { msg += ' '; }   // force re-announcement
-  lastAnnouncement = msg;
-  el.status.textContent = msg;
+  announceLive(el.status, msg);
 }
 
-/* ---------------------------------------------------------------------------
-   Pointer drag on the sphere -- port of startSimpleDragging / updateSimpleDragging
-   --------------------------------------------------------------------------- */
+/* ---- pointer drag ------------------------------------------------------ */
 
 let drag = null;
 
-// Maps a pointer event to the sphere's own coordinate system, undoing the
-// CSS scale so the drag math below matches the ActionScript at any size.
 function pointerToStage(evt) {
-  const rect = canvas.getBoundingClientRect();
+  const rect  = canvas.getBoundingClientRect();
   const scale = rect.width / STAGE_W;
   return {
     x: (evt.clientX - rect.left) / scale - STAGE_CX,
-    y: (evt.clientY - rect.top) / scale - STAGE_CY
+    y: (evt.clientY - rect.top)  / scale - STAGE_CY
   };
 }
 
-canvas.addEventListener('pointerdown', function (evt) {
+canvas.addEventListener('pointerdown', (evt) => {
   const p = pointerToStage(evt);
   drag = {
-    id: evt.pointerId,
-    xMouse: p.x, yMouse: p.y,
-    theta: state.theta, phi: state.phi
+    id:     evt.pointerId,
+    xMouse: p.x,
+    yMouse: p.y,
+    theta:  S.theta,
+    phi:    S.phi
   };
-  canvas.setPointerCapture(evt.pointerId);
-  // Clicking the sphere also focuses it, so the arrow keys work immediately.
-  el.viewProxy.focus();
+  try { canvas.setPointerCapture(evt.pointerId); } catch (_e) { /* ok */ }
+  el.viewProxy.focus({ preventScroll: true });
   evt.preventDefault();
 });
 
-canvas.addEventListener('pointermove', function (evt) {
-  if (!drag || evt.pointerId !== drag.id) { return; }
+canvas.addEventListener('pointermove', (evt) => {
+  if (!drag || evt.pointerId !== drag.id) return;
   const p = pointerToStage(evt);
+  const r = sphereR();
   setThetaAndPhi(
-    RAD2DEG * (drag.theta - (p.x - drag.xMouse) / SPHERE_R),
-    RAD2DEG * (drag.phi   + (p.y - drag.yMouse) / SPHERE_R)
+    R2D * (drag.theta - (p.x - drag.xMouse) / r),
+    R2D * (drag.phi   + (p.y - drag.yMouse) / r)
   );
   evt.preventDefault();
 });
 
 function endDrag(evt) {
-  if (!drag || (evt && evt.pointerId !== drag.id)) { return; }
+  if (!drag || (evt && evt.pointerId !== drag.id)) return;
   drag = null;
-  announce('Viewing direction: azimuth ' + Math.round(viewerAzimuth()) +
-           ' degrees, viewing altitude ' + Math.round(viewerAltitude()) +
-           ' degrees.');
+  announce('Viewing direction: azimuth ' + speak(S.getViewerAzimuth(), 0, 'degree') +
+                   ', viewing altitude ' + speak(S.getPhi(),           0, 'degree') + '.');
 }
-canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointerup',     endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 
-/* --- keyboard equivalent for the drag ------------------------------------- */
+/* ---- keyboard view ----------------------------------------------------- */
 
-const VIEW_STEP = 5;        // degrees per arrow press
-const VIEW_STEP_BIG = 15;   // degrees per Page press
-
-el.viewProxy.addEventListener('keydown', function (evt) {
+el.viewProxy.addEventListener('keydown', (evt) => {
   let dAz = 0, dAlt = 0, handled = true;
-  const big = evt.shiftKey ? VIEW_STEP_BIG : VIEW_STEP;
+  const step = keyAccel(evt, VIEW_STEP);
 
   switch (evt.key) {
-    case 'ArrowLeft':  dAz = -big; break;
-    case 'ArrowRight': dAz =  big; break;
-    case 'ArrowUp':    dAlt =  big; break;
-    case 'ArrowDown':  dAlt = -big; break;
-    case 'PageUp':     dAlt =  VIEW_STEP_BIG; break;
-    case 'PageDown':   dAlt = -VIEW_STEP_BIG; break;
-    case 'Home':       dAlt = MAX_PHI - viewerAltitude(); break;
-    case 'End':        dAlt = MIN_PHI - viewerAltitude(); break;
+    case 'ArrowLeft':  case 'A': case 'a': dAz  = -step; break;
+    case 'ArrowRight': case 'D': case 'd': dAz  =  step; break;
+    case 'ArrowUp':    case 'W': case 'w': dAlt = -step; break;
+    case 'ArrowDown':  case 'S': case 's': dAlt =  step; break;
+    case 'PageUp':                         dAlt =   -15; break;
+    case 'PageDown':                       dAlt =    15; break;
+    case 'Home':                           dAlt =  90 - S.getPhi(); break;
+    case 'End':                            dAlt = -90 - S.getPhi(); break;
     default: handled = false;
   }
-  if (!handled) { return; }
+  if (!handled) return;
   evt.preventDefault();
 
-  setThetaAndPhi(
-    mod(360 - (viewerAzimuth() + dAz), 360),
-    viewerAltitude() + dAlt
-  );
-  announce('Azimuth ' + Math.round(viewerAzimuth()) + ' degrees, ' +
-           'viewing altitude ' + Math.round(viewerAltitude()) + ' degrees.');
+  S.setViewerAzimuth(S.getViewerAzimuth() + dAz);
+  S.setPhi(S.getPhi() + dAlt);
+  render();
+  announce(           'Azimuth ' + speak(S.getViewerAzimuth(), 0, 'degree') +
+           ', viewing altitude ' + speak(S.getPhi(),           0, 'degree') + '.');
 });
 
-/* ---------------------------------------------------------------------------
-   Latitude controls -- slider and number field share one state path
-   --------------------------------------------------------------------------- */
+/* ---- latitude controls ------------------------------------------------- */
 
-const LAT_STEP = 0.1;       // matches initPrecision = 1
-const LAT_PAGE = 5;
-
-function commitLatitude(v, speak) {
+function commitLatitude(v, doAnnounce) {
   setLatitude(v);
-  typesetLatitude();
-  if (speak) { announce(latSpoken(latValue()) + '.'); }
+
+  // Announce new latitude and flag when summer and winter solstices swap dates
+  let s0;
+  if ( flags.showSolstice && ( ( v * xLat < 0 )          ||
+                               ( v    == 0 && xLat < 0 ) ||
+                               ( xLat == 0 && v    < 0 ) ) )  {
+    s0  = '. The summer solstice is now in ';
+    s0 += ( v >= 0 ) ? 'June' : 'December';
+    s0 += ' and the winter solstice is now in ';
+    s0 += ( v <  0 ) ? 'June' : 'December';
+    s0 += '.';
+  } else  {
+    s0  = '.';
+  }
+  xLat = v;
+  if (doAnnounce) announce(latSpoken(S.getLatitude()) + s0 );
 }
 
-el.latSlider.addEventListener('input', function () {
+el.latSlider.addEventListener('input', () => {
   setLatitude(parseFloat(el.latSlider.value));
-  typesetLatitude();
 });
-el.latSlider.addEventListener('change', function () {
+el.latSlider.addEventListener('change', () => {
   commitLatitude(parseFloat(el.latSlider.value), true);
 });
 
-el.latNumber.addEventListener('input', function () {
+/*
+el.latNumber.addEventListener('input', () => {
   const v = parseFloat(el.latNumber.value);
-  if (isFinite(v)) { setLatitude(v); typesetLatitude(); }
 });
-el.latNumber.addEventListener('change', function () {
+*/
+el.latNumber.addEventListener('change', () => {
+  el.latNumber.value = Math.max( Math.min( parseFloat(el.latNumber.value), 90 ), -90 );
   const v = parseFloat(el.latNumber.value);
-  commitLatitude(isFinite(v) ? v : latValue(), true);
+  commitLatitude(isFinite(v) ? v : S.getLatitude(), true);
+});
+el.latNumber.addEventListener('keydown', noEinNumber);
+
+el.latNumber.addEventListener('wheel', (evt) => {
+  evt.preventDefault();
+  commitLatitude(S.getLatitude() + (evt.deltaY < 0 ? LAT_STEP : -LAT_STEP), true);
+});
+el.latSlider.addEventListener('wheel', (evt) => {
+  evt.preventDefault();
+  commitLatitude(S.getLatitude() + (evt.deltaY < 0 ? LAT_STEP : -LAT_STEP), true);
 });
 
-// Mouse wheel adjusts the focused numeric field, per the accessibility rules.
-// The listener is non-passive so preventDefault can stop the page scrolling,
-// and it only acts while the field actually has focus.
-el.latNumber.addEventListener('wheel', function (evt) {
-  if (document.activeElement !== el.latNumber) { return; }
+el.latNumber.addEventListener('keydown', (evt) => {
+  let delta = 0;
+  if      (evt.key === 'ArrowUp'  ) delta =  keyAccel(evt, LAT_STEP);
+  else if (evt.key === 'ArrowDown') delta = -keyAccel(evt, LAT_STEP);
+  else if (evt.key === 'PageUp')    delta =  LAT_PAGE;
+  else if (evt.key === 'PageDown')  delta = -LAT_PAGE;
+  else return;
   evt.preventDefault();
-  const dir = evt.deltaY < 0 ? 1 : -1;
-  commitLatitude(latValue() + dir * LAT_STEP, true);
-}, { passive: false });
-
-el.latSlider.addEventListener('wheel', function (evt) {
-  if (document.activeElement !== el.latSlider) { return; }
-  evt.preventDefault();
-  const dir = evt.deltaY < 0 ? 1 : -1;
-  commitLatitude(latValue() + dir * LAT_STEP, true);
-}, { passive: false });
-
-// <input type="number"> gives ArrowUp/ArrowDown for free; add Page/Home/End.
-el.latNumber.addEventListener('keydown', function (evt) {
-  let v = null;
-  if (evt.key === 'PageUp')        { v = latValue() + LAT_PAGE; }
-  else if (evt.key === 'PageDown') { v = latValue() - LAT_PAGE; }
-  else if (evt.key === 'Home')     { v = -90; }
-  else if (evt.key === 'End')      { v = 90; }
-  if (v === null) { return; }
-  evt.preventDefault();
-  commitLatitude(v, true);
+  commitLatitude(S.getLatitude() + delta, true);
+  el.latNumber.value = Math.round( S.getLatitude() );
 });
 
-/* --- the four step checkboxes --------------------------------------------- */
-
-// Labels are verbatim from the FCheckBox initialize handlers.
 const STEPS = [
-  { el: 'step1', flag: 'showPoles',    label: 'Step 1: Show Poles' },
-  { el: 'step2', flag: 'showCE',       label: 'Step 2: Show CE' },
-  { el: 'step3', flag: 'showEquinox',  label: 'Step 3: Show Equinox Path' },
-  { el: 'step4', flag: 'showSolstice', label: 'Step 4: Show Solstice Paths' }
+  { el: 'step1', flag: 'showPoles',    label: 'show poles'             },
+  { el: 'step2', flag: 'showCE',       label: 'show celestial equator' },
+  { el: 'step3', flag: 'showEquinox',  label: 'show equinox path'      },
+  { el: 'step4', flag: 'showSolstice', label: 'show solstice paths'    }
 ];
 
-STEPS.forEach(function (step) {
-  el[step.el].addEventListener('change', function () {
-    state[step.flag] = el[step.el].checked;
+STEPS.forEach((step) => {
+  el[step.el].addEventListener('change', () => {
+    flags[step.flag] = el[step.el].checked;
     buildScene();
     render();
-    announce(step.label + ' ' + (el[step.el].checked ? 'shown.' : 'hidden.') +
-             ' ' + describeScene());
+    announce(step.label + (flags[step.flag] ? ' on.' : ' off.'));
   });
 });
 
-/* ---------------------------------------------------------------------------
-   Reset -- driven by the shared masthead's "sim-reset" event
-   --------------------------------------------------------------------------- */
+/* ---- reset / resize / boot --------------------------------------------- */
 
 function resetSim() {
-  state.theta = mod(360 - INIT_VIEWER_AZIMUTH, 360) * DEG2RAD;
-  state.phi   = INIT_VIEWER_ALTITUDE * DEG2RAD;
-  state.lat   = INIT_LATITUDE * DEG2RAD;
-  state.sTime = 0;
-  state.showPoles = false;
-  state.showCE = false;
-  state.showEquinox = false;
-  state.showSolstice = false;
-
+  flags.showPoles = flags.showCE = flags.showEquinox = flags.showSolstice = false;
+  S.setViewerAzimuth(INIT_VIEWER_AZIMUTH);
+  S.setPhi(INIT_VIEWER_ALTITUDE);
+  S.setLatitude(INIT_LATITUDE);
   buildScene();
   render();
-  typesetLatitude();
-  announce('Simulation reset. ' + describeScene());
+  announce('Simulation reset. Showing the celestial sphere for an observer at ' +
+           latSpoken(INIT_LATITUDE) + '.');
 }
 
 document.addEventListener('sim-reset', resetSim);
 
-/* ---------------------------------------------------------------------------
-   Start-up
-   --------------------------------------------------------------------------- */
-
-// Redefining klunlInitEqn is the documented KL-UNL hook for initialising a
-// sim's equations and components; kl-unl.js ships a placeholder for it.
-window.klunlInitEqn = function () {
-  typesetLatitude();
-  suppressMathTabstops();
-};
-
-// A ResizeObserver on the canvas catches every reason its box can change --
-// window resize, browser zoom, and the panel reflowing at a breakpoint --
-// which a window resize listener alone would miss.
-let resizeRaf = 0;
+let resizeTimer = 0;
 function scheduleResize() {
-  if (resizeRaf) { return; }
-  resizeRaf = window.requestAnimationFrame(function () {
-    resizeRaf = 0;
-    sizeCanvas();
-    render();
-  });
-}
-
-// Observe the wrapper, not the canvas: the wrapper's size is purely CSS-driven,
-// whereas the canvas's own height follows its backing store, which sizeCanvas
-// writes to -- observing that would feed back into itself.
-if (window.ResizeObserver) {
-  new ResizeObserver(scheduleResize).observe(canvas.parentNode);
+  if (resizeTimer) cancelAnimationFrame(resizeTimer);
+  resizeTimer = requestAnimationFrame(() => { resizeTimer = 0; render(); });
 }
 window.addEventListener('resize', scheduleResize);
 
-// Safety net. Both notifications above are the fast path, but either can be
-// coalesced or missed (some embedding contexts deliver neither), which would
-// leave the stage drawn at a stale scale until the next user action. A slow
-// poll that compares one integer and only redraws on a real change closes that
-// gap at negligible cost.
-// It redraws synchronously rather than through scheduleResize, because
-// requestAnimationFrame does not fire while a document is hidden -- exactly the
-// case where the fast paths are also asleep -- and the poll is already
-// rate-limited, so there is nothing for a frame callback to coalesce.
-let lastSeenWidth = canvas.clientWidth;
-window.setInterval(function () {
-  const w = canvas.clientWidth;
-  if (w && w !== lastSeenWidth) {
-    lastSeenWidth = w;
-    render();
-  }
-}, 500);
-
-let booted = false;
 function boot() {
-  if (booted) { return; }
-  booted = true;
-
   buildScene();
-  sizeCanvas();
+  klunlInitEqn();
   render();
-  window.klunlInitEqn();
-
-  // Exported artwork arrives asynchronously; repaint once it is decoded.
-  loadArt().then(function () {
-    sizeCanvas();
-    render();
-  });
 }
 
-// Boot once MathJax has started up, so the readouts typeset on first paint.
-if (window.MathJax && window.MathJax.startup && window.MathJax.startup.promise) {
-  window.MathJax.startup.promise.then(boot, boot);
-} else if (document.readyState !== 'loading') {
-  boot();
-} else {
-  document.addEventListener('DOMContentLoaded', boot);
+loadArt().then(boot);
+
+
+// Show screen width on console when testing responsive design
+const trackScreen = false;
+if (trackScreen) {
+  const ro = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const widthPx      = window.innerWidth;
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const widthRem1    = widthPx / rootFontSize;
+      console.log( 'CSS width is:', `${widthRem1}rem`);
+    }
+  });
+  ro.observe( document.getElementById('controls-heading') );
 }
