@@ -221,11 +221,17 @@ kl-unl-masthead {
    grid; the number field uses the shared field metrics.
    -------------------------------------------------------------------------- */
 .sim-control-row {
-  grid-template-columns: minmax(0, auto) minmax(0, var(--sim-field-width))
+  grid-template-columns: minmax(0, var(--sim-field-width)) auto 
                          minmax(0, 1fr);
   gap:                   var(--sim-space-1) var(--sim-space-2);
   align-items:           center;
   margin-bottom:         var(--sim-space-2);
+}
+
+.sim-unit {
+  font-size:      1.125rem;
+  line-height:    1;
+  user-select:    none;
 }
 
 .sim-number {
@@ -293,7 +299,7 @@ kl-unl-masthead {
   }
 
   .sim-control-row {
-    grid-template-columns: minmax(0, auto) minmax(0, var(--sim-field-width));
+    grid-template-columns: minmax(0, var(--sim-field-width)) auto;
   }
 
   .sim-slider {
