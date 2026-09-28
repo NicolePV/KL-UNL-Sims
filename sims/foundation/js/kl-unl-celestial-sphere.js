@@ -62,6 +62,7 @@ export const CELESTIAL_SPHERE_COLORS = {
   MRDN_CIRC:  '#216331',  // (dark    green)
   MRDN2_CIRC: '#000000',  // (black)
   MRDN3_CIRC: '#c0c0c0',  // (light   grey)
+  MRDN4_CIRC: '#ffffff',  // (white)
   CEL_EQUTR:  '#505050',  // (dark    gray)
   CEL_EQUTR2: '#ffe375',  // (bright  yellow)
   SUN_PATH:   '#ffffc0',  // (pale    yellow)
@@ -1473,6 +1474,138 @@ export function drawOrientedLabel(ctx, S, worldPt, text, color, opts = {}) {
   ctx.strokeText(text, 0, 0);
   ctx.fillText(  text, 0, 0);
   ctx.restore();
+}
+
+/* ---- Flash addDeclinationText: letters along a constant-dec circle ---- */
+
+/** Default Verdana face matching Flash "Verdana Letter" captions. */
+export const DEC_TEXT_FONT = '12px Verdana, "DejaVu Sans", Geneva, sans-serif';
+
+/** Flash gap: half a space-width between glyphs along the small circle. */
+export const DEC_TEXT_GAP = 0.5;
+
+const _decMeasureByFont = new Map();
+
+function decMeasureCtx(font) {
+  let ctx2 = _decMeasureByFont.get(font);
+  if (!ctx2) {
+    ctx2 = document.createElement('canvas').getContext('2d');
+    ctx2.font = font;
+    _decMeasureByFont.set(font, ctx2);
+  } else if (ctx2.font !== font) {
+    ctx2.font = font;
+  }
+  return ctx2;
+}
+
+function decGlyphWidth(ch, font) {
+  return decMeasureCtx(font).measureText(ch).width;
+}
+
+/**
+ * Port of Flash `addDeclinationText` layout: place glyphs along a constant-dec
+ * small circle, centered on anchor RA.
+ *
+ * @param {string} str
+ * @param {number} ra - Anchor RA in hours.
+ * @param {number} dec - Declination in degrees.
+ * @param {object} [opts]
+ * @param {number} [opts.sphereSize=250] - Flash `sphereMC.size` (diameter).
+ * @param {number} [opts.gap=DEC_TEXT_GAP]
+ * @param {boolean} [opts.reverseRa=false] - Southern Flash RA sense when true.
+ * @param {string} [opts.font=DEC_TEXT_FONT] - Font used for glyph widths.
+ * @returns {{ ch: string, ra: number, dec: number }[]}
+ */
+export function layoutDeclinationText(str, ra, dec, opts = {}) {
+  const sphereSize = opts.sphereSize != null ? opts.sphereSize : 250;
+  const gap        = opts.gap != null ? opts.gap : DEC_TEXT_GAP;
+  const reverseRa  = !!opts.reverseRa;
+  const font       = opts.font || DEC_TEXT_FONT;
+
+  const r = Math.cos(dec * D2R) * (sphereSize / 2);
+  if (!(r > 1e-6)) return [];
+
+  const spacingAngle = gap * decGlyphWidth(' ', font) / r;
+  const letters      = Array.from(str);
+  const letterRAs    = [];
+  let cursorAngle    = 0;
+  for (let i = 0; i < letters.length; i++) {
+    const letterAngle = decGlyphWidth(letters[i], font) / r;
+    letterRAs[i]      = R2H * (cursorAngle + letterAngle / 2);
+    cursorAngle      += letterAngle + spacingAngle;
+  }
+  cursorAngle -= spacingAngle;
+  const offset = R2H * (cursorAngle / 2);
+  const out    = [];
+  for (let i = 0; i < letters.length; i++) {
+    const raLetter = reverseRa
+      ? ra - letterRAs[i] + offset
+      : ra + letterRAs[i] - offset;
+    out.push({ ch: letters[i], ra: pMod(raLetter, 24), dec });
+  }
+  return out;
+}
+
+/**
+ * Draw one declination-caption letter with absolute orientation: top toward
+ * NCP along the constant-RA meridian (`radialUp` + `absOrient`, celestial).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CelestialSphere} S
+ * @param {{ ch: string, ra: number, dec: number, color?: string }} letter
+ * @param {object} [opts] - { font, halo, color }
+ */
+export function drawDeclinationLetter(ctx, S, letter, opts = {}) {
+  if (!letter || letter.ch === ' ') return;
+  const font  = opts.font || DEC_TEXT_FONT;
+  const halo  = opts.halo || 'rgba(0, 0, 0, 0.8)';
+  const color = letter.color || opts.color || '#ffffff';
+
+  const p = {};
+  S.parsePointInput({ ra: letter.ra, dec: letter.dec }, p);
+  const { n: nRaw, u } = radialUp(p);
+  const nlen = Math.hypot(nRaw.x, nRaw.y, nRaw.z) || 1;
+  const n = { x: nRaw.x / nlen, y: nRaw.y / nlen, z: nRaw.z / nlen };
+  const o = absOrient(S, p, n, u, 1);
+
+  ctx.save();
+  ctx.translate(o.sp.x, o.sp.y);
+  ctx.rotate(o.shellRot);
+  ctx.scale(1, o.yscale === 0 ? 1e-6 : o.yscale);
+  ctx.rotate(o.instRot);
+  ctx.font         = font;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin     = 'round';
+  ctx.lineWidth    = 3;
+  ctx.strokeStyle  = halo;
+  ctx.strokeText(letter.ch, 0, 0);
+  ctx.fillStyle    = color;
+  ctx.fillText(letter.ch, 0, 0);
+  ctx.restore();
+}
+
+/**
+ * Depth-split draw of declination-caption letters (`which` = `'back'`|`'front'`).
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CelestialSphere} S
+ * @param {Array<{ ch: string, ra: number, dec: number, color?: string }>} letters
+ * @param {'back'|'front'} which
+ * @param {object} [opts] - Passed through to {@link drawDeclinationLetter}.
+ */
+export function drawDeclinationLetters(ctx, S, letters, which, opts = {}) {
+  if (!letters || !letters.length) return;
+  for (let i = 0; i < letters.length; i++) {
+    const L = letters[i];
+    const p = {}, sp = {};
+    S.parsePointInput({ ra: L.ra, dec: L.dec }, p);
+    S.CtoSz(p, sp);
+    const isBack = sp.z < 0;
+    if ((which === 'back' && isBack) || (which === 'front' && !isBack)) {
+      drawDeclinationLetter(ctx, S, L, opts);
+    }
+  }
 }
 
 /**
