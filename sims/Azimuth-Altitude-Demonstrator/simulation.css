@@ -4,7 +4,7 @@
    Uses foundation custom properties and classes where possible.
    =========================================================================== */
 
-/* Line-height override; font-size floor comes from foundation kl-unl.css. */
+/* Line-height override; font-size floor comes from foundation kl-unl-utils.css. */
 body { line-height: 1.4; }
 
 /* --- Layout -------------------------------------------------------------- */
@@ -130,6 +130,16 @@ body { line-height: 1.4; }
   min-height:     2.75rem;   /* comfortable touch target */
 }
 
+/* Scale end labels sit under the ends of the track and share its edges. */
+.sim-scale-min,
+.sim-scale-max {
+  font-size:   0.95rem;
+  margin-top: -0.35rem;
+}
+
+.sim-scale-min { grid-column: 1; justify-self: start; }
+.sim-scale-max { grid-column: 3; justify-self: end;   }
+
 /* --- Labels panel ------------------------------------------------------- */
 .sim-labels-body {
   padding:        0.75rem 1rem 1rem;
@@ -200,6 +210,10 @@ body { line-height: 1.4; }
     grid-column: auto;
     width: 100%;
   }
+
+  .sim-range     { grid-column: 4 / span 2; }
+  .sim-scale-min { grid-column: 4; justify-self: start; }
+  .sim-scale-max { grid-column: 5; justify-self: end;   }
 }
 
 /* For even wider widths, write out full control labels too */

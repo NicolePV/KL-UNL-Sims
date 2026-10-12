@@ -1,6 +1,6 @@
 /* ==========================================================================
    Celestial-Equatorial (RA/Dec) Demonstrator -- sim-specific styles only.
-   The shared KL-UNL foundation (kl-unl.css) is never edited; everything here
+   The shared KL-UNL foundation (kl-unl-utiils.css) is never edited; everything here
    layers on top of it. Sizing is in rem/em so it tracks the browser font
    setting and reflows cleanly to phone-portrait widths and at 200% zoom.
    ========================================================================== */
@@ -19,7 +19,7 @@
   --sim-panel-gap: 0.6rem;
 }
 
-/* Line-height override; font-size floor comes from foundation kl-unl.css. */
+/* Line-height override; font-size floor comes from foundation kl-unl-utils.css. */
 body { line-height: 1.45; }
 
 /* ---- Layout: diagram on the left, control panels stacked on the right.
@@ -119,6 +119,16 @@ body { line-height: 1.45; }
   min-height:      2.25rem;
   accent-color:    var(--button-background-color, #005a9c);
 }
+
+/* Scale end labels sit under the ends of the track and share its edges. */
+.sim-scale-min,
+.sim-scale-max {
+  font-size:   0.95rem;
+  margin-top: -0.35rem;
+}
+
+.sim-scale-min   { grid-column: 1; justify-self: start; }
+.sim-scale-max   { grid-column: 3; justify-self: end;   }
 
 /* ---- Labels panel ---- */
 /* box-sizing keeps the foundation's width:100% button-row inside the panel

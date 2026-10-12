@@ -176,6 +176,24 @@
   display:        contents;
 }
 
+/* Scale end labels sit under the ends of the track and share its edges. */
+.sim-scale-min,
+.sim-scale-max {
+  font-size:   0.95rem;
+  margin-top: -0.35rem;
+}
+
+/* Scale end labels sit under the ends of the track and share its edges. */
+.sim-scale-min,
+.sim-scale-max {
+  font-size:   0.95rem;
+  margin-top: -0.35rem;
+}
+
+.com-row__slider { grid-column: 3 / span 2; }
+.sim-scale-min   { grid-column: 3; justify-self: start; }
+.sim-scale-max   { grid-column: 4; justify-self: end;   }
+
 /* Checkbox row sits outside .com-rows so display:contents from .com-row does
    not override foundation .control-choice flex layout. */
 .com-choice {

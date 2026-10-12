@@ -49,7 +49,8 @@ class KLUNLMasthead extends HTMLElement {
     const hasHelpContent = ( mastheadData.help && mastheadData.help.content.trim() !== "" );
 
     this.shadowRoot.innerHTML = `
-      <link href="../foundation/css/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+      <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
+      <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
       <style>
         :host {
           display:             block;
@@ -388,6 +389,11 @@ class KLUNLMasthead extends HTMLElement {
     const srDesc             = this.shadowRoot.getElementById('sr-description-mh');
     const targetData         = this.simData.masthead[type];
 
+    let   versionData        = 'Version: 5.0.5';  // SOS (check masthead JSON file)
+    if (this.simData.meta['version'])  { 
+      versionData            = 'Version: ' + this.simData.meta['version'].replace(' (Accessible HTML5)','');
+    }
+
     title.textContent        = targetData.title;
     let s0                   = targetData.content;
 
@@ -406,6 +412,8 @@ class KLUNLMasthead extends HTMLElement {
       }
       // Add boilerplate license statement to About entry for all simulations
       s0  += "<p>Copyright 2026 The Board of Regents of the University of Nebraska</p><p class=\"p-indent\">Licensed under <a href=\"https://www.apache.org/licenses/LICENSE-2.0\" target=\"_blank\" rel=\"noopener\" rel=\"noreferrer\">the Apache License, Version 2.0<span class=\"sr-only\"> (opens in new tab)</span></a> (the \"License\"); you may not use this file except in compliance with the License. </p><p class=\"p-indent\">Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License. </p>";
+      // Add version number
+      s0  += "<p>" + versionData + "</p>";
     }
     body.innerHTML = s0;
 

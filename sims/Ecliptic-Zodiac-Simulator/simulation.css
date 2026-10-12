@@ -1,7 +1,7 @@
 /* ===========================================================================
    Ecliptic (Zodiac) Simulator -- sim-specific styles ONLY.
    Shared layout, typography, and control chrome come from
-   ../foundation/css/kl-unl.css. Every rule here is additive: it either sizes
+   ../foundation/css/kl-unl-utils.css. Every rule here is additive: it either sizes
    something the foundation leaves open, or builds a component the foundation
    does not provide (the year timeline). Body type, global :focus-visible, and
    prefers-reduced-motion are owned by the foundation.

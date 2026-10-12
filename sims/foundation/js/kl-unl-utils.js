@@ -81,6 +81,68 @@ export function snapFixed(x, digits, xmin=0, xmax=0) {
   return step * Math.round(x / step);
 };
 
+export function findMinMaxMid( vals, valLimit )  {
+  // Find minimum and maximum values of an array, where optional valLimit is 
+  // the maximum possible value and values can wrap (such as angles between 0 
+  // and 360 degrees, or times between 0 and 24 hours). Return the average of
+  // the minimum and maximum values and their difference as well.
+  const n  = vals.length;
+  const v1 = [...vals];
+  const v2 = [];
+  let valMin, valMax, valAvg, valWid, mode;
+  
+  let i, j, del = -1e9;
+
+  if ( n === 0 )  { return [ 0, 0, 0, 0, 0 ]; }
+
+  v1.sort( (a,b) => a - b );
+  if ( arguments.length == 1 )  {
+
+    valMin = v1[0];
+    valMax = v1[n-1];
+    valAvg = ( valMin + valMax ) / 2;
+    valWid =   valMax - valMin;
+    mode   = 1;
+    
+  } else  {
+    
+    for (i = 0; i < n-1; i++ )  { 
+      v2.push( v1[i+1] - v1[i] );
+    }
+    v2.push( v1[0] + valLimit - v1[n-1] );
+
+    for (i = 0; i < n; i++ )  {
+      if ( del < v2[i] )  {
+        del = v2[i];
+        j   = i;
+      }
+    }
+    
+    if ( j == n-1 )  {
+      
+      valMin = v1[0];
+      valMax = v1[j];
+      valAvg = ( valMin + valMax ) / 2;
+      valWid =   valMax - valMin;
+      mode   = 1;  // no wrap
+      
+    } else  {
+      
+      valMin = v1[j+1];
+      valMax = v1[j];
+      valAvg = pMod( ( valMin + valLimit + valMax ) / 2, valLimit );
+      valWid =         valMax + valLimit - valMin;
+      mode   = 2;  //    wrap
+      
+    }
+
+    
+  }
+
+  return [ valMin, valMax, valAvg, valWid, mode ];
+  
+}
+
 
 /* ===========================================================================
    Keyboard functions

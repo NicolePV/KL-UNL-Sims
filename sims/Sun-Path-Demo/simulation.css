@@ -4,7 +4,7 @@
    Uses foundation custom properties and classes where possible.
    ========================================================================== */
 
-/* Line-height override; font-size floor comes from foundation kl-unl.css. */
+/* Line-height override; font-size floor comes from foundation kl-unl-utils.css. */
 body { line-height: 1.4; }
 
 /* --- Layout: diagram (wide, left) + controls (narrow, right) -------------- */

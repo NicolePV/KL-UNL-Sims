@@ -7,7 +7,8 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
@@ -89,8 +90,10 @@
                 <span class="sim-unit" id="azUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="azSlider" type="range"
                        min="0" max="360" step="1" value="140"
-                       aria-label="Azimuth" aria-valuetext="Azimuth 140.0 degrees"
+                       aria-label="Azimuth" aria-valuetext="Azimuth 140 degrees"
                        aria-hidden="true" tabindex="-1">
+                <span class="sim-scale-min" id="az-min" aria-hidden="true">0&deg;</span>
+                <span class="sim-scale-max" id="az-max" aria-hidden="true">360&deg;</span>
               </div>
 
               <!-- Altitude -->
@@ -102,8 +105,10 @@
                 <span class="sim-unit" id="altUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="altSlider" type="range"
                        min="-90" max="90" step="1" value="45"
-                       aria-label="Altitude" aria-valuetext="Altitude 45.0 degrees"
+                       aria-label="Altitude" aria-valuetext="Altitude 45 degrees"
                        aria-hidden="true" tabindex="-1">
+                <span class="sim-scale-min" id="alt-min" aria-hidden="true">-90&deg;</span>
+                <span class="sim-scale-max" id="alt-max" aria-hidden="true">+90&deg;</span>
               </div>
             </fieldset>
           </section>

@@ -1,8 +1,8 @@
 /* ==========================================================================
    Celestial and Horizon Systems Comparison -- sim-specific styles ONLY.
    Shared layout, typography, control chrome, :focus-visible, and
-   prefers-reduced-motion come from ../foundation/css/kl-unl.css (which
-   imports kl-unl-utils.css). Rules here are additive: sizing the foundation
+   prefers-reduced-motion come from ../foundation/css/kl-unl-utils.css (which
+   imports kl-unl-cursors.css). Rules here are additive: sizing the foundation
    leaves open, or components it does not provide (mode switch / arrows).
    ========================================================================== */
 
@@ -222,7 +222,7 @@ kl-unl-masthead {
    -------------------------------------------------------------------------- */
 .sim-control-row {
   grid-template-columns: minmax(0, var(--sim-field-width)) auto 
-                         minmax(0, 1fr);
+                         minmax(0, 1fr) auto;
   gap:                   var(--sim-space-1) var(--sim-space-2);
   align-items:           center;
   margin-bottom:         var(--sim-space-2);
@@ -250,6 +250,17 @@ kl-unl-masthead {
   min-width:      0;
   box-sizing:     border-box;
 }
+
+/* Scale end labels sit under the ends of the track and share its edges. */
+.sim-scale-min,
+.sim-scale-max {
+  font-size:   0.95rem;
+  margin-top: -0.35rem;
+}
+
+.control-row__slider { grid-column: 3 / span 2; }
+.sim-scale-min       { grid-column: 3; justify-self: start; }
+.sim-scale-max       { grid-column: 4; justify-self: end;   }
 
 .sim-eqn-row {
   min-height:     2rem;

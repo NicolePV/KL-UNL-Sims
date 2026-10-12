@@ -7,7 +7,8 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png" sizes="32x32">
@@ -109,6 +110,8 @@
             <input class="control-row__slider sim-slider" id="latSlider"
                    type="range" min="-90" max="90" step="1" value="41"
                    aria-hidden="true" tabindex="-1">
+            <span class="sim-scale-min" id="lat-min" aria-hidden="true">-90&deg;</span>
+            <span class="sim-scale-max" id="lat-max" aria-hidden="true">+90&deg;</span>
           </div>
 
           <!--

@@ -2,7 +2,7 @@
    Sun Motions Overview -- sim-specific styles ONLY.
 
    The shared palette, shell, panel, fieldset, control and focus styles all
-   come from foundation/kl-unl.css, which is never edited or overridden here.
+   come from foundation/kl-unl-utils.css, which is never edited or overridden here.
    Everything below either sets a variable the foundation already reads, or
    styles a component the foundation does not provide (the sphere stage, its
    keyboard proxy, the readout column and the path key).
@@ -33,7 +33,7 @@
 }
 
 /* --- typography ----------------------------------------------------------
-   Body size and line-height come from foundation kl-unl.css. */
+   Body size and line-height come from foundation kl-unl-utils.css. */
 .panel__heading {
   font-size: 1.25rem;
   padding:   var(--sim-space-sm) var(--sim-space-md);

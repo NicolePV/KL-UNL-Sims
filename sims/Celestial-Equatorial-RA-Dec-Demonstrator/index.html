@@ -7,7 +7,8 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
   <!-- Sim-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
@@ -88,6 +89,8 @@
             <input class="control-row__slider sim-slider" type="range" autocomplete="off"
                    id="ra-range" min="0" max="24" step="0.1" value="4.0"
                    aria-label="Right ascension" aria-hidden="true" tabindex="-1">
+            <span class="sim-scale-min" id="ra-min" aria-hidden="true">0&#x02b0;</span>
+            <span class="sim-scale-max" id="ra-max" aria-hidden="true">24&#x02b0;</span>
           </div>
 
           <!-- Declination -->
@@ -109,6 +112,8 @@
             <input class="control-row__slider sim-slider" type="range" autocomplete="off"
                    id="dec-range" min="-90" max="90" step="1" value="60"
                    aria-label="Declination" aria-hidden="true" tabindex="-1">
+            <span class="sim-scale-min" id="ra-min" aria-hidden="true">-90&deg;</span>
+            <span class="sim-scale-max" id="ra-max" aria-hidden="true">+90&deg;</span>
           </div>
         </fieldset>
 

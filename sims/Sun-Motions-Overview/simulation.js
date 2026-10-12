@@ -208,11 +208,11 @@ function buildScene() {
   }
 }
 
-function pushDecText(str, ra, dec, color, reverseRa) {
+function pushDecText(str, ra, dec, color, reverseRA) {
   const laid = layoutDeclinationText(str, ra, dec, {
     sphereSize: SPHERE_SIZE,
     gap:        DEC_TEXT_GAP,
-    reverseRa:  !!reverseRa,
+    reverseRA:  !!reverseRA,
     font:       DEC_TEXT_FONT
   });
   for (let i = 0; i < laid.length; i++) {

@@ -18,7 +18,7 @@
      m0..m8  — celestial → world (observer latitude + local sidereal time)
      b0..b8  — celestial → screen (a · m composite)
 
-   Also exports `Circle`, `Line`, full `CSObject` (Flash `7 CS Objects.as`),
+   Also exports `Circle`, `Line`, `Cone`, full `CSObject` (Flash `7 CS Objects.as`),
    and a lighter `SphereObject` kept for existing absolute-only callers.
 
    Angle conventions:
@@ -1032,7 +1032,7 @@ export class Circle {
  *   aI — inner, above horizon    (`_iLA`, just over  the plane)
  *   bI — inner, below horizon    (`_iLB`, just under the plane)
  *
- * `front` / `back` are merged aliases (fE+aI / bE+bI) so existing sims keep working.
+ * `front` / `back` are merged aliases (aI+fE / bE+bI) so existing sims keep working.
  */
 export class Line {
   /**
@@ -1066,9 +1066,9 @@ export class Line {
   }
 
   /**
-   * @param {number} [t] - Stroke thickness.
+   * @param {number} [t]   - Stroke thickness.
    * @param {number} [col] - Decimal RGB colour.
-   * @param {number} [a] - Alpha 0–1.
+   * @param {number} [a]   - Alpha 0–1.
    */
   setStyle(t, col, a) {
     if (t   !== undefined) this.thick = t;
@@ -1188,10 +1188,441 @@ export class Line {
         }
       }
     }
-    this.front.push(...this.fE, ...this.aI);
+    this.front.push(...this.aI, ...this.fE);
     this.back.push (...this.bE, ...this.bI);
   }
 }
+
+/**
+ * Shaded cone from an apex (usually Earth, at the origin) to a small circle
+ * on the celestial sphere.
+ *
+ * The base samples lie on the sphere, so the rim follows the surface. A cap
+ * just inside the shell (r = 0.998) closes the base on the inner side.
+ * Each triangle is clipped like a `Line` segment, by the horizon plane and
+ * the sphere, and the pieces are filed with the same tests:
+ *   bE — outside the sphere, behind center (screen z < 0)
+ *   bI — inside  the sphere, below the horizon
+ *   aI — inside  the sphere, above the horizon
+ *   fE — outside the sphere, in front of center (screen z >= 0)
+ *   (front is aI followed by fE, and back is bE followed by bI, like Line class)
+ * An Earth-to-surface cone is inside the shell, so its body and cap land in
+ * aI and bI. A base that crosses the horizon is cut along that crossing.
+ *
+ * Each strip is shaded from its 3D cone normal against a fixed view-space
+ * light (upper left, toward the camera).
+ *
+ * @param {CelestialSphere} sphere
+ * @param {object} apex - Point spec (same forms as parsePointInput).
+ * @param {object} base - Point spec of the base center, on the sphere.
+ * @param {{radius?: number, samples?: number, color?: string,
+ *   shadow?: string, highlight?: string, alpha?: number}} [opts]
+ *   radius is the face-on base radius in screen pixels.
+ */
+export class Cone {
+  constructor(sphere, apex, base, opts) {
+    this.sphere    = sphere;
+    this.apexSpec  = apex || { x: 0, y: 0, z: 0, system: 'celestial' };
+    this.baseSpec  = base || { x: 0, y: 0, z: 1, system: 'celestial' };
+    const o = opts || {};
+    this.radius    = (o.radius    != null) ? o.radius    : 5;
+    this.samples   = (o.samples   != null) ? o.samples   : 24;
+    this.color     = (o.color     != null) ? o.color     : '#ffa500';
+    this.shadow    = (o.shadow    != null) ? o.shadow    : '#ff0000';
+    this.highlight = (o.highlight != null) ? o.highlight : '#ffffff';
+    this.alpha     = (o.alpha     != null) ? o.alpha     : 1;
+    this.visible   = true;
+    /** @type {Array<{p:number[][], color:string}>} */
+    this.bE    = [];
+    /** @type {Array<{p:number[][], color:string}>} */
+    this.fE    = [];
+    /** @type {Array<{p:number[][], color:string}>} */
+    this.aI    = [];
+    /** @type {Array<{p:number[][], color:string}>} */
+    this.bI    = [];
+    /** @type {Array<{p:number[][], color:string}>} */
+    this.front = [];
+    /** @type {Array<{p:number[][], color:string}>} */
+    this.back  = [];
+  }
+
+  /**
+   * Recompute the shaded fan into bE / bI / aI / fE for the current view.
+   */
+  update() {
+    this.bE.length    = 0; this.fE.length   = 0;
+    this.aI.length    = 0; this.bI.length   = 0;
+    this.front.length = 0; this.back.length = 0;
+    if (!this.visible) return;
+
+    const S = this.sphere;
+    const apex = {};
+    const base = {};
+    S.parsePointInput(this.apexSpec, apex);
+    S.parsePointInput(this.baseSpec, base);
+    if (apex.sys == null || base.sys == null) return;
+
+    const axis    = _coneSub(base, apex);
+    const axisLen = Math.hypot(axis.x, axis.y, axis.z);
+    if (axisLen < 1e-8) return;
+    const A       = _coneScale(axis, 1 / axisLen);
+
+    // Tangent frame. A × tmp is perpendicular to the axis.
+    const tmp = (Math.abs(A.z) < 0.9) ? { x: 0, y: 0, z: 1 } : { x: 1, y: 0, z: 0 };
+    const U   = _coneNorm(_coneCross(A, tmp));
+    const V   = _coneCross(A, U);
+
+    const alpha = this.radius / (S.c.r || 1);
+    const cosA  = Math.cos(alpha);
+    const sinA  = Math.sin(alpha);
+    const nSamp = Math.max(3, this.samples | 0);
+    const body  = _coneRgb(this.color);
+    const shad  = _coneRgb(this.shadow);
+    const high  = _coneRgb(this.highlight);
+
+    // Upper left, toward the camera. Screen +y is down.
+    const light = _coneNorm({ x: -0.45, y: -0.55, z: 0.70 });
+
+    const project = (p, sp) => {
+      if (base.sys === 1) S.CtoSz(p, sp);
+      else                S.WtoSz(p, sp);
+    };
+    const screenDir = (n) => {
+      const c = S.c;
+      if (base.sys === 1) {
+        return {
+          x: n.x * c.b0 + n.y * c.b1 + n.z * c.b2,
+          y: n.x * c.b3 + n.y * c.b4 + n.z * c.b5,
+          z: n.x * c.b6 + n.y * c.b7 + n.z * c.b8
+        };
+      }
+      return {
+        x: n.x * c.a0 + n.y * c.a1,
+        y: n.x * c.a3 + n.y * c.a4 + n.z * c.a5,
+        z: n.x * c.a6 + n.y * c.a7 + n.z * c.a8
+      };
+    };
+
+    const apexSp = {};
+    if (apex.sys === 1) S.CtoSz(apex, apexSp);
+    else                S.WtoSz(apex, apexSp);
+
+    // Cap is measured from the sphere center, just inside the shell,
+    // so the base hugs the surface from behind.
+    const capCenterSp = {};
+    project(_coneScale(_coneNorm(base), 0.998 * (base.r || 1)), capCenterSp);
+
+    const rim = [];
+    for (let i = 0; i < nSamp; i++) {
+      const phi = (i / nSamp) * TWO_PI;
+      const cph = Math.cos(phi), sph = Math.sin(phi);
+      const dir = {
+        x: cosA * A.x + sinA * (cph * U.x + sph * V.x),
+        y: cosA * A.y + sinA * (cph * U.y + sph * V.y),
+        z: cosA * A.z + sinA * (cph * U.z + sph * V.z)
+      };
+      // dir is a unit offset from the apex direction. Place it on the
+      // sphere by adding it in the apex-relative frame and, when the apex
+      // is the origin, dir itself is the sphere point.
+      const at = {
+        x: apex.x + dir.x * axisLen,
+        y: apex.y + dir.y * axisLen,
+        z: apex.z + dir.z * axisLen
+      };
+      // Pull the rim onto the sphere radius of the base center so the
+      // base hugs the surface instead of sitting on a flat screen ellipse.
+      const radial   = _coneNorm(at);
+      const onSphere = _coneScale(radial, base.r || 1);
+      const sp    = {};
+      project(onSphere, sp);
+      const capSp = {};
+      project(_coneScale(radial, 0.998 * (base.r || 1)), capSp);
+
+      // Outward normal of the cone flank: cosα * generator − axis.
+      const normal = _coneNorm({
+        x: cosA * dir.x - A.x,
+        y: cosA * dir.y - A.y,
+        z: cosA * dir.z - A.z
+      });
+      const ns = _coneNorm(screenDir(normal));
+      const nd = Math.max(-1, Math.min(1, ns.x * light.x + ns.y * light.y + ns.z * light.z));
+      const t  = 0.5 + 0.5 * nd;
+      const color = (t < 0.5)
+        ? _coneMix(shad, body,  t * 2)
+        : _coneMix(body, high, (t - 0.5) * 2);
+      rim.push({ sp: sp, cap: capSp, color: color });
+    }
+
+    const apex3 = { x: apexSp.x,      y: apexSp.y,      z: apexSp.z      };
+    const cap3  = { x: capCenterSp.x, y: capCenterSp.y, z: capCenterSp.z };
+
+    for (let i = 0; i < nSamp; i++) {
+      const p0 = rim[i];
+      const p1 = rim[(i + 1) % nSamp];
+      const color = p0.color;
+      _coneFile(this, [
+        apex3,
+        { x: p0.sp.x, y: p0.sp.y, z: p0.sp.z },
+        { x: p1.sp.x, y: p1.sp.y, z: p1.sp.z }
+      ], color);
+      _coneFile(this, [
+        cap3,
+        { x: p0.cap.x, y: p0.cap.y, z: p0.cap.z },
+        { x: p1.cap.x, y: p1.cap.y, z: p1.cap.z }
+      ], color);
+    }
+
+    this.front.push(...this.aI, ...this.fE);
+    this.back.push (...this.bE, ...this.bI);
+  }
+}
+
+function _coneCross(a, b) {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  };
+}
+
+function _coneSub(a, b) {
+  return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+}
+
+function _coneScale(a, s) {
+  return { x: a.x * s, y: a.y * s, z: a.z * s };
+}
+
+function _coneNorm(a) {
+  const m = Math.hypot(a.x, a.y, a.z);
+  if (m < 1e-12) return { x: 0, y: 0, z: 0 };
+  return { x: a.x / m, y: a.y / m, z: a.z / m };
+}
+
+/** Parse #rgb or #rrggbb. Falls back to orange. */
+function _coneRgb(hex) {
+  let h = String(hex || '').replace('#', '').trim();
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const n = parseInt(h, 16);
+  if (!Number.isFinite(n) || h.length !== 6) return { r: 255, g: 165, b: 0 };
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function _coneMix(a, b, t) {
+  const u  = 1 - t;
+  const r  = Math.round(a.r * u + b.r * t);
+  const g  = Math.round(a.g * u + b.g * t);
+  const bl = Math.round(a.b * u + b.b * t);
+  return 'rgb(' + r + ',' + g + ',' + bl + ')';
+}
+
+/**
+ * Signed horizon side, matching Line.update. Positive is below the horizon:
+ * y − z·tan(phi) in general, +z at phi = −90°, −z at phi = +90°.
+ */
+function _coneHSide(p, phi, tp) {
+  if (phi === -HALF_PI) return  p.z;
+  if (phi ===  HALF_PI) return -p.z;
+  return p.y - p.z * tp;
+}
+
+/** Line's below-horizon test, including the ±90° sign of z. */
+function _coneIsBelow(side, phi) {
+  if (phi ===  HALF_PI) return side >= 0;
+  if (phi === -HALF_PI) return side >  0;
+  return side > 1e-9;
+}
+
+function _coneLerp(a, b, t) {
+  return {
+    x: a.x + t * (b.x - a.x),
+    y: a.y + t * (b.y - a.y),
+    z: a.z + t * (b.z - a.z)
+  };
+}
+
+function _coneDedupe(pts) {
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const q = out[out.length - 1];
+    if (!q || Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) > 1e-4) out.push(p);
+  }
+  if (out.length > 1) {
+    const a = out[0];
+    const b = out[out.length - 1];
+    if (Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) <= 1e-4) out.pop();
+  }
+  return out;
+}
+
+/** Sutherland–Hodgman clip. `keep(p)` is true for vertices that stay. */
+function _coneClipHalf(poly, sideOf, keep) {
+  const out      = [];
+  const n        = poly.length;
+  for (let i = 0; i < n; i++) {
+    const cur    = poly[i];
+    const prev   = poly[(i - 1 + n) % n];
+    const curIn  = keep(cur);
+    const prevIn = keep(prev);
+    if (curIn) {
+      if (!prevIn) {
+        const sa  = sideOf(prev);
+        const sb  = sideOf(cur);
+        const den = sa - sb;
+        out.push(_coneLerp(prev, cur, den !== 0 ? sa / den : 0.5));
+      }
+      out.push(cur);
+    } else if (prevIn) {
+      const sa  = sideOf(prev);
+      const sb  = sideOf(cur);
+      const den = sa - sb;
+      out.push(_coneLerp(prev, cur, den !== 0 ? sa / den : 0.5));
+    }
+  }
+  return _coneDedupe(out);
+}
+
+/** Split a polygon by the horizon plane into above and below pieces. */
+function _coneSplitHorizon(poly, phi, tp) {
+  const sideOf = (p) => _coneHSide(p, phi, tp);
+  const below  = (p) => _coneIsBelow(sideOf(p), phi);
+  let anyBelow = false;
+  let anyAbove = false;
+  for (let i = 0; i < poly.length; i++) {
+    if (below(poly[i])) anyBelow = true;
+    else                anyAbove = true;
+  }
+  if (!anyBelow) return [{ poly: poly, below: false }];
+  if (!anyAbove) return [{ poly: poly, below: true  }];
+  const parts = [];
+  const above = _coneClipHalf(poly, sideOf, (p) => !below(p));
+  const under = _coneClipHalf(poly, sideOf, below);
+  if (above.length >= 3) parts.push({ poly: above, below: false });
+  if (under.length >= 3) parts.push({ poly: under, below: true  });
+  return parts;
+}
+
+/** Parameters in (0, 1) where segment a→b meets the sphere. */
+function _coneSphereTs(a, b, rad2) {
+  const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+  const aa = dx * dx + dy * dy + dz * dz;
+  if (aa < 1e-18) return [];
+  const bb = 2 * (a.x * dx + a.y * dy + a.z * dz);
+  const cc = a.x * a.x + a.y * a.y + a.z * a.z - rad2;
+  const disc = bb * bb - 4 * aa * cc;
+  if (disc <= 0) return [];
+  const s  = Math.sqrt(disc);
+  const ts = [];
+  const t0 = (-bb + s) / (2 * aa);
+  const t1 = (-bb - s) / (2 * aa);
+  if (t0 > 1e-6 && t0 < 1 - 1e-6) ts.push(t0);
+  if (t1 > 1e-6 && t1 < 1 - 1e-6) ts.push(t1);
+  ts.sort((u, v) => u - v);
+  return ts;
+}
+
+function _coneInside(p, rad2) {
+  return p.x * p.x + p.y * p.y + p.z * p.z < rad2;
+}
+
+/**
+ * Split a convex polygon by the sphere. A ball is convex, so each side is
+ * one polygon whose vertices are the kept corners plus the edge crossings.
+ */
+function _coneSplitSphere(poly, rad2) {
+  const n     = poly.length;
+  const verts = [];
+  for (let i = 0; i < n; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % n];
+    verts.push(a);
+    const ts = _coneSphereTs(a, b, rad2);
+    for (let k = 0; k < ts.length; k++) verts.push(_coneLerp(a, b, ts[k]));
+  }
+  const m      = verts.length;
+  const edgeIn = [];
+  let anyIn    = false;
+  let anyOut   = false;
+  for (let i = 0; i < m; i++) {
+    const mid = _coneLerp(verts[i], verts[(i + 1) % m], 0.5);
+    const inn = _coneInside(mid, rad2);
+    edgeIn.push(inn);
+    if (inn) anyIn = true;
+    else     anyOut = true;
+  }
+  if (!anyOut) return { inside: [poly], outside: [] };
+  if (!anyIn)  return { inside: [], outside: [poly] };
+
+  const take  = (want) => {
+    let start = 0;
+    for (let i = 0; i < m; i++) {
+      if (edgeIn[i] !== edgeIn[(i - 1 + m) % m]) { start = i; break; }
+    }
+    const polys = [];
+    let i       = start;
+    for (let count = 0; count < m; ) {
+      if (edgeIn[i] !== want) { i = (i + 1) % m; count++; continue; }
+      const pts = [];
+      while (edgeIn[i] === want && count < m) {
+        pts.push(verts[i]);
+        i = (i + 1) % m;
+        count++;
+      }
+      pts.push(verts[i]);
+      const clean = _coneDedupe(pts);
+      if (clean.length >= 3) polys.push(clean);
+    }
+    return polys;
+  };
+  return { inside: take(true), outside: take(false) };
+}
+
+function _coneCentroid(poly) {
+  let x = 0, y = 0, z = 0;
+  for (let i = 0; i < poly.length; i++) {
+    x += poly[i].x; y += poly[i].y; z += poly[i].z;
+  }
+  const n = poly.length || 1;
+  return { x: x / n, y: y / n, z: z / n };
+}
+
+/** Fan-triangulate a clipped polygon into a cone bucket. */
+function _coneEmit(bucket, poly, color) {
+  for (let i = 1; i < poly.length - 1; i++) {
+    const a    = poly[0], b = poly[i], c = poly[i + 1];
+    const area = Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y));
+    if (area < 1e-4) continue;
+    bucket.push({
+      p: [[a.x, a.y], [b.x, b.y], [c.x, c.y]],
+      color: color
+    });
+  }
+}
+
+/**
+ * Clip one screen-space triangle into bE / bI / aI / fE.
+ * Below-horizon pieces are dropped when the sphere is not showing under.
+ */
+function _coneFile(cone, tri, color) {
+  const S     = cone.sphere;
+  const phi   = S.phi;
+  const tp    = (phi > -HALF_PI && phi < HALF_PI) ? Math.tan(phi) : 0;
+  const rad2  = S.c.r * S.c.r;
+  const parts = _coneSplitHorizon(tri, phi, tp);
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!S.showUnder && part.below) continue;
+    const split = _coneSplitSphere(part.poly, rad2);
+    const inner = part.below ? cone.bI : cone.aI;
+    for (let k = 0; k < split.inside.length;  k++) _coneEmit(inner, split.inside[k], color);
+    for (let k = 0; k < split.outside.length; k++) {
+      const c = _coneCentroid(split.outside[k]);
+      _coneEmit(c.z < 0 ? cone.bE : cone.fE, split.outside[k], color);
+    }
+  }
+}
+
 
 /**
  * Default absolute orientation: normal = radial, up in the meridional plane.
@@ -1387,6 +1818,28 @@ export function drawLineLayer(ctx, lines, which) {
   ctx.globalAlpha = 1;
 }
 
+/** Fill one Cone bucket (bE / bI / aI / fE). Strips are shaded triangles, not strokes. */
+export function drawConeLayer(ctx, cones, which) {
+  if (!cones) return;
+  for (let i = 0; i < cones.length; i++) {
+    const cone = cones[i];
+    const tris = cone[which];
+    if (!tris || !tris.length) continue;
+    ctx.globalAlpha = cone.alpha;
+    for (let k = 0; k < tris.length; k++) {
+      const tri = tris[k];
+      ctx.fillStyle = tri.color;
+      ctx.beginPath();
+      ctx.moveTo(tri.p[0][0], tri.p[0][1]);
+      ctx.lineTo(tri.p[1][0], tri.p[1][1]);
+      ctx.lineTo(tri.p[2][0], tri.p[2][1]);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
 /**
  * Small open ring at world point p, radial orientation (Flash zenith/nadir marker).
  * @param {function(string, number): string} hexToRGBA - from kl-unl-utils.js
@@ -1506,19 +1959,19 @@ function decGlyphWidth(ch, font) {
  * Port of Flash `addDeclinationText` layout: place glyphs along a constant-dec
  * small circle, centered on anchor RA.
  *
- * @param {string} str
- * @param {number} ra - Anchor RA in hours.
- * @param {number} dec - Declination in degrees.
- * @param {object} [opts]
- * @param {number} [opts.sphereSize=250] - Flash `sphereMC.size` (diameter).
- * @param {number} [opts.gap=DEC_TEXT_GAP]
- * @param {boolean} [opts.reverseRa=false] - Southern Flash RA sense when true.
- * @param {string} [opts.font=DEC_TEXT_FONT] - Font used for glyph widths.
+ * @param {string}  str
+ * @param {number}  ra  - Anchor RA in hours.
+ * @param {number}  dec - Declination in degrees.
+ * @param {object}  [opts]
+ * @param {number}  [opts.sphereSize=250]     - Flash `sphereMC.size` (diameter).
+ * @param {number}  [opts.gap=DEC_TEXT_GAP]
+ * @param {boolean} [opts.reverseRa=false]    - Southern Flash RA sense when true.
+ * @param {string}  [opts.font=DEC_TEXT_FONT] - Font used for glyph widths.
  * @returns {{ ch: string, ra: number, dec: number }[]}
  */
 export function layoutDeclinationText(str, ra, dec, opts = {}) {
   const sphereSize = opts.sphereSize != null ? opts.sphereSize : 250;
-  const gap        = opts.gap != null ? opts.gap : DEC_TEXT_GAP;
+  const gap        = opts.gap        != null ? opts.gap        : DEC_TEXT_GAP;
   const reverseRa  = !!opts.reverseRa;
   const font       = opts.font || DEC_TEXT_FONT;
 

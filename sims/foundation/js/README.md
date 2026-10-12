@@ -4,19 +4,20 @@
 Foundation files are designed to be referenced by an HTML file within the
 workspace for a simulation. They provide a uniform masthead, style, and set of
 common functions, and set up MathJax for displayed equations.
-    * Masthead:          kl-unl-masthead.js
-    * Masthead:          kl-unl-masthead.json
-    * Equations:         kl-unl-mathjax.js
-    * Utilities:         kl-unl-utils.js
-    * Celestial Sphere:  kl-unl-celestial-sphere.js
+    * Masthead:                 kl-unl-masthead.js
+    * Masthead:                 kl-unl-masthead.json
+    * Equations:                kl-unl-mathjax.js
+    * Utilities:                kl-unl-utils.js
+    * Celestial Sphere:         kl-unl-celestial-sphere.js
       (includes drawCircleArcBack, projectPointScreen / isScreenFront,
        drawSphereRim, drawStarSprite, drawCircleHatch for optional plane hatching)
-    * Globe:             kl-unl-globe.js
-    * Earth coastlines:  kl-unl-earth-shores.js
-    * Constellations:    kl-unl-zodiacal-constellations.js
-    * Shading:           kl-unl-sphere-shading.js
-    * Style:             ../css/kl-unl.css
+    * Globe:                    kl-unl-globe.js
+    * Earth coastlines:         kl-unl-earth-shores.js
+    * Constellations:           kl-unl-zodiacal-constellations.js
+                                kl-unl-constellations.json
+    * Shading:                  kl-unl-sphere-shading.js
     * Style (utilities): ../css/kl-unl-utils.css
-    * Icon:      ../images/klunl_favicon_32.png
-    * Icon:      ../images/klunl_favicon_180.png
-    * Icon:      ../images/klunl_ping.png
+    * Style (cursors):   ../css/kl-unl-cursors.css
+    * Icon:           ../images/klunl_favicon_32.png
+    * Icon:           ../images/klunl_favicon_180.png
+    * Icon:           ../images/klunl_ping.png
