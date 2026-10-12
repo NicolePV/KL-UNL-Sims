@@ -251,13 +251,6 @@ kl-unl-masthead {
   box-sizing:     border-box;
 }
 
-/* Scale end labels sit under the ends of the track and share its edges. */
-.sim-scale-min,
-.sim-scale-max {
-  font-size:   0.95rem;
-  margin-top: -0.35rem;
-}
-
 .control-row__slider { grid-column: 3 / span 2; }
 .sim-scale-min       { grid-column: 3; justify-self: start; }
 .sim-scale-max       { grid-column: 4; justify-self: end;   }

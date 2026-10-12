@@ -403,6 +403,16 @@ body {
   outline-offset: 4px;
 }
 
+/* Scale end labels sit under the ends of the track and share its edges. */
+.sim-scale-min,
+.sim-scale-max {
+  font-size:   0.95rem;
+  margin-top: -0.35rem;
+}
+
+.sim-scale-min { grid-column: 1; justify-self: start; }
+.sim-scale-max { grid-column: 3; justify-self: end;   }
+
 /* --------------------------------------------------------------------------
    Controls style - buttons
    -------------------------------------------------------------------------- */

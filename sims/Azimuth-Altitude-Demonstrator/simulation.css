@@ -130,16 +130,6 @@ body { line-height: 1.4; }
   min-height:     2.75rem;   /* comfortable touch target */
 }
 
-/* Scale end labels sit under the ends of the track and share its edges. */
-.sim-scale-min,
-.sim-scale-max {
-  font-size:   0.95rem;
-  margin-top: -0.35rem;
-}
-
-.sim-scale-min { grid-column: 1; justify-self: start; }
-.sim-scale-max { grid-column: 3; justify-self: end;   }
-
 /* --- Labels panel ------------------------------------------------------- */
 .sim-labels-body {
   padding:        0.75rem 1rem 1rem;

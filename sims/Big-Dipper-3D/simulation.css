@@ -1,0 +1,202 @@
+/* ===========================================================================
+   Sim-specific styles for Constellations in Three Dimensions.
+   Layered on the KL-UNL foundation. Shared panel, slider, and focus rules
+   stay in kl-unl-utils.css.
+   =========================================================================== */
+
+/* Diagram across the full width. View controls and the star table sit
+   side by side underneath. Both stack at 56rem. */
+.app-layout.sim-layout {
+  grid-template-columns: 1fr;
+  gap:                   0.75rem;
+  align-items:           stretch;
+  padding:               0.5rem;
+}
+
+.app-layout.sim-layout > .sim-panel {
+  display:               flex;
+  flex-direction:        column;
+  min-width:             0;
+}
+
+.app-layout.sim-layout > .sim-panel .panel__canvas-wrap {
+  flex:                  1 1 auto;
+  align-items:           center;
+}
+
+.right-col {
+  display:               grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(22rem, 1.35fr);
+  gap:                   0.75rem;
+  align-items:           start;
+  min-width:             0;
+}
+
+.sim-panel {
+  border-width:          var(--border-width, 1px);
+  border-style:          var(--border-style, solid);
+  border-color:          var(--border-color, #767676);
+  border-radius:         4px;
+}
+
+/* Space between the heading rule and the controls. */
+.right-col .control-fieldset {
+  padding-top:           0.85rem;
+}
+
+/* --- Canvas ------------------------------------------------------------- */
+.panel__canvas-wrap {
+  display:               flex;
+  justify-content:       center;
+  padding:               0.75rem 1rem 1rem;
+}
+
+.sim-canvas {
+  display:               block;
+  width:                 100%;
+  max-width:             40.625rem;   /* 650px stage */
+  height:                auto;
+  aspect-ratio:          650 / 480;
+  background:            var(--background-color, #ffffff);
+  touch-action:          none;
+}
+
+/* --- View orientation controls ------------------------------------------ */
+.sim-slider-row {
+  grid-template-columns: 9.5rem 5.25rem auto;
+  gap:                   0.4rem 0.6rem;
+  margin-bottom:         0.9rem;
+}
+
+.sim-slider-row .control-row__label {
+  text-align:            right;
+  font-weight:           600;
+}
+
+.sim-num {
+  width:                 5.25rem;
+  min-height:            2.75rem;
+  text-align:            right;
+  font-variant-numeric:  tabular-nums;
+}
+
+.sim-unit {
+  font-size:             1.05rem;
+}
+
+.sim-range {
+  grid-column:           1 / -1;
+}
+
+.sim-check-row {
+  margin-top:     0.75rem;
+}
+.sim-check-row .control-choice {
+  min-height:     2.75rem;
+  margin-top:     0;
+  width:          100%;
+}
+.sim-check-row label {
+  font-weight: bold;
+  cursor:      pointer;
+}
+
+/* --- Star table --------------------------------------------------------- */
+.sim-table-wrap {
+  padding:               0.85rem 1rem 1rem;
+  overflow-x:            auto;
+}
+
+.sim-table {
+  width:                 100%;
+  min-width:             20rem;
+  border-collapse:       collapse;
+  font-variant-numeric:  tabular-nums;
+}
+
+.sim-table th,
+.sim-table td {
+  padding:               0.4rem 0.45rem;
+  border-bottom:         1px solid var(--border-color, #767676);
+  text-align:            right;
+  white-space:           normal;
+}
+
+.sim-table thead th {
+  text-align:            right;
+}
+
+.sim-table th[scope="row"],
+.sim-table thead th:first-child {
+  text-align:            left;
+}
+
+.sim-table th:first-child,
+.sim-table td:first-child {
+  max-width:   6rem;     /* limit column 1 width */
+  white-space: nowrap;   /* prevent multiword names from wrapping */
+  overflow:    visible;  /* allow text to overflow column border */
+}
+
+.sim-sort {
+  appearance:            none;
+  background:            transparent;
+  border:                0;
+  color:                 inherit;
+  font:                  inherit;
+  padding:               0;
+  margin:                0;
+  width:                 100%;
+  text-align:            inherit;
+  cursor:                pointer;
+}
+
+.sim-sort:focus-visible {
+  outline:               var(--button-outline-width, 2px) solid var(--button-outline-color2, #005fcc);
+  outline-offset:        2px;
+}
+
+.sim-constellation {
+  display:               block;
+  width:                 100%;
+  min-height:            2.75rem;
+  box-sizing:            border-box;
+  font:                  inherit;
+  font-weight:           bold;
+  cursor:                pointer;
+}
+
+.sim-constellation:focus-visible {
+  outline:               var(--button-outline-width, 2px) solid var(--button-outline-color2, #005fcc);
+  outline-offset:        2px;
+}
+
+/* --- Responsive --------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .app-layout.sim-layout,
+  .right-col {
+    grid-template-columns: 1fr;
+  }
+
+  .right-col > .sim-panel {
+    min-width:             0;
+  }
+
+  .sim-slider-row {
+    grid-template-columns: minmax(0, 1fr) minmax(4.5rem, 5.25rem) auto;
+  }
+
+  .sim-slider-row .control-row__label {
+    min-width:             0;
+  }
+
+  .sim-num {
+    width:                 100%;
+    min-width:             0;
+    box-sizing:            border-box;
+  }
+
+  .sim-range {
+    min-width:             0;
+  }
+}
