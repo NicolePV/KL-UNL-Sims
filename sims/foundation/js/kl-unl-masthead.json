@@ -21,7 +21,7 @@
   "altazimuth": {
     "meta": {
       "title": "Azimuth/Altitude Demonstrator",
-      "version": "2.1.0 (2026-09-26)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
@@ -106,7 +106,7 @@
   "bigdipper": {
     "meta": {
       "title": "Constellations in Three Dimensions",
-      "version": "2.0.0 (Accessible HTML5)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
@@ -208,7 +208,7 @@
   "celestialEquatorial": {
     "meta": {
       "title": "Celestial-Equatorial (RA/Dec) Demonstrator",
-      "version": "2.1.0 (2026-09-26)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
@@ -225,7 +225,7 @@
   "celestialhorizon": {
     "meta": {
       "title": "Celestial and Horizon Systems Comparison",
-      "version": "2.1.0 (2026-09-27)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
@@ -259,7 +259,7 @@
   "centerofmass": {
     "meta": {
       "title": "Center of Mass Simulator",
-      "version": "2.1.0 (2026-09-23)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
@@ -1585,7 +1585,7 @@
   "sunmotionsoverview": {
     "meta": {
       "title": "Sun Motions Overview",
-      "version": "2.1.0 (2026-10-08)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
@@ -1619,7 +1619,7 @@
   "sunpaths": {
     "meta": {
       "title": "Paths of the Sun Demonstrator",
-      "version": "2.1.0 (2026-09-27)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
@@ -1840,7 +1840,7 @@
   "zodiac": {
     "meta": {
       "title": "Ecliptic (Zodiac) Simulator",
-      "version": "2.1.0 (2026-10-04)"
+      "version": "2.1.0 (2026-10-11)"
     },
     "masthead": {
       "help": {
