@@ -24,13 +24,16 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, stepToPrec, speak, pMod, snapFixed, noEinNumber, amplifyArrowKey,
+  legToFixed, stepToPrec, speak, pMod, snapFixed, noEinNumber, keyAccel, 
   updateSliderProgress, hexToRGBA, soon, announceLive, VO_FIX_LGND, logAct,
   updateShowHideLabelButtons
 } from '../foundation/js/kl-unl-utils.js';
 
 // Log initialization, browser, platform, and screen size in server access log
 logAct("INIT_AltAz");
+
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
 
 // Adjust control panel control labels for very width screens via two break-points
 const brkpt1      = 65;  // first  breakpoint, at 65rem
@@ -175,8 +178,10 @@ class App {
   reset() {
     this.setStarLocation({ az: 140, alt: 45 });
     this.S.setThetaAndPhi(190, 28);
-    this.onSphereOrientationChanged();
     this.hideAllLabels();
+    this.applyURL();
+    
+    this.onSphereOrientationChanged();
     this.render();
     this.announce(true);
   }
@@ -254,13 +259,36 @@ class App {
     this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 0, 'degree'));
   }
 
+  descMoreKeys()  {
+    // When control panels are hidden, remind user of additional keyboard
+    // navigation
+
+    if (urlClean)  {
+      if (document.getElementById('url-clean-panel').style.display == 'none' )  { 
+        document.getElementById('url-clean-panel').style.display   = 'block';
+        document.getElementById('closeKeyNavBtn').focus();
+      } else  {
+        document.getElementById('url-clean-panel').style.display   = 'none';
+      }
+      document.getElementById('skyHelp').innerHTML =
+        'Drag, or use the arrow keys, to rotate the view. ' +
+        'Toggle label visibility with 1, 2, 3, and 4, and reset the simulation with R.';
+    }
+  }
+
+  hideMoreKeys()  {
+    // Hide reminder about additional keyboard navigation
+    
+    document.getElementById('url-clean-panel').style.display = 'none';
+  }
+  
   // ----------------------------------------------------------------------
   // Rendering
   // ----------------------------------------------------------------------
   render() {
     const S = this.S, ctx = this.ctx, cx = this.CENTER, cy = this.CENTER, r = S.c.r;
 
-    // recompute geometry
+    // Recompute geometry
     for (const c of this.circles) c.update();
     for (const l of this.lines  ) l.update();
 
@@ -644,6 +672,70 @@ class App {
     this.desc.textContent = msg;
   }
 
+  applyURL()  {
+    // Check loaded URL for initial setup parameters, allowing user to specify
+    // theta and phi on celestial sphere, azimuth and altitude of star,
+    // and/or visibility of zenith, nadir, horizon, and meridian labels, as
+    // well as visibility of masthead and control panels.
+
+    document.getElementById('canvas-more-keys').style.display = 'none';
+
+    const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+    if ( Object.keys(urlParams).length === 0 )  return;
+
+    let URL_THT, URL_PHI, URL_AZI, URL_ALT, URL_LBL, URL_CLN;
+
+    // Define theta and phi of celestial sphere, and azimuth and altitude of star
+    // (use simulation defaults for any unspecified values)
+    if ( (urlParams.theta !== undefined) && (!Number.isNaN(Number(urlParams.theta))) )  {
+      URL_THT = Math.round( pMod( Number(urlParams.theta), 360 ) );
+    } else  { URL_THT = 190; }
+    if ( (urlParams.phi   !== undefined) && (!Number.isNaN(Number(urlParams.phi  ))) )  {
+      URL_PHI = Math.round( Math.max( Math.min( Number(urlParams.phi), 90 ),   1 ) );
+    } else  { URL_PHI =  28; }
+    if ( (urlParams.azi   !== undefined) && (!Number.isNaN(Number(urlParams.azi  ))) )  {
+      URL_AZI = Math.round( pMod( Number(urlParams.azi), 360 ) );
+    } else  { URL_AZI = 140; }
+    if ( (urlParams.alt   !== undefined) && (!Number.isNaN(Number(urlParams.alt  ))) )  {
+      URL_ALT = Math.round( Math.max( Math.min( Number(urlParams.alt), 90 ), -90 ) );
+    } else  { URL_ALT =  45; }
+
+    this.setStarLocation({ az: URL_AZI, alt: URL_ALT });
+    this.S.setThetaAndPhi( URL_THT, URL_PHI );
+
+    // Show/hide zenith, nadir, horizon, and meridian labels if label
+    // parameter is a defined array with four elements
+    // (ignore any values but 1 or 0)
+    if ( urlParams.labels !== undefined )  { 
+      URL_LBL = JSON.parse(urlParams.labels);
+      if ( Array.isArray(URL_LBL) && (URL_LBL.length === 4) )  {
+        if      ( URL_LBL[0] == 1 )  { this.chk.zenith.checked   = true;  }
+        else if ( URL_LBL[0] == 0 )  { this.chk.zenith.checked   = false; }
+        if      ( URL_LBL[1] == 1 )  { this.chk.nadir.checked    = true;  }
+        else if ( URL_LBL[1] == 0 )  { this.chk.nadir.checked    = false; }
+        if      ( URL_LBL[2] == 1 )  { this.chk.horizon.checked  = true;  }
+        else if ( URL_LBL[2] == 0 )  { this.chk.horizon.checked  = false; }
+        if      ( URL_LBL[3] == 1 )  { this.chk.meridian.checked = true;  }
+        else if ( URL_LBL[3] == 0 )  { this.chk.meridian.checked = false; }
+        this.updateLabels();
+      }
+    }
+
+    // Hide masthead and control panels (everything except canvas)
+    // (hide if clean=true or clean=1)
+    if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+      urlClean = true;
+      document.getElementById('canvas-more-keys').style.display = 'block';
+      document.getElementById('star-panel').style.display       = 'none';
+      document.getElementById('label-panel').style.display      = 'none';
+      document.querySelectorAll('.app-layout').forEach((el) => {
+        el.style.display        = 'flex';
+        el.style.justifyContent = 'center';
+      });
+    }
+  }
+
   // ----------------------------------------------------------------------
   // Pointer + keyboard interaction
   // ----------------------------------------------------------------------
@@ -689,6 +781,10 @@ class App {
     for (const k of Object.keys(this.chk)) {
       this.chk[k].addEventListener('change', () => this.updateLabels());
     }
+
+    // Setting gear when only figure is shown
+    document.getElementById('canvas-more-keys').addEventListener('click', () => this.descMoreKeys());
+    document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => this.hideMoreKeys());
 
     // Canvas pointer drag: star (if front-facing) else rotate the sphere
     this.dragMode = null;
@@ -768,21 +864,25 @@ class App {
   // Arrow keys rotate view; Shift/CapsLock = x10 larger step (10deg vs 1deg),
   // PageUp/Down = phi in 15deg steps. 
   onCanvasKey(ev) {
-    const dStp = 1;
-    const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10*dStp : dStp;
-    let dTheta = 0, dPhi = 0; 
+    const dStp    =  1;
+    const bigStep = 15;
+  //const step    = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10*dStp : dStp;
+    const step    = keyAccel(ev, dStp);
+    let   dTheta  = 0, dPhi = 0; 
     switch (ev.key) {
-      case 'ArrowLeft':  dTheta =     step;  break;
-      case 'ArrowRight': dTheta =    -step;  break;
-      case 'ArrowUp':    dPhi   =    -step;  break;
-      case 'ArrowDown':  dPhi   =     step;  break;
-      case 'PageUp':     dPhi   = -15*dStp;  break;
-      case 'PageDown':   dPhi   =  15*dStp;  break;
       // MacOS+Voiceover users need an alternative to arrow keys
-      case 'a': dTheta =     step; break; case 'A': dTheta =     step; break; 
-      case 'd': dTheta =    -step; break; case 'D': dTheta =    -step; break; 
-      case 'w': dPhi   =    -step; break; case 'W': dPhi   =    -step; break; 
-      case 's': dPhi   =     step; break; case 'S': dPhi   =     step; break; 
+      case 'ArrowLeft':  case 'a': case 'A': dTheta =     step;  break;
+      case 'ArrowRight': case 'd': case 'D': dTheta =    -step;  break;
+      case 'ArrowUp':    case 'w': case 'W': dPhi   =    -step;  break;
+      case 'ArrowDown':  case 's': case 'S': dPhi   =     step;  break;
+      case 'PageUp':                         dPhi   = -bigStep;  break;
+      case 'PageDown':                       dPhi   =  bigStep;  break;
+      // If control panels are hidden, enable keyboard controls to reset simulation or show/hide labels
+      case 'r': case 'R': if (urlClean) { this.reset(); break; }
+      case '1': case '!': if (urlClean) { this.chk.zenith.checked   = !this.chk.zenith.checked;   this.updateLabels(); break; }
+      case '2': case '@': if (urlClean) { this.chk.nadir.checked    = !this.chk.nadir.checked;    this.updateLabels(); break; }
+      case '3': case '#': if (urlClean) { this.chk.horizon.checked  = !this.chk.horizon.checked;  this.updateLabels(); break; }
+      case '4': case '$': if (urlClean) { this.chk.meridian.checked = !this.chk.meridian.checked; this.updateLabels(); break; }
       default: return;
     }
     ev.preventDefault();
@@ -799,17 +899,19 @@ class App {
     const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10*dStp : dStp;
     let dAz = 0, dAlt = 0;
     switch (ev.key) {
-      case 'ArrowLeft':  dAz  =     step;  break;
-      case 'ArrowRight': dAz  =    -step;  break;
-      case 'ArrowUp':    dAlt =     step;  break;
-      case 'ArrowDown':  dAlt =    -step;  break;
-      case 'PageUp':     dAlt =  15*dStp;  break;
-      case 'PageDown':   dAlt = -15*dStp;  break;
       // MacOS+Voiceover users need an alternative to arrow keys
-      case 'a': dAz  =     step; break; case 'A': dAz  =     step; break; 
-      case 'd': dAz  =    -step; break; case 'D': dAz  =    -step; break; 
-      case 'w': dAlt =     step; break; case 'W': dAlt =     step; break; 
-      case 's': dAlt =    -step; break; case 'S': dAlt =    -step; break; 
+      case 'ArrowLeft':  case 'a': case 'A': dAz  =     step;  break;
+      case 'ArrowRight': case 'd': case 'D': dAz  =    -step;  break;
+      case 'ArrowUp':    case 'w': case 'W': dAlt =     step;  break;
+      case 'ArrowDown':  case 's': case 'S': dAlt =    -step;  break;
+      case 'PageUp':                         dAlt =  15*dStp;  break;
+      case 'PageDown':                       dAlt = -15*dStp;  break;
+      // If control panels are hidden, enable keyboard controls to reset simulation or show/hide labels
+      case 'r': case 'R': if (urlClean) { this.reset(); break; }
+      case '1': case '!': if (urlClean) { this.chk.zenith.checked   = !this.chk.zenith.checked;   this.updateLabels(); break; }
+      case '2': case '@': if (urlClean) { this.chk.nadir.checked    = !this.chk.nadir.checked;    this.updateLabels(); break; }
+      case '3': case '#': if (urlClean) { this.chk.horizon.checked  = !this.chk.horizon.checked;  this.updateLabels(); break; }
+      case '4': case '$': if (urlClean) { this.chk.meridian.checked = !this.chk.meridian.checked; this.updateLabels(); break; }
       default: return;
     }
     ev.preventDefault();

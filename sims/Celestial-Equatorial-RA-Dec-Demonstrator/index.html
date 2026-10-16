@@ -16,6 +16,7 @@
 
   <script defer src="../foundation/js/kl-unl-masthead.js"></script>
   <!-- <script defer src="../foundation/js/kl-unl-mathjax.js"></script> -->
+  <script src="clipboard.js"></script>
 </head>
 <body>
   <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
@@ -32,8 +33,12 @@
 
       <!-- ===================== THE CELESTIAL SPHERE (diagram) ===================== -->
       <section class="panel sim-area-sky" aria-labelledby="sky-heading">
-        <h2 id="sky-heading" class="panel__heading">The Celestial Sphere</h2>
-
+        <h2 id="sky-heading" class="panel__heading">The Celestial Sphere
+          <p id="sr-description-kn1" class="sr-only">Show description of keyboard navigation options.</p>
+          <button id="canvas-more-keys"aria-describedby="sr-description-kn1"><img src="../foundation/images/klunl_gear.svg"
+          alt="Additional Keyboard Navigation" width="30" height="30"></button>
+        </h2>
+ 
         <div class="panel__canvas-wrap sim-canvas-wrap">
           <canvas id="sky-canvas" class="sim-canvas" width="480" height="480"
                   role="img" aria-label="Celestial sphere diagram"
@@ -57,14 +62,14 @@
           <strong>star</strong> (on the near side) to move it. For keyboard control,
           <kbd>Tab</kbd> to the diagram and use the <strong>arrow keys</strong> to rotate
           the view; <kbd>Tab</kbd> again to select the <strong>star</strong> and use the
-          arrow keys to move it (<kbd>Shift</kbd> for larger / finer steps). The
-          <em>Star Position</em> sliders also move the star.
+          arrow keys to move it (<kbd>Shift</kbd> or <kbd>Caps Lock</kbd> for larger /
+          finer steps). The <em>Star Position</em> sliders also move the star.
         </p>
         -->
       </section>
 
       <!-- ===================== STAR POSITION ===================== -->
-      <section class="panel sim-area-star" aria-labelledby="star-position-heading">
+      <section id="star-panel" class="panel sim-area-star" aria-labelledby="star-position-heading">
         <h2 id="star-position-heading" class="panel__heading">Star Position</h2>
 
         <fieldset class="control-fieldset">
@@ -130,7 +135,7 @@
       </section>
 
       <!-- ===================== LABELS ===================== -->
-      <section class="panel sim-area-labels" aria-labelledby="labels-heading">
+      <section id="label-panel" class="panel sim-area-labels" aria-labelledby="labels-heading">
         <h2 id="labels-heading" class="panel__heading">Labels</h2>
 
         <div class="button-row sim-button-row">
@@ -159,7 +164,7 @@
             </div>
             <div class="control-choice">
               <input type="checkbox" autocomplete="off" id="cb-zerohours">
-              <label for="cb-zerohours"><span aria-hidden="true">0h</span><span class="sr-only">zero hour</span> Circle</label>
+              <label for="cb-zerohours"><span aria-hidden="true">0<sup>h</sup></span><span class="sr-only">zero hour</span> Circle</label>
             </div>
             <div class="control-choice">
               <input type="checkbox" autocomplete="off" id="cb-eastarrow">
@@ -171,6 +176,22 @@
             </div>
           </div>
         </fieldset>
+      </section>
+
+      <section class="panel sim-panel" id="url-clean-panel" aria-labelledby="urlHeading" style="display:none">
+        <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
+        Drag and use the arrow keys (or A, D, W, and S) to rotate the view,
+        amplifying the effect with the Shift or Caps Lock keys. Click on the
+        star and use the same keys to move it in right ascension and
+        declination. Toggle label visibility with the 1 (North and South Poles),
+        2 (Equator), 3 (North and South Celestial Poles), 4 (Celestial
+        Equator), 5 (0<sup>h</sup> circle), 6 (East Arrow), and 7 (Ecliptic)
+        keys. Reset the simulation with R.
+        <p id="sr-description-kn2" class="sr-only">Close description of keyboard
+        navigation options.</p>
+        <div class="div-closeKeyNavBtn">
+          <button id="closeKeyNavBtn" aria-describedby="sr-description-kn2">Close</button>
+        </div>
       </section>
 
       <!-- Global status announcer (state changes announced on commit, not per drag tick). -->

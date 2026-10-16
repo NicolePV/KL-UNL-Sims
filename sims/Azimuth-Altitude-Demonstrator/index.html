@@ -17,6 +17,7 @@
   <script defer src="../foundation/js/kl-unl-masthead.js"></script>
   <!-- <script defer src="../foundation/js/kl-unl-mathjax.js"></script> -->
   <script type="module" src="simulation.js"></script>
+  <script src="clipboard.js"></script>
 </head>
 <body id="body">
   <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
@@ -29,7 +30,11 @@
 
         <!-- LEFT: the horizon diagram (canvas stage) -->
         <section class="panel sim-panel" aria-labelledby="diagramHeading">
-          <h2 class="panel__heading" id="diagramHeading">The Horizon Diagram</h2>
+          <h2 class="panel__heading" id="diagramHeading">The Horizon Diagram
+            <p id="sr-description-kn1" class="sr-only">Show description of keyboard navigation options.</p>
+            <button id="canvas-more-keys"aria-describedby="sr-description-kn1"><img src="../foundation/images/klunl_gear.svg"
+            alt="Additional Keyboard Navigation" width="30" height="30"></button>
+          </h2>
           <div class="panel__canvas-wrap">
             <div class="stage" id="stage">
               <canvas id="sky-canvas" class="sim-canvas" width="440" height="440" role="img" tabindex="0"
@@ -42,7 +47,7 @@
               <button id="starHandle" class="star-handle" type="button"
                       aria-describedby="starHandleHelp"
                       aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown A D W S"
-                      aria-label="Star position. Azimuth 140.0 degrees, altitude 45.0 degrees.">
+                      aria-label="Star position. Azimuth 140 degrees, altitude 45 degrees.">
               </button>
             </div>
           </div>
@@ -55,13 +60,13 @@
           <p id="skyHelp" class="sr-only">Interactive horizon diagram. Press
           the left and right arrow keys to rotate the celestial sphere
           horizontally, and the up and down arrow keys to change the viewing
-          altitude. Adding a shift key or Caps Lock to any arrow key produces
+          altitude. Adding a Shift key or Caps Lock to any arrow key produces
           larger steps. Page Up and Page Down change the viewing altitude in
           even larger steps. Use the Star Position sliders or number boxes, or
           the star handle, to move the star.</p>
           <p id="starHandleHelp" class="sr-only">Use the arrow keys to move
           the star: left and right change its azimuth, up and down change its
-          altitude. Add a shift key or Caps Lock for larger steps; Page Up and
+          altitude. Add a Shift key or Caps Lock for larger steps; Page Up and
           Page Down change altitude in even larger steps.</p>
           -->
           <!--
@@ -76,7 +81,7 @@
         <!-- RIGHT: controls -->
         <div class="right-col">
 
-          <section class="panel sim-panel" aria-labelledby="starHeading">
+          <section class="panel sim-panel" id="star-panel" aria-labelledby="starHeading">
             <h2 class="panel__heading" id="starHeading">Star Position</h2>
             <fieldset class="control-fieldset">
               <legend class="sr-only">Star position controls</legend>
@@ -113,7 +118,7 @@
             </fieldset>
           </section>
 
-          <section class="panel sim-panel" aria-labelledby="labelsHeading">
+          <section class="panel sim-panel" id="label-panel" aria-labelledby="labelsHeading">
             <h2 class="panel__heading" id="labelsHeading">Labels</h2>
             <div class="sim-labels-body">
               <div class="button-row sim-button-row">
@@ -142,9 +147,21 @@
               </fieldset>
             </div>
           </section>
-
         </div>
       </div>
+      <section class="panel sim-panel" id="url-clean-panel" aria-labelledby="urlHeading" style="display:none">
+        <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
+        Drag and use the arrow keys (or A, D, W, and S) to rotate the
+        view, amplifying the effect with the Shift or Caps Lock keys. Click on the star
+        and use the same keys to move it in azimuth and altitude. Toggle
+        label visibility with the 1 (zenith), 2 (nadir), 3 (horizon), and 4
+        (meridian) keys. Reset the simulation with R.
+        <p id="sr-description-kn2" class="sr-only">Close description of keyboard
+        navigation options.</p>
+        <div class="div-closeKeyNavBtn">
+          <button id="closeKeyNavBtn" aria-describedby="sr-description-kn2">Close</button>
+        </div>
+      </section>
     </div>
   </main>
 </body>

@@ -16,8 +16,9 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, stepToPrec, speak, pMod, noEinNumber, updateSliderProgress, hexToRGBA, 
-  VO_FIX_LGND, logAct, updateShowHideLabelButtons
+  legToFixed, stepToPrec, speak, pMod, noEinNumber, keyAccel,
+  updateSliderProgress, hexToRGBA, VO_FIX_LGND, logAct,
+  updateShowHideLabelButtons
 } from '../foundation/js/kl-unl-utils.js';
 
 import { EARTH_SHORES } from '../foundation/js/kl-unl-earth-shores.js';
@@ -27,6 +28,9 @@ const hatchEcliptic = true;
 
 // Log initialization, browser, platform, and screen size in server access log
 logAct('INIT_CEQ');
+
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
 
 // Intrinsic image sizes — fallback when naturalWidth === 0 (Safari).
 const IMG_DIM = {
@@ -229,6 +233,7 @@ class App {
     for (const k in this.labels) this.labels[k] = false;
     this.syncCheckboxes();
     this.updateLabels();
+    this.applyURL();
     this.render();
     this.announce('View reset. Star at right ascension ' + legToFixed(4,  stepToPrec( this.raField.step  )) +
                                   ' hours, declination ' + legToFixed(60, stepToPrec( this.decField.step )) +
@@ -322,6 +327,30 @@ class App {
     for (const k in this.chk) this.chk[k].checked = this.labels[k];
   }
 
+  descMoreKeys()  {
+    // When control panels are hidden, remind user of additional keyboard
+    // navigation
+
+    if (urlClean)  {
+      if (document.getElementById('url-clean-panel').style.display == 'none' )  { 
+        document.getElementById('url-clean-panel').style.display   = 'block';
+        document.getElementById('closeKeyNavBtn').focus();
+      } else  {
+        document.getElementById('url-clean-panel').style.display   = 'none';
+      }
+      document.getElementById('sky-desc').innerHTML =
+        'Drag, or use the arrow keys, to rotate the view.' +
+        'Click on the star and use the same keys to move it in right ascension and declination. ' +
+        'Toggle label visibility with 1 through 7, and reset the simulation with R.';
+    }
+  }
+
+  hideMoreKeys()  {
+    // Hide reminder about additional keyboard navigation
+    
+    document.getElementById('url-clean-panel').style.display = 'none';
+  }
+  
   render() {
     const ctx = this.ctx, cx = this.CENTER, cy = this.CENTER;
     this.S.doA();     this.S.doB();
@@ -550,12 +579,6 @@ class App {
       ctx.strokeText(o.text, lx, ty);
       ctx.fillStyle   = col;
       ctx.fillText(  o.text, lx, ty);
-      /*
-      console.log( "chk 1", o.text,  Math.round(len),
-                   Math.round(sp.x), Math.round(sp.y),
-                   Math.round(tx),   Math.round(ty) );
-      if ( o.text == 'South Celestial Pole' )  { console.log( "chk 1 0.9", Math.round(sp.z), o.text ); }
-      */
     } else {
       const ox = (o.opts && o.opts.dx) || 0, oy = (o.opts && o.opts.dy) || 0;
       const px = sp.x + ox, py = sp.y + oy;
@@ -566,7 +589,6 @@ class App {
       ctx.strokeText(o.text, px, py);
       ctx.fillStyle   = col;
       ctx.fillText(o.text, px, py);
-      if ( o.text == 'South Celestial Pole' )  { console.log( "chk 2 0.85", Math.round(sp.z), o.text ); }
     }
     ctx.restore();
   }
@@ -620,6 +642,13 @@ class App {
   }
 
   describeScene() {
+    let s0 = '';
+
+    if (urlClean)  { s0 = ' Type the numbers 1 through 7 to toggle visibility for ' +
+      'labels for the North and South Poles, the equator, the North and South '     +
+      'Celestial Poles,  the celestial equator, the zero hour circle, the arrow '   +
+      'pointing east, and the  ecliptic. Type R to reset the simulation. '; }
+    
     const shown = [];
     if (this.labels.earthPoles) shown.push('Earth poles');
     if (this.labels.equator)    shown.push('equator');
@@ -628,6 +657,7 @@ class App {
     if (this.labels.zeroHours)  shown.push('zero-hour circle');
     if (this.labels.ecliptic)   shown.push('ecliptic');
     if (this.labels.eastArrow)  shown.push('east arrow');
+    
     return 'Celestial sphere with the Earth at its center, viewed at azimuth ' +
       speak(pMod(this.S.getTheta(), 360), 0, 'degree') + ' and tilt ' +
       speak(this.S.getPhi(), 0, 'degree') +
@@ -635,8 +665,9 @@ class App {
                                ', declination ' + speak(this.star.dec, stepToPrec( this.decField.step ), 'degree') +
       ', with its right ascension and declination shown as coloured arcs. ' +
       (shown.length ? 'Labels shown: ' + shown.join(', ') + '.' : 'No labels shown.') +
-      ' Arrow keys rotate this view; Tab to the star marker to move the star with the arrow keys instead.' +
-      VO_FIX_LGND;
+      ' Arrow keys rotate this view (and the Shift and Caps Lock keys increase the effect of each key).' +
+      ' Tab to the star marker to move the star with the arrow keys instead. ' +
+      VO_FIX_LGND + s0;
   }
 
   announce(msg) {
@@ -685,6 +716,80 @@ class App {
       });
     }
     strip();
+  }
+
+  applyURL()  {
+    // Check loaded URL for initial setup parameters, allowing user to specify
+    // theta and phi on celestial sphere, right ascension and declination of star,
+    // and/or visibility of North and South Poles, Equator, North and South
+    // Celestial Poles, Celestial Equator, zero hour Circle, East Arrow, and 
+    // Ecliptic labels, as well as visibility of masthead and control panels.
+
+    document.getElementById('canvas-more-keys').style.display = 'none';
+
+    const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+    if ( Object.keys(urlParams).length === 0 )  return;
+
+    let URL_THT, URL_PHI, URL_RAH, URL_DEC, URL_LBL, URL_CLN;
+
+    // Define theta and phi of celestial sphere, and right ascension and
+    // declination of star
+    // (use simulation defaults for any unspecified values)
+    if ( (urlParams.theta !== undefined) && (!Number.isNaN(Number(urlParams.theta))) )  {
+      URL_THT = Math.round( pMod( Number(urlParams.theta), 360 ) );
+    } else  { URL_THT = 217; }
+    if ( (urlParams.phi   !== undefined) && (!Number.isNaN(Number(urlParams.phi  ))) )  {
+      URL_PHI = Math.round( Math.max( Math.min( Number(urlParams.phi), 90 ), -90 ) );
+    } else  { URL_PHI =  32; }
+    if ( (urlParams.rah   !== undefined) && (!Number.isNaN(Number(urlParams.rah  ))) )  {
+      URL_RAH = 0.1 * Math.round( pMod( Number(10*urlParams.rah), 240 ) );
+    } else  { URL_RAH =   4; }
+    if ( (urlParams.dec   !== undefined) && (!Number.isNaN(Number(urlParams.dec  ))) )  {
+      URL_DEC = Math.round( Math.max( Math.min( Number(urlParams.dec), 90 ), -90 ) );
+    } else  { URL_DEC =  60; }
+
+    this.setStarLocation(  URL_RAH, URL_DEC );
+    this.S.setThetaAndPhi( URL_THT, URL_PHI );
+
+    // Show/hide N/SP, equator, N/SCP, celestial equator, zero hour circle,
+    // east arrow, and ecliptic labels if label parameter is a defined array
+    // with seven elements
+    // (ignore any values but 1 or 0)
+    if ( urlParams.labels !== undefined )  { 
+      URL_LBL = JSON.parse(urlParams.labels);
+      if ( Array.isArray(URL_LBL) && (URL_LBL.length === 7) )  {
+        if      ( URL_LBL[0] == 1 )  { this.labels.earthPoles = true;  document.getElementById('cb-earthpoles').checked = true;  }
+        else if ( URL_LBL[0] == 0 )  { this.labels.earthPoles = false; document.getElementById('cb-earthpoles').checked = false; }
+        if      ( URL_LBL[1] == 1 )  { this.labels.equator    = true;  document.getElementById('cb-equator').checked    = true;  }
+        else if ( URL_LBL[1] == 0 )  { this.labels.equator    = false; document.getElementById('cb-equator').checked    = false; }
+        if      ( URL_LBL[2] == 1 )  { this.labels.celPoles   = true;  document.getElementById('cb-celpoles').checked   = true;  }
+        else if ( URL_LBL[2] == 0 )  { this.labels.celPoles   = false; document.getElementById('cb-celpoles').checked   = false; }
+        if      ( URL_LBL[3] == 1 )  { this.labels.celEquator = true;  document.getElementById('cb-celequator').checked = true;  }
+        else if ( URL_LBL[3] == 0 )  { this.labels.celEquator = false; document.getElementById('cb-celequator').checked = false; }
+        if      ( URL_LBL[4] == 1 )  { this.labels.zeroHours  = true;  document.getElementById('cb-zerohours').checked  = true;  }
+        else if ( URL_LBL[4] == 0 )  { this.labels.zeroHours  = false; document.getElementById('cb-zerohours').checked  = false; }
+        if      ( URL_LBL[5] == 1 )  { this.labels.eastArrow  = true;  document.getElementById('cb-eastarrow').checked  = true;  }
+        else if ( URL_LBL[5] == 0 )  { this.labels.eastArrow  = false; document.getElementById('cb-eastarrow').checked  = false; }
+        if      ( URL_LBL[6] == 1 )  { this.labels.ecliptic   = true;  document.getElementById('cb-ecliptic').checked   = true;  }
+        else if ( URL_LBL[6] == 0 )  { this.labels.ecliptic   = false; document.getElementById('cb-ecliptic').checked   = false; }
+        this.labels.earthPoles = 
+        this.updateLabels();
+      }
+    }
+    
+    // Hide masthead and control panels (everything except canvas)
+    // (hide if clean=true or clean=1)
+    if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+      urlClean = true;
+      document.getElementById('canvas-more-keys').style.display = 'block';
+      document.getElementById('star-panel').style.display       = 'none';
+      document.getElementById('label-panel').style.display      = 'none';
+      document.querySelectorAll('.app-layout').forEach((el) => {
+        el.style.display        = 'flex';
+        el.style.justifyContent = 'center';
+      });
+    }
   }
 
   bindEvents() {
@@ -744,15 +849,20 @@ class App {
       const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 15 : 5;
       let t = this.S.getTheta(), p = this.S.getPhi(), used = true;
       switch (ev.key) {
-        case 'ArrowLeft':  this.S.setThetaAndPhi(t + step, p); break;
-        case 'ArrowRight': this.S.setThetaAndPhi(t - step, p); break;
-        case 'ArrowUp':    this.S.setThetaAndPhi(t, p - step); break;
-        case 'ArrowDown':  this.S.setThetaAndPhi(t, p + step); break;
         // MacOS+Voiceover users need an alternative to arrow keys
-        case 'a': this.S.setThetaAndPhi(t + step, p); break; case 'A': this.S.setThetaAndPhi(t + step, p); break; 
-        case 'd': this.S.setThetaAndPhi(t - step, p); break; case 'D': this.S.setThetaAndPhi(t - step, p); break; 
-        case 'w': this.S.setThetaAndPhi(t, p - step); break; case 'W': this.S.setThetaAndPhi(t, p - step); break; 
-        case 's': this.S.setThetaAndPhi(t, p + step); break; case 'S': this.S.setThetaAndPhi(t, p + step); break; 
+        case 'ArrowLeft':  case 'a': case 'A': this.S.setThetaAndPhi(t + step, p); break;
+        case 'ArrowRight': case 'd': case 'D': this.S.setThetaAndPhi(t - step, p); break;
+        case 'ArrowUp':    case 'w': case 'W': this.S.setThetaAndPhi(t, p - step); break;
+        case 'ArrowDown':  case 's': case 'S': this.S.setThetaAndPhi(t, p + step); break;
+        // If control panels are hidden, enable keyboard controls to reset simulation or show/hide labels
+        case 'r': case 'R': if (urlClean) { this.reset(); break; }
+        case '1': case '!': if (urlClean) { this.labels.earthPoles = !this.labels.earthPoles; this.updateLabels(); break; }
+        case '2': case '@': if (urlClean) { this.labels.equator    = !this.labels.equator;    this.updateLabels(); break; }
+        case '3': case '#': if (urlClean) { this.labels.celPoles   = !this.labels.celPoles;   this.updateLabels(); break; }
+        case '4': case '$': if (urlClean) { this.labels.celEquator = !this.labels.celEquator; this.updateLabels(); break; }
+        case '5': case '%': if (urlClean) { this.labels.zeroHours  = !this.labels.zeroHours;  this.updateLabels(); break; }
+        case '6': case '^': if (urlClean) { this.labels.eastArrow  = !this.labels.eastArrow;  this.updateLabels(); break; }
+        case '7': case '&': if (urlClean) { this.labels.ecliptic   = !this.labels.ecliptic;   this.updateLabels(); break; }
         default: used = false;
       }
       if (used) {
@@ -773,22 +883,21 @@ class App {
       //const decStep = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 5   : 1;
         let ra = this.star.ra, dec = this.star.dec;
         switch (ev.key) {
-          /*
-          case 'ArrowLeft':  ra  = this.clampRa( ra  - raStep ); break;
-          case 'ArrowRight': ra  = this.clampRa( ra  + raStep ); break;
-          case 'ArrowUp':    dec = this.clampDec(dec + decStep); break;
-          case 'ArrowDown':  dec = this.clampDec(dec - decStep); break;
-          */
-          case 'ArrowLeft':  ra  = this.clampRa( ra  - step ); break;
-          case 'ArrowRight': ra  = this.clampRa( ra  + step ); break;
-          case 'ArrowUp':    dec = this.clampDec(dec + step ); break;
-          case 'ArrowDown':  dec = this.clampDec(dec - step ); break;
-          case 'Enter': case ' ': ev.preventDefault(); return;
           // MacOS+Voiceover users need an alternative to arrow keys
-          case 'a': ra  = this.clampRa( ra  - step ); break; case 'A': ra  = this.clampRa( ra  - step ); break; 
-          case 'd': ra  = this.clampRa( ra  + step ); break; case 'D': ra  = this.clampRa( ra  + step ); break; 
-          case 'w': dec = this.clampDec(dec + step ); break; case 'W': dec = this.clampDec(dec + step ); break; 
-          case 's': dec = this.clampDec(dec - step ); break; case 'S': dec = this.clampDec(dec - step ); break; 
+          case 'ArrowLeft':  case 'a': case 'A': ra  = this.clampRa( ra  - step ); break;
+          case 'ArrowRight': case 'd': case 'D': ra  = this.clampRa( ra  + step ); break;
+          case 'ArrowUp':    case 'w': case 'W': dec = this.clampDec(dec + step ); break;
+          case 'ArrowDown':  case 's': case 'S': dec = this.clampDec(dec - step ); break;
+          // If control panels are hidden, enable keyboard controls to reset simulation or show/hide labels
+          case 'r': case 'R': if (urlClean) { this.reset(); break; }
+          case '1': case '!': if (urlClean) { this.labels.earthPoles = !this.labels.earthPoles; this.updateLabels(); break; }
+          case '2': case '@': if (urlClean) { this.labels.equator    = !this.labels.equator;    this.updateLabels(); break; }
+          case '3': case '#': if (urlClean) { this.labels.celPoles   = !this.labels.celPoles;   this.updateLabels(); break; }
+          case '4': case '$': if (urlClean) { this.labels.celEquator = !this.labels.celEquator; this.updateLabels(); break; }
+          case '5': case '%': if (urlClean) { this.labels.zeroHours  = !this.labels.zeroHours;  this.updateLabels(); break; }
+          case '6': case '^': if (urlClean) { this.labels.eastArrow  = !this.labels.eastArrow;  this.updateLabels(); break; }
+          case '7': case '&': if (urlClean) { this.labels.ecliptic   = !this.labels.ecliptic;   this.updateLabels(); break; }
+          case 'Enter': case ' ': ev.preventDefault(); return
           default: used = false;
         }
         if (used) {
@@ -799,6 +908,10 @@ class App {
         }
       });
     }
+
+    // Setting gear when only figure is shown
+    document.getElementById('canvas-more-keys').addEventListener('click', () => this.descMoreKeys());
+    document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => this.hideMoreKeys());
 
     // Recalculate star-handle coordinates when canvas container changes size
     // within flex layout

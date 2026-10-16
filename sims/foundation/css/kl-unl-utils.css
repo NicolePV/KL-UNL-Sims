@@ -130,6 +130,7 @@ body {
   gap:            0;
   align-items:    start;
   padding-top:    0.25rem;
+  flex-wrap:      wrap; /* allows wrapping when JS forces display: flex */
 }
 
 .app-layout__left {
@@ -349,7 +350,7 @@ body {
   margin-top:    -0.75rem; /* centers 22px thumb on 8px track + 1px border */
   border-radius:  0.5rem;
   border:         2px solid var(--button-background-color, #005a9c);
-  background-color: #ffffff;
+  background-color:         var(--background-color,        #ffffff);
   box-shadow:     0 1px 3px rgba(0, 0, 0, 0.3);
   cursor:         pointer;
   transition:     background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
@@ -386,7 +387,7 @@ body {
   box-sizing:     border-box;
   border-radius:  0.5rem;
   border:         2px solid var(--button-background-color, #005a9c);
-  background-color: #ffffff;
+  background-color:         var(--background-color,        #ffffff);
   box-shadow:     0 1px 3px rgba(0, 0, 0, 0.3);
   cursor:         pointer;
   transition:     background-color 0.15s ease, border-color 0.15s ease;
@@ -417,7 +418,7 @@ body {
    Controls style - buttons
    -------------------------------------------------------------------------- */
 .button {
-  color:          #ffffff;
+  color:          var(--background-color, #ffffff);
   min-height:     2.75rem;
   min-width:      2.75rem;
   padding:        0.35rem 0.75rem;
@@ -459,6 +460,69 @@ body {
 .sim-button:hover,
 .sim-button:focus-visible {
   filter:         brightness(var(--button-hover-darken, 0.9));
+}
+
+/* Convert heading to flex row to push gear button to right when present */
+.panel__heading:has(#canvas-more-keys) {
+  display:          flex;
+  justify-content:  space-between;
+  align-items:      center;
+}
+
+/* Replicate masthead style for Settings button when only figure(s) shown */
+#canvas-more-keys {
+  background-color: transparent; /* blends with header */
+  border:           none;
+  cursor:           pointer;
+  border-radius:    4px;
+  padding:          2px;         /* prevents gold outline from hugging the gear too tightly */
+  transition:       outline 0.1s ease;
+}
+
+#canvas-more-keys:hover,
+#canvas-more-keys:focus-visible {
+  outline:          2px solid var(--button-outline-color, #ffbc00);  #ffbc00;
+  outline-offset:   2px;
+}
+
+#canvas-more-keys img {
+  display:          block;
+  margin-top:       -0.25rem;
+  margin-bottom:    -0.25rem;
+}
+
+#url-clean-panel {
+  grid-column:      1 / -1;     /* appears below figure(s) on its own row rather than to right */
+  width:            100%;       /* forces panel to new row when JS overrides grid */
+  padding:          10px;
+  box-sizing:       border-box; /* prevents padding from causing horizontal overflow */
+}
+
+/* Replicate masthead style for descriptive panel when only figure(s) shown */
+.div-closeKeyNavBtn {
+  display:          flex;
+  justify-content:  flex-end;
+  margin-top:       1rem;
+}
+
+#closeKeyNavBtn {
+  padding:          6px 12px;
+  border-radius:    4px;
+  cursor:           pointer;
+  border:           1px solid var(--border-color, #767676); /* small border matches masthead */
+  background-color: #005a9c;           
+  color:                      var(--background-color, #ffffff);           
+  font-weight:      600;
+  font-size:        0.85rem;
+  width:            fit-content;
+  transition:       filter 0.1s ease, outline 0.1s ease;
+}
+
+#closeKeyNavBtn:hover,
+#closeKeyNavBtn:focus-visible {
+  filter:           brightness(0.9);
+  outline:          2px solid #ffbc00;
+  outline-offset:   2px;
 }
 
 /* --------------------------------------------------------------------------

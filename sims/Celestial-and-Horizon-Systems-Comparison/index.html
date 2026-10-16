@@ -18,6 +18,7 @@
   <script defer src="../foundation/js/kl-unl-mathjax.js"></script>
   <!-- <script type="module" src="simulation.js"></script> -->
   <script type="module" src="simulation.js"></script>
+  <script src="clipboard.js"></script>
 </head>
 
 <body>
@@ -32,7 +33,11 @@
 
       <!-- ================= diagram panel ================= -->
       <section class="panel sim-panel sim-panel--diagram" aria-labelledby="diagramHeading">
-        <h2 class="panel__heading" id="diagramHeading" aria-hidden="true">Sky Diagram</h2>
+        <h2 class="panel__heading" id="diagramHeading" aria-hidden="true">Sky Diagram
+          <p id="sr-description-kn1" class="sr-only">Show description of keyboard navigation options.</p>
+          <button id="canvas-more-keys"aria-describedby="sr-description-kn1"><img src="../foundation/images/klunl_gear.svg"
+          alt="Additional Keyboard Navigation" width="30" height="30"></button>
+        </h2>
 
         <div class="panel__canvas-wrap sim-stage-wrap">
           <canvas id="stage"
@@ -53,7 +58,7 @@
       </section>
 
       <!-- ================= controls panel ================= -->
-      <section class="panel sim-panel sim-panel--controls" aria-labelledby="controlsHeading">
+      <section id="controls-panel" class="panel sim-panel sim-panel--controls" aria-labelledby="controlsHeading">
         <h2 class="panel__heading" id="controlsHeading" aria-hidden="true">Controls</h2>
 
         <fieldset class="control-fieldset">
@@ -121,6 +126,19 @@
           </div>
           -->  
         </fieldset>
+      </section>
+
+      <section class="panel sim-panel" id="url-clean-panel" aria-labelledby="urlHeading" style="display:none">
+        <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
+        Drag and use the arrow keys (or A, D, W, and S) to rotate the
+        view, amplifying the effect with the Shift or Caps Lock keys. 
+        Adjust observer latitude similarly with the plus and minus keys. 
+        Skip or restore transitions by typing T, and reset the simulation with R.
+        <p id="sr-description-kn2" class="sr-only">Close description of keyboard
+        navigation options.</p>
+        <div class="div-closeKeyNavBtn">
+          <button id="closeKeyNavBtn" aria-describedby="sr-description-kn2">Close</button>
+        </div>
       </section>
 
     </main>

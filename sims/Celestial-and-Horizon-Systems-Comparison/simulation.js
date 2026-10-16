@@ -35,7 +35,10 @@ import { EARTH_SHORES } from '../foundation/js/kl-unl-earth-shores.js';
 
 logAct('INIT_celestialhorizon');
 
-let currentTransitionResolve = null;
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
+
+ let currentTransitionResolve = null;
 
 /* ------------------------------------------------------------------ *
  *  Constants (from archive / ActionScript)                             *
@@ -47,9 +50,9 @@ const TRANSITION_TIME   = 3000;
 const MAX_GLOBE_SIZE    =   80;
 const SPHERE_SIZE       =  300;
 const GLOBE_SPHERE_SIZE =   80;
-const INIT_THETA        =  105;
-const INIT_PHI          =   30;
-const INIT_LATITUDE     =   41;
+let   INIT_THETA        =  105;
+let   INIT_PHI          =   30;
+let   INIT_LATITUDE     =   41;
 const LAT_MIN           =  -90;
 const LAT_MAX           =   90;
 const LAT_INCREMENT     =    1;
@@ -427,6 +430,89 @@ class Scene {
     this._drawGroup(ctx, g.fE);
     this._drawLines(ctx, 'fE');
   }
+
+  descMoreKeys()  {
+    // When control panels are hidden, remind user of additional keyboard
+    // navigation
+    
+    if (urlClean)  {
+      if (document.getElementById('url-clean-panel').style.display == 'none' )  { 
+        document.getElementById('url-clean-panel').style.display   = 'block';
+        document.getElementById('closeKeyNavBtn').focus();
+      } else  {
+        document.getElementById('url-clean-panel').style.display   = 'none';
+      }
+      document.getElementById('stage').ariaLabel = 
+        'Celestial sphere diagram. Drag, or use the arrow keys, to rotate the view. ' +
+        'Users may also use the A and D keys to rotate the view left and right, and ' +
+        'the W and S keys to rotate the viewing angle up and down, adding the Shift ' +
+        'or Caps Lock keys to increase the effect. The observer latitude can be '     +
+        'changed similarly with the plus and minus keys. Typing T will skip or '      +
+        'restore showing transitions, V will change the view, and R will reset the '  +
+        'simulation.';
+      document.getElementById('stage').ariaLabeKeyshortcuts =
+        'ArrowLeft ArrowRight ArrowUp ArrowDown A D W S ' + 'plus minus V T R';
+    }
+  }
+
+  hideMoreKeys()  {
+    // Hide reminder about additional keyboard navigation
+    
+    document.getElementById('url-clean-panel').style.display = 'none';
+  }
+  
+  applyURL()  {
+    // Check loaded URL for initial setup parameters, allowing user to specify
+    // theta and phi on celestial sphere, change observer's latitude, and/or 
+    // skip transitions, as well as visibility of masthead and control panels.
+
+    document.getElementById('canvas-more-keys').style.display = 'none';
+
+    const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+    if ( Object.keys(urlParams).length === 0 )  return;
+
+    let URL_THT, URL_PHI, URL_LAT, URL_SKP;
+
+    // Define theta and phi of celestial sphere, and latitude of observer, and
+    // whether user requests that transitions be skipped
+    // (use simulation defaults for any unspecified values)
+    if ( (urlParams.theta !== undefined) && (!Number.isNaN(Number(urlParams.theta))) )  {
+      URL_THT = Math.round( pMod( Number(urlParams.theta), 360 ) );
+    } else  { URL_THT = 105; }
+    if ( (urlParams.phi   !== undefined) && (!Number.isNaN(Number(urlParams.phi  ))) )  {
+      URL_PHI = Math.round( Math.max( Math.min( Number(urlParams.phi), 90 ), -180 ) );
+    } else  { URL_PHI =  30; }
+    if ( (urlParams.lat   !== undefined) && (!Number.isNaN(Number(urlParams.lat  ))) )  {
+      URL_LAT = Math.round( Math.max( Math.min( Number(urlParams.lat), 90 ), -90 ) );
+    } else  { URL_LAT =  41; }
+    if (urlParams.skp     !== undefined)  {
+      URL_SKP = Boolean(Number(urlParams.skp));
+    } else  { URL_SKP = false; }
+
+    INIT_THETA    = URL_THT;
+    INIT_PHI      = URL_PHI;
+    INIT_LATITUDE = URL_LAT;
+    latVal        = URL_LAT;
+    mainScene.sphere.setThetaAndPhi( URL_THT, URL_PHI );
+    if ( (urlParams.skp !== undefined) && URL_SKP )  { 
+      document.getElementById('chkRdcMotion').checked = true;
+    } else  {
+      document.getElementById('chkRdcMotion').checked = false;
+    }
+
+    // Hide masthead and control panels (everything except canvas)
+    // (hide if clean=true or clean=1)
+    if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+      urlClean = true;
+      document.getElementById('canvas-more-keys').style.display = 'block';
+      document.getElementById('controls-panel').style.display   = 'none';
+      document.querySelectorAll('.app-layout').forEach((el) => {
+        el.style.display        = 'flex';
+        el.style.justifyContent = 'center';
+      });
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -546,6 +632,8 @@ function initSphere() {
   sphere.setThetaAndPhi(INIT_THETA, INIT_PHI);
 
   mainScene = new Scene(sphere, { hpVisible: false });
+  window.mainScene = mainScene;  // add to global window scope as within module
+  mainScene.applyURL();
   mainScene.addShadingClip('Sphere Shading', 'front', 'inner', 'both');
   mainScene.addShadingClip('Sphere Shading', 'back',  'inner', 'both');
 
@@ -1077,6 +1165,7 @@ function updateDescriptions() {
     'As the view changes to the horizon diagram, the globe shrinks in size and the green '     +
     'horizon plane, marked with north, south, east and west labels, grows to fill the sphere ' +
     'with an observer positioned at its center. ' + view;
+
 }
 
 window.klunlInitEqn = klunlInitEqn;
@@ -1212,38 +1301,41 @@ function rotateView(dTheta, dPhi) {
   announceView();
 }
 
-function onStageKeyDown(e) {
-  const step    = keyAccel(e, 2);
+function onStageKeyDown(ev) {
+  const dStp    =  1;
   const bigStep = 15;
+  const step    = keyAccel(ev, dStp);
   const S       = mainScene.sphere;
-  switch (e.key) {
-  case 'ArrowLeft':  rotateView( step,    0); break;
-  case 'ArrowRight': rotateView(-step,    0); break;
-  case 'ArrowUp':    rotateView(0,    -step); break;
-  case 'ArrowDown':  rotateView(0,     step); break;
-  case 'PageUp':     rotateView(0, -bigStep); break;
-  case 'PageDown':   rotateView(0,  bigStep); break;
-  case 'Home':
-    S.setThetaAndPhi(180, 2);  // Face-on figure, horizon tilted 2 deg for visibility
-    syncGlobeView();
-    requestRender();
-    announceView();
-    break;
-  case 'End':
-    S.setThetaAndPhi(92, 2);  // Edge-on figure, horizon tilted 2 deg for visibility
-    syncGlobeView();
-    requestRender();
-    announceView();
-    break;
-  // MacOS+Voiceover users need an alternative to arrow keys
-  case 'a': rotateView( step,  0); break; case 'A': rotateView( step,   0); break; 
-  case 'd': rotateView(-step,  0); break; case 'D': rotateView(-step,   0); break; 
-  case 'w': rotateView( 0, -step); break; case 'W': rotateView(  0, -step); break; 
-  case 's': rotateView( 0,  step); break; case 'S': rotateView(  0,  step); break; 
-  default:
-    return;
+  switch (ev.key) {
+    // MacOS+Voiceover users need an alternative to arrow keys
+    case 'ArrowLeft':  case 'a': case 'A': rotateView( step,    0); break;
+    case 'ArrowRight': case 'd': case 'D': rotateView(-step,    0); break;
+    case 'ArrowUp':    case 'w': case 'W': rotateView(0,    -step); break;
+    case 'ArrowDown':  case 's': case 'S': rotateView(0,     step); break;
+    case 'PageUp':                         rotateView(0, -bigStep); break;
+    case 'PageDown':                       rotateView(0,  bigStep); break;
+    case 'Home':
+      S.setThetaAndPhi(180, 2);  // Face-on figure, horizon tilted 2 deg for visibility
+      syncGlobeView();
+      requestRender();
+      announceView();
+      break;
+    case 'End':
+      S.setThetaAndPhi(92, 2);  // Edge-on figure, horizon tilted 2 deg for visibility
+      syncGlobeView();
+      requestRender();
+      announceView();
+      break;
+    // If control panels are hidden, enable keyboard controls to reset simulation or
+    // change view, skip transitions, or change observer latitude
+    case 'r': case 'R': resetSim();     break;
+    case 'v': case 'V': doTransition(); break;
+    case 't': case 'T': document.getElementById('chkRdcMotion').checked = (!document.getElementById('chkRdcMotion').checked); break;
+    case '+': case '=': if (urlClean) { setLatitude(latVal+keyAccel(ev, dStp), true); break; }
+    case '-': case '_': if (urlClean) { setLatitude(latVal-keyAccel(ev, dStp), true); break; }
+    default: return;
   }
-  e.preventDefault();
+  ev.preventDefault();
 }
 
 /* ---- reset ---- */
@@ -1254,6 +1346,8 @@ function resetSim() {
   latFrac   = 1;
   animating = 0;
   latVal    = INIT_LATITUDE;
+  mainScene.applyURL();
+
   mainScene.sphere.setThetaAndPhi(INIT_THETA, INIT_PHI);
   globeSphere.setThetaAndPhi(     INIT_THETA, INIT_PHI);
   globeComponent.setRotationAngle(0);
@@ -1310,10 +1404,10 @@ function boot() {
   el.switchBtn.addEventListener('click', doTransition);
 
   el.latSlider.addEventListener('input', () => {
-    setLatitude(el.latSlider.value, false);
+    setLatitude(el.latSlider.value, true);
   });
   el.latSlider.addEventListener('change', () => {
-    setLatitude(el.latSlider.value, true);
+    setLatitude(el.latSlider.value, false);
   });
 
   /*
@@ -1332,12 +1426,14 @@ function boot() {
     el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
   });
   el.latNumber.addEventListener('keydown', noEinNumber);
+  /*
   el.latNumber.addEventListener('wheel', (e) => {
     if (document.activeElement !== el.latNumber) return;
     e.preventDefault();
     setLatitude(latVal + (e.deltaY < 0 ? LAT_INCREMENT : -LAT_INCREMENT), true);
     el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
   }, { passive: false });
+  */
   el.latNumber.addEventListener('keydown', (e) => {
     const big = 1;
     if      (e.key === 'PageUp')   setLatitude(latVal + big, true);
@@ -1348,6 +1444,10 @@ function boot() {
     el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
     e.preventDefault();
   });
+
+  // Setting gear when only figure is shown
+  document.getElementById('canvas-more-keys').addEventListener('click', () => mainScene.descMoreKeys());
+  document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => mainScene.hideMoreKeys());
 
   canvas.addEventListener('pointerdown',   onPointerDown);
   canvas.addEventListener('pointermove',   onPointerMove);

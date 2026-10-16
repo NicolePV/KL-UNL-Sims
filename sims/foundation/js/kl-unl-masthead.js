@@ -24,6 +24,12 @@ class KLUNLMasthead extends HTMLElement {
       return;
     }
 
+    // Check for URL parameter requesting masthead be hidden (clean=1)
+    const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+    if ( (Object.keys(urlParams).length > 0) &&
+         (urlParams.clean !== undefined)     &&
+         (JSON.parse(urlParams.clean) == true) )  { return; }
+
     try {
       const response  = await fetch(jsonUrl);
       const data      = await response.json();
@@ -123,7 +129,12 @@ class KLUNLMasthead extends HTMLElement {
           color:               var(--alert-color-g,             #b3f681);
           border-color:        var(--alert-color-g,             #b3f681);
         }
-        
+        #settingsBtn-mh {
+          background:          none;
+          border:              none;
+          padding:             0;
+        }
+
         /* Modal Dialog Styling */
         /* (for overlay showing help or background information) */
         dialog {
@@ -239,6 +250,9 @@ class KLUNLMasthead extends HTMLElement {
           ${hasHelpContent ? `<button id="helpBtn-mh" class="initial-prompt">Review Help Guide</button>` : ''}
           <button id="aboutBtn-mh">About</button>
           <button id="feedbackBtn-mh">Feedback</button>
+          <button id="settingsBtn-mh">
+            <img src="../foundation/images/gear.svg" alt="URL Capture Settings" width="30" height="30">
+          </button>
         </nav>
       </div>
 
@@ -338,6 +352,30 @@ class KLUNLMasthead extends HTMLElement {
           </div>
         </div>
       </dialog>
+
+      <!-- Settings Dialog -->
+      <!-- <p>When controls are hidden, type 'r' to reset and 1 &ndash; 4 to show or hide four labels.</p> XXX -->
+      <dialog id="settingsDialog-mh" role="alertdialog" aria-labelledby="dialogTitle2-mh">
+        <h2 id="dialogTitle2-mh" style="margin-top: 0;">Copy Link for Current State to Clipboard</h2>
+        <div aria-hidden="true">
+          <div id="dialogBody2-mh">
+            <p>Set up the simulation in a particular state, and then save a  
+            link to use as a starting point in future. You can choose to show
+            the entire simulation, or focus on just the figure (or figures).</p>
+          </div>
+        </div>
+        <p id="sr-description2-mh" class="sr-only"></p>
+        <div class="button-row sim-button-row">
+          <button id="urlConfirmAll" onclick="buildURL(2)" class="button sim-button" 
+            aria-label="Copy link to show all panels to clipboard">Show Figure(s) and Controls</button>
+          <button id="urlConfirmFig" onclick="buildURL(1)" class="button sim-button" 
+            aria-label="Copy link to show only figures to clipboard">Show Figure(s) Only</button>
+        </div>
+        <div class="dialog-footer">
+          <button id="closeSettingsBtn-mh" class="close-btn" aria-describedby="sr-description2-mh">Close</button>
+        </div>
+      </dialog>
+
     `;
   }
 
@@ -349,7 +387,9 @@ class KLUNLMasthead extends HTMLElement {
     const aboutBtn       = shadow.getElementById('aboutBtn-mh');
     const resetBtn       = shadow.getElementById('resetBtn-mh');
     const feedbackBtn    = shadow.getElementById('feedbackBtn-mh');
+    const settingsBtn    = shadow.getElementById('settingsBtn-mh');
     const closeBtn       = shadow.getElementById('closeDialogBtn-mh');
+    const closeSetBtn    = shadow.getElementById('closeSettingsBtn-mh');
     
     const fbForm         = shadow.getElementById('feedbackForm-mh');
     const cancelFbBtn    = shadow.getElementById('cancelFbBtn-mh');
@@ -360,6 +400,7 @@ class KLUNLMasthead extends HTMLElement {
     }
     aboutBtn.addEventListener('click',    () => this.openInfoModal('about', aboutBtn));
     feedbackBtn.addEventListener('click', () => this.openFeedbackModal(feedbackBtn));
+    settingsBtn.addEventListener('click', () => this.openSettingsModal(settingsBtn));
 
     resetBtn.addEventListener('click',    () => {
       this.dispatchEvent(new CustomEvent('sim-reset', { bubbles: true, composed: true }));
@@ -367,6 +408,9 @@ class KLUNLMasthead extends HTMLElement {
 
     // Close button listener
     closeBtn.addEventListener('click',    (e) => this.closeInfoModal(e));
+
+    // Close settings button listener
+    closeSetBtn.addEventListener('click',    (e) => this.closeSettingsModal(e));
 
     // Cancel button listener
     cancelFbBtn.addEventListener('click', (e) => this.closeFeedbackModal(e));
@@ -379,6 +423,7 @@ class KLUNLMasthead extends HTMLElement {
 
     // Native dialog cancel hook (triggers via 'Escape' key)
     infoDialog.addEventListener('cancel', () => this.handleFocusRestoration());
+
   }
 
   openInfoModal(type, triggerBtn) {
@@ -594,8 +639,55 @@ class KLUNLMasthead extends HTMLElement {
     }
   }
 
+  openSettingsModal(triggerBtn) {
+    this.activeTriggerButton = triggerBtn;
+    this.shadowRoot.getElementById('urlConfirmAll').disabled = false;
+    this.shadowRoot.getElementById('urlConfirmFig').disabled = false;
+
+    const dialog             = this.shadowRoot.getElementById('settingsDialog-mh');
+    const title              = this.shadowRoot.getElementById('dialogTitle2-mh');
+    const body               = this.shadowRoot.getElementById('dialogBody2-mh');
+    const srDesc             = this.shadowRoot.getElementById('sr-description2-mh');
+
+    // Convert rich HTML content to a clean, flat string block for VoiceOver
+    const tempDiv            = document.createElement('div');
+    tempDiv.innerHTML        = body.innerHTML;
+    const flatText           = tempDiv.textContent || tempDiv.innerText || "";
+
+    // Set description text for the Close button
+    // 
+    // Note that VoiceOver will say "close" first and then read the button
+    // description. Getting to this point was fairly difficult, so we may have
+    // to live with this order as it is fundamental to the accessibility model.
+    // (First label element and then read descriptive text.)
+    // 
+    srDesc.textContent       = flatText;
+
+    // Check whether url-building function is defined
+    if (typeof buildURL !== "function") {
+      console.log("myFunction is not defined.");
+      this.shadowRoot.getElementById('urlConfirmAll').disabled = true;
+      this.shadowRoot.getElementById('urlConfirmFig').disabled = true;
+    }
+
+    dialog.showModal();
+
+    // Add small delay to allow VoiceOver to finish processing modal opening event
+    setTimeout(() => {
+      this.shadowRoot.getElementById('closeSettingsBtn-mh').focus();
+    }, 50);
+  }
+
   closeInfoModal() {
     this.shadowRoot.getElementById('infoDialog-mh').close();
+
+    // Clear description so it's ready for next time a masthead button is clicked
+    this.shadowRoot.getElementById('sr-description-mh').textContent = "";
+    this.handleFocusRestoration();
+  }
+
+  closeSettingsModal() {
+    this.shadowRoot.getElementById('settingsDialog-mh').close();
 
     // Clear description so it's ready for next time a masthead button is clicked
     this.shadowRoot.getElementById('sr-description-mh').textContent = "";

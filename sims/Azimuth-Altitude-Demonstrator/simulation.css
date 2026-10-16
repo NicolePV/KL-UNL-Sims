@@ -50,8 +50,20 @@ body { line-height: 1.4; }
 }
 
 .sim-panel .panel__heading {
-  color:          var(--foreground-color, #1a1a1a);
+  color:           var(--foreground-color, #1a1a1a);
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
 }
+
+.sim-panel .panel__heading img {
+  /* Prevent the image from artificially expanding the height of the header row */
+  display:         block;
+  margin-top:      -0.25rem;
+  margin-bottom:   -0.25rem;
+}
+
+#url-clean-panel { padding: 10px; }
 
 /* --- Canvas stage ------------------------------------------------------- */
 /* Keep the original internal coordinate system; CSS scales the canvas to fit
