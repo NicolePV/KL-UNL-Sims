@@ -251,7 +251,7 @@ class KLUNLMasthead extends HTMLElement {
           <button id="aboutBtn-mh">About</button>
           <button id="feedbackBtn-mh">Feedback</button>
           <button id="settingsBtn-mh">
-            <img src="../foundation/images/gear.svg" alt="URL Capture Settings" width="30" height="30">
+            <img src="../foundation/images/klunl_gear.svg" alt="URL Capture Settings" width="30" height="30">
           </button>
         </nav>
       </div>
