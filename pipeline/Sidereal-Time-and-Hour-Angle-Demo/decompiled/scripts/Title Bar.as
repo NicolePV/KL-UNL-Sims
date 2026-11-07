@@ -1,0 +1,391 @@
+function TitleBarClass()
+{
+   this.width = this._width;
+   this.height = this._height;
+   this.placeholderMC._visible = false;
+   this._xscale = 100;
+   this._yscale = 100;
+   this.initialize();
+}
+var p = TitleBarClass.prototype = new MovieClip();
+Object.registerClass("Title Bar",TitleBarClass);
+p.onOptionClicked = function(type)
+{
+   this.aboutWindow.hide();
+   this.helpWindow.hide();
+   if(type == "about")
+   {
+      this.aboutWindow.show();
+   }
+   else if(type == "help")
+   {
+      this.helpWindow.show();
+   }
+   else if(type == "reset")
+   {
+      this._parent[this.resetHandlerFunc]();
+   }
+};
+p.initialize = function()
+{
+   this.attachMovie(this.fontSourceLinkageName,"fontMC",121212,{_visible:false});
+   this.interfaceTextFormat = this.fontMC.fontField.getTextFormat();
+   this.createEmptyMovieClip("dialogWindowsMC",5);
+   this.createEmptyMovieClip("backgroundMC",10);
+   this.aboutWindow = this.dialogWindowsMC.attachMovie("Dialog Window v2","aboutWindowMC",1,{contentLinkageName:this.aboutLinkageName,title:"About",topLimit:this.height,buffer:5});
+   this.helpWindow = this.dialogWindowsMC.attachMovie("Dialog Window v2","helpWindowMC",2,{contentLinkageName:this.helpLinkageName,title:"Help",topLimit:this.height,buffer:5});
+   this.optionsList = [];
+   if(this.aboutWindow.loadSuccessful)
+   {
+      this.optionsList.push("about");
+   }
+   if(this.helpWindow.loadSuccessful)
+   {
+      this.optionsList.push("help");
+   }
+   if(this.resetHandlerFunc != "" && this.resetHandlerFunc != undefined)
+   {
+      this.optionsList.push("reset");
+   }
+   this.aboutWindow.hide();
+   this.helpWindow.hide();
+   var _loc5_ = this.backgroundMC;
+   _loc5_.beginFill(this.backgroundColor);
+   _loc5_.moveTo(-2,-2);
+   _loc5_.lineTo(this.width + 2,-2);
+   _loc5_.lineTo(this.width + 2,this.height);
+   _loc5_.lineStyle(this.borderThickness,this.borderColor);
+   _loc5_.lineTo(-2,this.height);
+   _loc5_.lineStyle();
+   _loc5_.lineTo(-2,-2);
+   _loc5_.endFill();
+   this.interfaceTextFormat.color = this.titleColor;
+   this.interfaceTextFormat.size = this.titleFontSize;
+   this.displayText(this.title,{depth:15,vAlign:"top",hAlign:"left",x:this.titleXPosition,y:this.titleYPosition,embedFonts:true,textFormat:this.interfaceTextFormat});
+   this.interfaceTextFormat.color = this.optionsColor;
+   this.interfaceTextFormat.size = this.optionsFontSize;
+   var _loc4_ = this.width + this.optionsSpacing * 0.3;
+   var optionsList = this.optionsList;
+   var _loc2_ = 0;
+   var _loc3_;
+   while(_loc2_ < optionsList.length)
+   {
+      this[optionsList[_loc2_] + "MC"].removeMovieClip();
+      if(this[optionsList[_loc2_] + "HandlerFunc"] != "")
+      {
+         _loc3_ = this.addOptionsLabel(optionsList[_loc2_],16 + _loc2_);
+         _loc4_ = _loc4_ - this.optionsSpacing - _loc3_._width / 2;
+         _loc3_._x = _loc4_;
+         _loc3_._y = this.optionsYPosition;
+         _loc4_ -= _loc3_._width / 2;
+      }
+      _loc2_ = _loc2_ + 1;
+   }
+};
+p.addOptionsLabel = function(type, depth)
+{
+   var _loc2_ = this.createEmptyMovieClip(type + "MC",depth);
+   _loc2_.type = type;
+   _loc2_.createTextField("labelField",1,0,0,0,0);
+   _loc2_.labelField.autoSize = "center";
+   _loc2_.labelField.embedFonts = true;
+   _loc2_.labelField.setNewTextFormat(this.interfaceTextFormat);
+   _loc2_.labelField.text = type;
+   _loc2_.createEmptyMovieClip("underlineMC",2);
+   _loc2_.underlineMC._visible = false;
+   _loc2_.underlineMC.lineStyle(1,this.interfaceTextFormat.color);
+   _loc2_.underlineMC.moveTo(_loc2_.labelField._x,_loc2_.labelField._height - 2);
+   _loc2_.underlineMC.lineTo(_loc2_.labelField._x + _loc2_.labelField._width,_loc2_.labelField._height - 2);
+   _loc2_._focusrect = false;
+   _loc2_.onSetFocus = function()
+   {
+      this.underlineMC._visible = true;
+      this.onKeyDown = this.onKeyDownFunc;
+   };
+   _loc2_.onKillFocus = function()
+   {
+      this.underlineMC._visible = false;
+      delete this.onKeyDown;
+   };
+   _loc2_.onKeyDownFunc = function()
+   {
+      if(Key.isDown(32))
+      {
+         this._parent.onOptionClicked(this.type);
+         this.underlineMC._visible = false;
+         delete this.onKeyDown;
+      }
+   };
+   _loc2_.useHandCursor = true;
+   _loc2_.onRollOver = function()
+   {
+      this.underlineMC._visible = true;
+   };
+   _loc2_.onRollOut = function()
+   {
+      this.underlineMC._visible = false;
+   };
+   _loc2_.onRelease = function()
+   {
+      this._parent.onOptionClicked(this.type);
+      this.underlineMC._visible = false;
+   };
+   _loc2_.onReleaseOutside = function()
+   {
+      this.underlineMC._visible = false;
+   };
+   return _loc2_;
+};
+p.displayText = function(textString, options)
+{
+   textString = String(textString);
+   var _loc29_;
+   var _loc0_;
+   if(options.depth != undefined)
+   {
+      _loc29_ = options.depth;
+   }
+   else if(_global._displayedTextLastDepthUsed != undefined)
+   {
+      _loc29_ = ++_global._displayedTextLastDepthUsed;
+   }
+   else
+   {
+      _loc29_ = _global._displayedTextLastDepthUsed = 913001;
+   }
+   var _loc30_;
+   if(options.name != undefined)
+   {
+      _loc30_ = options.name;
+   }
+   else
+   {
+      _loc30_ = "_textWrapper_" + _loc29_;
+   }
+   var _loc7_;
+   if(options.mc != undefined)
+   {
+      _loc7_ = options.mc.createEmptyMovieClip(_loc30_,_loc29_);
+   }
+   else
+   {
+      _loc7_ = this.createEmptyMovieClip(_loc30_,_loc29_);
+   }
+   if(options.x != undefined)
+   {
+      _loc7_._x = options.x;
+   }
+   if(options.y != undefined)
+   {
+      _loc7_._y = options.y;
+   }
+   var _loc23_;
+   if(options.embedFonts != undefined)
+   {
+      _loc23_ = options.embedFonts;
+   }
+   else
+   {
+      _loc23_ = false;
+   }
+   var _loc12_;
+   if(options.textFormat != undefined)
+   {
+      _loc12_ = options.textFormat;
+   }
+   else
+   {
+      _loc12_ = new TextFormat(null,12);
+   }
+   var _loc13_ = new TextFormat();
+   for(var _loc19_ in _loc12_)
+   {
+      _loc13_[_loc19_] = _loc12_[_loc19_];
+   }
+   if(options.sizeRatio != undefined)
+   {
+      _loc13_.size = _loc12_.size / options.sizeRatio;
+   }
+   else
+   {
+      _loc13_.size = _loc12_.size / 1.5;
+   }
+   _loc7_.createTextField("_0",0,0,0,0,0);
+   _loc7_._0.autoSize = "left";
+   _loc7_._0.embedFonts = _loc23_;
+   _loc7_._0.setNewTextFormat(_loc12_);
+   _loc7_._0.text = "X";
+   _loc7_._0._visible = false;
+   _loc7_.createTextField("_1",1,0,0,0,0);
+   _loc7_._1.autoSize = "left";
+   _loc7_._1.embedFonts = _loc23_;
+   _loc7_._1.setNewTextFormat(_loc13_);
+   _loc7_._1.text = "X";
+   _loc7_._1._visible = false;
+   var _loc28_ = _loc7_._0._height;
+   var _loc31_ = _loc7_._1._height;
+   var _loc25_;
+   if(options.superscriptPosition != undefined)
+   {
+      _loc25_ = - options.superscriptPosition;
+   }
+   else
+   {
+      _loc25_ = 0;
+   }
+   var _loc26_;
+   if(options.subscriptPosition != undefined)
+   {
+      _loc26_ = _loc28_ - _loc31_ + options.subscriptPosition;
+   }
+   else
+   {
+      _loc26_ = _loc28_ - _loc31_;
+   }
+   var _loc24_;
+   if(options.extraSpacing != undefined)
+   {
+      _loc24_ = options.extraSpacing;
+   }
+   else
+   {
+      _loc24_ = 0.5;
+   }
+   var _loc4_ = [];
+   var _loc15_ = 0;
+   var _loc17_ = 0;
+   var _loc9_ = 0;
+   var _loc6_;
+   do
+   {
+      var ind = textString.indexOf("<su",_loc9_);
+      if(ind == -1)
+      {
+         _loc4_.push({pos:_loc15_,str:textString});
+      }
+      else if(textString.charAt(ind + 3) == "b" && textString.charAt(ind + 4) == ">")
+      {
+         if(ind != 0)
+         {
+            _loc4_.push({pos:_loc15_,str:textString.substring(0,ind)});
+         }
+         textString = textString.slice(ind + 5);
+         _loc15_ = -1;
+         _loc6_ = textString.indexOf("</sub>");
+         if(_loc6_ != -1)
+         {
+            if(_loc6_ != 0)
+            {
+               _loc4_.push({pos:_loc15_,str:textString.substring(0,_loc6_)});
+            }
+            textString = textString.slice(_loc6_ + 6);
+            _loc15_ = 0;
+         }
+         _loc9_ = 0;
+      }
+      else if(textString.charAt(ind + 3) == "p" && textString.charAt(ind + 4) == ">")
+      {
+         if(ind != 0)
+         {
+            _loc4_.push({pos:_loc15_,str:textString.substring(0,ind)});
+         }
+         textString = textString.slice(ind + 5);
+         _loc15_ = 1;
+         _loc6_ = textString.indexOf("</sup>");
+         if(_loc6_ != -1)
+         {
+            if(_loc6_ != 0)
+            {
+               _loc4_.push({pos:_loc15_,str:textString.substring(0,_loc6_)});
+            }
+            textString = textString.slice(_loc6_ + 6);
+            _loc15_ = 0;
+         }
+         _loc9_ = 0;
+      }
+      else
+      {
+         _loc9_ = ind + 3;
+      }
+      _loc17_ = _loc17_ + 1;
+   }
+   while(ind != -1 && textString.length > 0 && _loc17_ < 100);
+   if(_loc17_ >= 100)
+   {
+      trace("WARNING: iteration limit reached");
+   }
+   var _loc14_ = [];
+   var _loc22_ = 0;
+   var _loc18_ = 2;
+   var _loc8_ = 0;
+   var _loc11_;
+   var _loc16_;
+   var _loc21_;
+   while(_loc8_ < _loc4_.length)
+   {
+      _loc11_ = "_" + _loc18_;
+      _loc7_.createTextField(_loc11_,_loc18_++,0,0,0,0);
+      _loc16_ = _loc7_[_loc11_];
+      _loc16_.autoSize = "left";
+      _loc16_.embedFonts = _loc23_;
+      _loc16_.selectable = false;
+      if(_loc4_[_loc8_].pos == 0)
+      {
+         _loc21_ = 0;
+         _loc16_.setNewTextFormat(_loc12_);
+      }
+      else if(_loc4_[_loc8_].pos == 1)
+      {
+         _loc21_ = _loc25_;
+         _loc16_.setNewTextFormat(_loc13_);
+      }
+      else
+      {
+         _loc21_ = _loc26_;
+         _loc16_.setNewTextFormat(_loc13_);
+      }
+      _loc16_.text = _loc4_[_loc8_].str;
+      _loc14_.push({tf:_loc16_,dy:_loc21_});
+      _loc22_ += _loc16_.textWidth;
+      _loc8_ = _loc8_ + 1;
+   }
+   _loc22_ += _loc24_ * (_loc14_.length - 1);
+   var _loc19_;
+   if(options.hAlign == "left")
+   {
+      _loc19_ = -2;
+   }
+   else if(options.hAlign == "right")
+   {
+      _loc19_ = -2 - _loc22_;
+   }
+   else
+   {
+      _loc19_ = -2 - _loc22_ / 2;
+   }
+   var _loc27_;
+   if(options.vAlign == "top")
+   {
+      _loc27_ = -2;
+   }
+   else if(options.vAlign == "bottom")
+   {
+      _loc27_ = - _loc28_ + 2;
+   }
+   else
+   {
+      _loc27_ = (- _loc28_) / 2;
+   }
+   _loc8_ = 0;
+   var _loc5_;
+   while(_loc8_ < _loc14_.length)
+   {
+      _loc5_ = _loc14_[_loc8_];
+      _loc5_.tf._x = _loc19_;
+      _loc5_.tf._y = _loc27_ + _loc5_.dy;
+      _loc19_ += _loc5_.tf.textWidth + _loc24_;
+      _loc8_ = _loc8_ + 1;
+   }
+   _loc7_.textWidth = _loc22_;
+   return _loc7_;
+};

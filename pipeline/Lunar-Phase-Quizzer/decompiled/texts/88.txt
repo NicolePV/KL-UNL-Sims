@@ -1,0 +1,1 @@
+Hold the shift key while dragging to snap the object to the eight primary positions. 

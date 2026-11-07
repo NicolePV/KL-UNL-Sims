@@ -1,0 +1,31 @@
+This simulator shows what happens when an extrasolar planet passes in 
+--- RECORDSEPARATOR ---
+front of its star. Such eclipses (called transits) allow scientists to detect 
+--- RECORDSEPARATOR ---
+planets they would not see otherwise.
+--- RECORDSEPARATOR ---
+The upper left panel shows the star and planet as they would be seen 
+--- RECORDSEPARATOR ---
+from earth if we had an extremely powerful telescope. In fact, this 
+--- RECORDSEPARATOR ---
+privileged view is impossible with any existing telescope; astronomers 
+--- RECORDSEPARATOR ---
+must infer the transit from the dip in the lightcurve as the planet moves in 
+--- RECORDSEPARATOR ---
+front of the star. (A lightcurve is a plot of brightness over time.)
+--- RECORDSEPARATOR ---
+The lightcurve is shown in the upper right panel. The apparent brightness 
+--- RECORDSEPARATOR ---
+of the star is 'normalized', that is, the brightness is reported as a fraction 
+--- RECORDSEPARATOR ---
+of the full brightness (when the star is not eclipsed). You have the option 
+--- RECORDSEPARATOR ---
+of showing simulated noisy measurements and hiding the theoretical 
+--- RECORDSEPARATOR ---
+curve – this gives a better idea of what it is like working with real data.
+--- RECORDSEPARATOR ---
+The planet, star, and system properties can be set in the lower panels. 
+--- RECORDSEPARATOR ---
+These parameters can also be set by selecting one of the presets from the 
+--- RECORDSEPARATOR ---
+drop down menu in the Presets panel.

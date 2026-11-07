@@ -1,0 +1,3 @@
+show the sun's
+--- RECORDSEPARATOR ---
+declination circle

@@ -1,0 +1,321 @@
+/* =====================================================================
+   HR Diagram Star Cluster Fitting Explorer — sim-specific styles.
+   Layered ON TOP of the shared foundation (foundation/kl-unl.css), which
+   is never edited. Only additive rules and this sim's own components live
+   here. Colours meaningful to the physics are exposed as custom properties.
+   ===================================================================== */
+
+:root {
+  /* Axis / data colours, carried over from the original Flash sim.
+     Red  = absolute magnitude scale + model main-sequence curve.
+     Blue = apparent magnitude scale + cluster star data points.
+     Both meet WCAG 1.4.3 (>=4.5:1) / 1.4.11 (>=3:1) on the white plot. */
+  --cfe-red:  #d03030;   /* absolute magnitude  (contrast ~5.1:1 on white) */
+  --cfe-blue: #1d5ef3;   /* apparent magnitude  (contrast ~5.3:1 on white) */
+  --cfe-axis: #1a1a1a;   /* temperature axis, border, curve stroke edge    */
+  --cfe-plot-bg: #ffffff;
+
+  /* Uniform spacing scale so panels/rows breathe evenly. */
+  --cfe-gap: 0.75rem;
+}
+
+/* Comfortably large, zoomable body copy (rem-based, tracks browser font). */
+body {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+/* ---- Overall layout ------------------------------------------------- */
+/* Match the original arrangement: large HR-diagram panel on the LEFT,
+   the three control panels stacked on the RIGHT. Applied only ABOVE the
+   foundation's 56rem breakpoint so its single-column collapse is intact. */
+@media (min-width: 56.01rem) {
+  .app-layout {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    gap: 0 1rem;
+    align-items: stretch;   /* both columns share the taller (diagram) height */
+  }
+  /* Diagram Options and the Distance Modulus Calculator BOTH grow, so they share
+     the slack: neither is left completely blank, and the last panel's bottom
+     still lines up with the plot panel's bottom. Contents center vertically. */
+  .cfe-col-controls .cfe-panel--grow { flex: 1 1 auto; display: flex; flex-direction: column; }
+  .cfe-col-controls .cfe-panel--grow .cfe-calc,
+  .cfe-col-controls .cfe-panel--grow .control-fieldset {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+/* The right column stacks its three panels with even spacing. */
+.cfe-col-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cfe-gap);
+  min-width: 0;
+}
+
+.cfe-panel {
+  margin-bottom: 0;
+}
+.cfe-col-diagram .cfe-panel {
+  height: 100%;
+}
+
+.panel__heading {
+  font-size: 1.2rem;
+}
+
+/* ---- HR diagram plot area ------------------------------------------ */
+/* Padding reserves room around the plot for the MathJax tick labels and
+   the rotated axis titles, which live in HTML (they zoom and are
+   screen-reader / right-click accessible) rather than on the canvas. */
+.cfe-plot {
+  position: relative;
+  padding: 0.5rem 3rem 3.5rem 3.75rem;
+}
+
+/* The plot box == the bordered plot region == the canvas box. Every tick
+   label and interaction proxy is positioned relative to THIS box, so they
+   stay aligned at any size (the canvas scales; fractions are constant). */
+.cfe-plotbox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 17 / 20;            /* internal plot is 340 x 400 units */
+  background: var(--cfe-plot-bg);
+  touch-action: none;               /* dragging never scrolls the page  */
+}
+
+.cfe-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Distance-modulus fit proxy: covers the whole plot; both pointer drag and
+   keyboard operate it. Visible focus ring comes from the foundation. */
+.cfe-drag {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+  z-index: 2;
+}
+.cfe-drag:active,
+.cfe-drag.cfe-dragging {
+  cursor: grabbing;
+}
+.cfe-drag:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: -0.25rem;
+}
+
+/* ---- Tick-label overlay (MathJax numbers) -------------------------- */
+.cfe-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cfe-tick {
+  position: absolute;
+  font-size: 0.85rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+.cfe-tick--left  { color: var(--cfe-red);  transform: translate(-100%, -50%); padding-right: 0.4rem; }
+.cfe-tick--right { color: var(--cfe-blue); transform: translate(0, -50%);      padding-left: 0.4rem;  }
+.cfe-tick--bottom{ color: var(--cfe-axis); transform: translate(-50%, 0);      padding-top: 0.4rem;   }
+
+/* ---- Axis titles (rotated); variables are MathJax ------------------ */
+.cfe-axis-title {
+  position: absolute;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.cfe-axis-title--left {
+  left: 0.1rem;
+  top: 0.5rem;
+  bottom: 3.5rem;
+  width: 1.4rem;
+  color: var(--cfe-red);
+}
+/* Left axis reads bottom-to-top (AS _rotation = -90): (M) ends up at the top. */
+.cfe-axis-title--left span { transform: rotate(-90deg); white-space: nowrap; }
+.cfe-axis-title--right {
+  right: 0.1rem;
+  top: 0.5rem;
+  bottom: 3.5rem;
+  width: 1.4rem;
+  color: var(--cfe-blue);
+}
+/* Right axis reads top-to-bottom (AS _rotation = +90): (m) ends up at the bottom. */
+.cfe-axis-title--right span { transform: rotate(90deg); white-space: nowrap; }
+.cfe-axis-title--bottom {
+  left: 3.75rem;
+  right: 3rem;
+  bottom: 0.75rem;
+  height: 1.4rem;
+  color: var(--cfe-axis);
+}
+
+/* ---- Movable horizontal reference line ----------------------------- */
+.cfe-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.75rem;                  /* generous hit / touch target */
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  cursor: grab;
+  touch-action: none;
+  z-index: 3;
+}
+/* The `hidden` attribute must win over display:flex, or the bar (and its
+   readouts) would render and take the tab order even when switched off. */
+.cfe-bar[hidden] { display: none; }
+.cfe-bar:active { cursor: grabbing; }
+.cfe-bar__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 0;
+  border-top: 2px solid #606060;
+  z-index: 1;
+}
+.cfe-bar:hover .cfe-bar__line,
+.cfe-bar:focus-visible .cfe-bar__line {
+  border-top-width: 3px;
+  border-top-color: #404040;
+}
+.cfe-bar:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+.cfe-bar__value {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  line-height: 1;
+  background: #ffffff;      /* opaque bordered value-tag (like the original) */
+  border: 1px solid #808080;
+  padding: 0.05rem 0.25rem;
+  white-space: nowrap;
+  z-index: 2;
+}
+/* Base (narrow / single-column): readouts sit just INSIDE the plot edges so they
+   never overflow the viewport on phones. On wide screens they move OUTSIDE the
+   plot (see the min-width rule below), as in the original. */
+.cfe-bar__value--left  { left:  0.15rem; right: auto; color: var(--cfe-red);  }
+.cfe-bar__value--right { right: 0.15rem; left:  auto; color: var(--cfe-blue); }
+
+/* ---- Cluster select ------------------------------------------------ */
+.cfe-row-select {
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+}
+.cfe-select {
+  width: 100%;
+  min-height: 2.75rem;
+  font-size: 1rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--foreground-color, #1a1a1a);
+  background: var(--background-color, #fff);
+  border: 1px solid var(--border-color, #767676);
+}
+
+/* ---- Diagram options checkbox ------------------------------------- */
+.cfe-choice {
+  min-height: 2.75rem;
+  gap: 0.5rem;
+  justify-content: center;   /* center the checkbox + label in the panel */
+}
+.cfe-choice input[type="checkbox"] { width: 1.4rem; height: 1.4rem; }
+.cfe-choice label { font-size: 1.05rem; }
+
+/* ---- Distance modulus calculator ---------------------------------- */
+.cfe-calc {
+  padding: 0.5rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* Formula (row 1), inputs (row 2) and result (row 3) share these columns:
+   [m / input / result-value] [minus] [M / input] [= -5 + 5 log d / result-rhs] */
+.cfe-calc__grid {
+  display: grid;
+  grid-template-columns: 3.6rem auto 3.6rem auto;
+  align-items: center;
+  justify-items: center;
+  gap: 0.7rem 0.4rem;
+  width: max-content;
+  font-size: 1.1rem;
+}
+.cfe-calc__rhs { justify-self: start; white-space: nowrap; }        /* col 4, both rows */
+.cfe-calc__mod {                                                     /* row 3, cols 1-3 */
+  grid-column: 1 / 4;
+  justify-self: end;
+  white-space: nowrap;
+  min-height: 1.2em;
+}
+#cfe-calc-res { min-height: 1.2em; }
+.cfe-calc__input {
+  width: 3.4rem;
+  min-height: 2.4rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+/* MathJax output is display-only: never a tab stop, never overflowing. */
+.cfe-mj mjx-container,
+.cfe-tick mjx-container,
+.cfe-calc mjx-container { margin: 0 !important; }
+mjx-container[jax="SVG"] > svg { vertical-align: middle; }
+mjx-container:focus { outline: none; }
+
+/* ---- Responsive: phone portrait (single column, stacked) ----------- */
+@media (max-width: 40rem) {
+  body { font-size: 1.0625rem; }
+  .cfe-plot {
+    padding: 0.5rem 2.5rem 3.25rem 3.25rem;
+  }
+  .cfe-axis-title--bottom { left: 3.25rem; right: 2.5rem; }
+}
+
+@media (max-width: 26rem) {
+  .cfe-plot {
+    padding: 0.5rem 2.1rem 3.1rem 2.9rem;
+  }
+  .cfe-tick { font-size: 0.75rem; }
+  .cfe-axis-title--bottom { left: 2.9rem; right: 2.1rem; }
+}
+
+/* ---- Reduced motion: the sim has no idle animation, but keep any
+   incidental transitions instantaneous when requested. --------------- */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+}
+
+/* ---- Wide screens: bar readouts OUTSIDE the plot ------------------- */
+/* Placed at the end so it wins over the base (inside) readout rules. Wider
+   left/right gutters give the readouts room outside the plot without touching
+   the axis titles. On narrower widths the base (inside) rules apply instead,
+   which avoids any horizontal overflow. */
+@media (min-width: 56.01rem) {
+  .cfe-plot { padding: 0.5rem 4.25rem 3.5rem 4.5rem; }
+  .cfe-bar__value--left  { left: auto; right: 100%; margin-right: 0.3rem; }
+  .cfe-bar__value--right { right: auto; left: 100%; margin-left: 0.3rem; }
+}

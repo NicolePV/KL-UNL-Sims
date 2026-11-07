@@ -1,0 +1,3 @@
+sun's declination
+--- RECORDSEPARATOR ---
+(its daily path)

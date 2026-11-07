@@ -1,0 +1,65 @@
+This simulator models the movement of planets around the sun in a 
+--- RECORDSEPARATOR ---
+simplified Copernican model of the solar system. Special emphasis is 
+--- RECORDSEPARATOR ---
+placed on the elongation angle and associated events. 
+--- RECORDSEPARATOR ---
+Use the controls in the 
+--- RECORDSEPARATOR ---
+Orbit Sizes
+--- RECORDSEPARATOR ---
+ panel to set the orbit radii for the 
+--- RECORDSEPARATOR ---
+observer's planet and the target planet.
+--- RECORDSEPARATOR ---
+The planets in the 
+--- RECORDSEPARATOR ---
+Diagram
+--- RECORDSEPARATOR ---
+ panel are draggable. Hold the shift key down 
+--- RECORDSEPARATOR ---
+to move just one planet at a time. Otherwise, both planets move and the 
+--- RECORDSEPARATOR ---
+time changes.
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+Zodiac Strip
+--- RECORDSEPARATOR ---
+ panel shows the positions of the sun and the target 
+--- RECORDSEPARATOR ---
+planet in the sky against the background of stars. You can drag the strip 
+--- RECORDSEPARATOR ---
+left or right for clarity.
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+Animation Controls
+--- RECORDSEPARATOR ---
+ let you watch the system in motion. By default 
+--- RECORDSEPARATOR ---
+the animation continues to run when an event occurs, but you can have it 
+--- RECORDSEPARATOR ---
+automatically stop or pause as well.
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+Timeline
+--- RECORDSEPARATOR ---
+ shows how the events are spaced out in time, with past 
+--- RECORDSEPARATOR ---
+events at the top and future events at the bottom. The current point in 
+--- RECORDSEPARATOR ---
+time is indicated by the red cursor. The times are given relative to an 
+--- RECORDSEPARATOR ---
+arbitrary zero point which you can set by clicking the 
+--- RECORDSEPARATOR ---
+zero counter
+--- RECORDSEPARATOR ---
+ 
+--- RECORDSEPARATOR ---
+button. Note that if an event name is highlighted in red it means the 
+--- RECORDSEPARATOR ---
+simulation is set exactly on that event. You can drag the timeline up and 
+--- RECORDSEPARATOR ---
+down, or click on an event name to advance the simulator to that event.

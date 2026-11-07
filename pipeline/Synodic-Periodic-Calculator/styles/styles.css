@@ -1,0 +1,163 @@
+/* ==========================================================================
+ * Synodic Period Calculator -- sim-specific styles only.
+ * The shared look (palette, panels, controls, focus ring, responsive collapse)
+ * comes from foundation/kl-unl.css, which is NOT edited. These rules only add
+ * layout and the small custom pieces the foundation does not provide.
+ * ========================================================================== */
+
+/* Comfortable, zoomable base type (>= 1.125rem floor for body copy). */
+body {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+/* Two stacked panels with a little breathing room between them. The foundation
+   .app-layout is a grid; a single column reads top-to-bottom, matching the
+   original (configuration above, calculation below). */
+.syn-layout {
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 0.5rem;
+}
+
+.syn-panel {
+  padding-bottom: 1rem;
+}
+
+.panel__heading {
+  font-size: 1.2rem;
+}
+
+/* ----- Configuration panel: Planets + Units side by side ------------------ */
+.syn-config {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.5rem;
+  padding: 0 0.5rem;
+}
+
+.syn-fieldset {
+  padding: 0 0.5rem 0.5rem;
+}
+
+.control-choice {
+  min-height: 2.75rem;   /* comfortable touch target */
+  gap: 0.5rem;
+}
+
+.control-choice label {
+  font-size: 1.125rem;
+}
+
+/* ----- Calculation panel -------------------------------------------------- */
+.syn-calc {
+  padding: 0 1rem;
+}
+
+.syn-equation {
+  text-align: center;
+  margin: 0.5rem 0 1rem;
+  font-size: 1.35rem;    /* MathJax scales relative to this */
+  min-height: 3rem;
+}
+
+.syn-var {
+  white-space: nowrap;
+}
+
+.syn-help {
+  margin: 0 0 1.25rem;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+/* Three value cells (S, E, P), echoing the fraction order left to right.
+   They collapse to a single column on narrow / portrait screens. */
+.syn-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: center;
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.syn-value {
+  display: grid;
+  /* Fixed label + unit columns so all three inputs are pixel-identical. */
+  grid-template-columns: 2.25rem 1fr 3rem;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.syn-value__label {
+  font-size: 1.2rem;
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.syn-value__unit {
+  font-size: 0.95rem;
+  color: var(--foreground-color, #1a1a1a);
+  white-space: nowrap;
+}
+
+/* Equal-purpose fields share one consistent size (foundation .control-row__input
+   sets the base; we only harmonise width/height and box-sizing here). */
+.syn-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  font-size: 1.05rem;
+  text-align: right;   /* right-align numbers so digits line up */
+}
+
+/* Read-only Earth value styled like the inputs but visibly inert. */
+.syn-output {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: #f2f2f2;
+  cursor: default;
+}
+
+/* "Ouch!" state: alert colour PLUS the literal word "Ouch!" (never colour
+   alone). The border is thickened so the state is visible without relying on
+   hue for users who cannot distinguish it. */
+.syn-input--ouch {
+  color: var(--alert-color-r, #ea351f);
+  border-color: var(--alert-color-r, #ea351f);
+  border-width: 2px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ----- Responsive: iPad -> phone portrait --------------------------------- */
+@media (max-width: 40rem) {
+  .syn-values {
+    grid-template-columns: 1fr;   /* stack the value cells */
+    gap: 0.75rem;
+    max-width: 22rem;
+  }
+
+  .syn-value {
+    grid-template-columns: 3.5rem 1fr auto;
+  }
+
+  .syn-value__label {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 30rem) {
+  .syn-config {
+    grid-template-columns: 1fr;   /* Planets above Units */
+  }
+}
+
+/* Respect reduced-motion (there is no animation here, but keep transitions
+   from ever kicking in for users who opt out). */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

@@ -1,0 +1,225 @@
+/* ==========================================================================
+ * Eclipse Shadow Simulator -- sim-specific styles ONLY.
+ * Layered on top of foundation/kl-unl.css; the foundation files are never
+ * edited. Everything here is additive (larger type, the canvas stage, the
+ * position sliders, spacing/alignment polish, and phone-portrait reflow).
+ * ========================================================================== */
+
+/* Larger, zoomable base type (WCAG 1.4.4 / rule 10: >=1.125rem body copy).
+   The foundation ships 0.9rem, which is below the required floor. */
+body {
+  font-size:   1.125rem;
+  line-height: 1.5;
+}
+
+/* Restore the min-width:0 the foundation intends for the right column
+   (its rule is disabled by a stray character in kl-unl.css, which we may
+   not edit -- so we re-assert it here). Prevents the grid track from
+   overflowing when the canvas is wide. */
+.app-layout__right { min-width: 0; }
+
+/* ---- Panel rhythm & spacing -------------------------------------------- */
+.app-layout__left  { gap: 0.75rem; }
+.app-layout        { gap: 0.75rem; align-items: stretch; }
+
+.panel { padding-bottom: 0.75rem; }
+
+/* Make the right (Diagram) box the same height as the left column. The
+   foundation sets align-items:start, so panels normally take only their
+   natural height and the diagram ends higher than the controls. We stretch
+   the right grid cell to the row height and let its panel fill it, with the
+   canvas centered vertically in whatever extra space results. The Diagram is
+   the priority, so it drives the visible box; the controls define the height. */
+.app-layout__right { display: flex; }
+.app-layout__right > .panel {
+  display:        flex;
+  flex-direction: column;
+  width:          100%;
+}
+.app-layout__right .panel__canvas-wrap {
+  flex:            1 1 auto;
+  display:         flex;
+  flex-direction:  column;
+  justify-content: center;   /* center the canvas in the taller box */
+}
+
+.panel__heading {
+  font-size:      1.25rem;
+  border-bottom:  1px solid var(--border-color, #767676);
+  margin-bottom:  0.5rem;
+}
+
+.panel__help {
+  font-size:   1rem;
+  line-height: 1.5;
+}
+
+.control-fieldset        { padding: 0 1rem 0.75rem; }
+.control-fieldset__legend { font-size: 1.05rem; }
+
+/* ---- Position control rows: aligned label | slider | value ------------- */
+.control-row--pos {
+  grid-template-columns: 6rem 1fr 4.5rem;
+  align-items:           center;
+  gap:                   0.5rem 0.75rem;
+  margin-bottom:         0.6rem;
+}
+
+.control-row--pos .control-row__label { font-size: 1rem; }
+
+/* Numeric readout column: fixed width, right-aligned so digits line up */
+.control-row__value {
+  font-variant-numeric: tabular-nums;
+  text-align:           right;
+  font-size:            1rem;
+  white-space:          nowrap;
+}
+
+.sim-readout {
+  margin:      0.25rem 0 0;
+  font-size:   0.95rem;
+  color:       var(--foreground-color, #1a1a1a);
+}
+
+/* ---- Native range sliders, styled (keeps full native keyboard support) -- */
+.sim-slider {
+  -webkit-appearance: none;
+  appearance:         none;
+  width:              100%;
+  height:             1.75rem;         /* generous hit area */
+  min-height:         1.75rem;
+  background:         transparent;
+  cursor:             pointer;
+  touch-action:       none;            /* dragging the thumb never scrolls */
+}
+/* Track */
+.sim-slider::-webkit-slider-runnable-track {
+  height:        0.4rem;
+  border-radius: 0.2rem;
+  background:    #c7d3de;
+}
+.sim-slider::-moz-range-track {
+  height:        0.4rem;
+  border-radius: 0.2rem;
+  background:    #c7d3de;
+}
+/* Thumb (>=1.6rem so the touch target is comfortable) */
+.sim-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance:         none;
+  width:              1.6rem;
+  height:             1.6rem;
+  margin-top:        -0.6rem;          /* center on the 0.4rem track */
+  border-radius:      50%;
+  background:         var(--button-background-color, #005a9c);
+  border:             2px solid #ffffff;
+  box-shadow:         0 0 0 1px var(--border-color, #767676);
+}
+.sim-slider::-moz-range-thumb {
+  width:         1.6rem;
+  height:        1.6rem;
+  border-radius: 50%;
+  background:    var(--button-background-color, #005a9c);
+  border:        2px solid #ffffff;
+  box-shadow:    0 0 0 1px var(--border-color, #767676);
+}
+.sim-slider:focus-visible {
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--outline-color, #005fcc);
+  outline-offset: 0.25rem;
+  border-radius:  0.2rem;
+}
+
+/* ---- Shadow key ------------------------------------------------------- */
+.sim-legend {
+  list-style: none;
+  margin:     0;
+  padding:    0;
+  font-size:  1rem;
+  line-height: 1.5;
+}
+.sim-legend li {
+  display:     flex;
+  align-items: center;
+  gap:         0.5rem;
+  margin-bottom: 0.4rem;
+}
+.sim-swatch {
+  flex-shrink:   0;
+  width:         1.5rem;
+  height:        1.1rem;
+  border:        1px solid var(--border-color, #767676);
+  border-radius: 2px;
+}
+/* Colors match the on-canvas shadow shades (over white) */
+.sim-swatch--umbra    { background: #b8b8b8; }
+.sim-swatch--penumbra { background: #f3f3f3; }
+
+/* ---- The simulation stage -------------------------------------------- */
+.panel__canvas-wrap { padding: 0 1rem 0.5rem; }
+
+/* Wrapper tightly around the canvas so the focusable disc handles can be
+   absolutely positioned over each disc regardless of page scroll/zoom. */
+.stage-wrap {
+  position:  relative;
+  width:     100%;
+  font-size: 0;            /* remove inline-canvas whitespace */
+}
+
+#stage {
+  display:       block;
+  width:         100%;
+  height:        auto;
+  aspect-ratio:  900 / 500;            /* preserve original stage ratio */
+  max-width:     100%;
+  background:    #ffffff;
+  border:        1px solid var(--border-color, #767676);
+  touch-action:  none;                 /* pointer-drag, never page scroll */
+}
+
+/* Keyboard-focusable handle overlaid on each disc. Pointer dragging is handled
+   by the canvas itself, so the handle ignores pointer events (a click on the
+   disc focuses it programmatically); the handle exists for Tab focus, the
+   arrow-key mover, and the visible "focus mode" ring. */
+.disc-handle {
+  position:      absolute;
+  margin:        0;
+  padding:       0;
+  border:        0;
+  background:    transparent;
+  border-radius: 50%;
+  pointer-events: none;                /* canvas owns pointer drag */
+  box-sizing:    border-box;
+}
+/* Show the focus ring for BOTH keyboard focus and click focus, so clicking a
+   disc visibly turns on "focus mode". */
+.disc-handle:focus {
+  outline:        0.1875rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+/* Older engines without :focus-visible still get the ring above; newer ones
+   keep it too (we intentionally do not suppress it for mouse here). */
+
+/* Older WebKit without aspect-ratio: fall back to intrinsic sizing */
+@supports not (aspect-ratio: 1 / 1) {
+  #stage { height: auto; }
+}
+
+/* ---- Phone portrait: stack to one column below the foundation break --- */
+@media (max-width: 56rem) {
+  .control-row--pos {
+    grid-template-columns: 6rem 1fr 4.5rem;   /* keep label/value aligned */
+  }
+}
+
+@media (max-width: 30rem) {
+  body { font-size: 1.0625rem; }
+  .control-row--pos {
+    grid-template-columns: 1fr auto;          /* label + value on one line */
+  }
+  .control-row--pos .control-row__slider {
+    grid-column: 1 / -1;                       /* slider full width beneath */
+  }
+  .panel__canvas-wrap { padding: 0 0.5rem 0.5rem; }
+}

@@ -1,0 +1,4 @@
+useHandCursor = false;
+onPress = function()
+{
+};

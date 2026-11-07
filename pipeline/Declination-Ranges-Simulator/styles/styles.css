@@ -1,0 +1,288 @@
+/* ==========================================================================
+   Declination Ranges Simulator — sim-specific styles.
+   Layered ON TOP of the KL-UNL foundation (foundation/kl-unl.css). The
+   foundation files are never edited; everything sim-specific lives here.
+   Sizing is in rem/em so it tracks the browser font size and reflows at 200%.
+   ========================================================================== */
+
+/* Body copy noticeably larger than the browser default (>= 1.125rem floor). */
+body {
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+:root {
+  /* Band colours, taken verbatim from the three range labels in the original
+     FLA (DefineEditText textColor for cir_label / rise_label / nev_label).
+     They are used on the dark canvas "sky" only, where each clears 5:1
+     against the #333333 stage. In the white KL-UNL panels the same colours
+     appear only as swatches beside dark label text, never as text. */
+  --sim-cir-color:   #ff9900;   /* circumpolar   */
+  --sim-rise-color:  #33ccff;   /* rise and set  */
+  --sim-nev-color:   #33cc66;   /* never rise    */
+  --sim-stage-bg:    #333333;   /* original stage background */
+
+  /* A white grab hand with a dark outline stays visible on the dark stage.
+     Falls back to the native grab/grabbing keyword where SVG data-URI
+     cursors are unsupported (e.g. Safari, whose system hand is outlined). */
+  --sim-cursor-grab:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2728%27%20height%3D%2728%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M8%2013V5.5a1.5%201.5%200%20013%200V12h1V4a1.5%201.5%200%20013%200v8h1V5.5a1.5%201.5%200%20013%200V13h1V8.5a1.5%201.5%200%20013%200V16c0%203.3-2.7%206-6%206h-2c-2%200-3.2-.8-4.4-2.3l-3.7-4.6a1.5%201.5%200%20012.2-2z%27%20fill%3D%27%23ffffff%27%20stroke%3D%27%23111111%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 13 10, grab;
+  --sim-cursor-grabbing:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2728%27%20height%3D%2728%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M8%2016v-3a1.5%201.5%200%20013%200v1h1v-2a1.5%201.5%200%20013%200v2h1v-1.5a1.5%201.5%200%20013%200V14h1v-.5a1.5%201.5%200%20013%200V16c0%203.3-2.7%206-6%206h-2c-2%200-3.2-.8-4.4-2.3l-3.2-4a1.5%201.5%200%20012.2-2z%27%20fill%3D%27%23ffffff%27%20stroke%3D%27%23111111%27%20stroke-width%3D%271.4%27%20stroke-linejoin%3D%27round%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E") 14 12, grabbing;
+}
+
+/* --- Layout --------------------------------------------------------------- */
+/* Mirrors the original screenshot: the square sphere diagram on the left, the
+   latitude control above the declination readouts on the right. Collapses to a
+   single stacked column at the foundation's 56rem breakpoint. */
+.sim-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  /* The first row is sized by the latitude panel alone and the second absorbs
+     the slack from the taller diagram. With the default stretch alignment the
+     ranges panel grows into that slack, so the two right-hand panels together
+     end level with the bottom of the diagram panel. */
+  grid-template-rows: auto 1fr;
+  gap: 0.75rem;
+  /* The foundation's .app-layout sets align-items:start; stretch is what makes
+     the ranges panel grow to fill row 2, so it has to be restated here. */
+  align-items: stretch;
+}
+
+.sim-sphere-panel   { grid-column: 1; grid-row: 1 / span 2; }
+.sim-latitude-panel { grid-column: 2; grid-row: 1; }
+.sim-ranges-panel   { grid-column: 2; grid-row: 2; }
+
+/* Spread the three ranges down the panel it now fills, rather than leaving a
+   block of empty space beneath them — this also matches the original, where the
+   three blocks are spaced down the right-hand side. */
+.sim-ranges-panel { display: flex; flex-direction: column; }
+.sim-ranges-panel .panel-body { flex: 1 1 auto; display: flex; }
+.sim-ranges-panel .range-list {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.panel { min-width: 0; padding-bottom: 1rem; }
+
+.panel-body { padding: 0 1rem; }
+
+@media (max-width: 56rem) {
+  .sim-layout { grid-template-columns: 1fr; }
+  .sim-sphere-panel,
+  .sim-latitude-panel,
+  .sim-ranges-panel { grid-column: 1; grid-row: auto; }
+}
+
+/* --- Celestial sphere panel ----------------------------------------------- */
+/* Room around the square stage; the declination labels sit inside it. */
+.sim-sphere-panel .panel__canvas-wrap {
+  padding: 0 1rem 0.5rem;
+}
+
+.sphere-holder {
+  position: relative;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  /* The stage is square, so the overlays can be positioned in percentages of
+     the same box and track the canvas exactly as it scales. */
+  aspect-ratio: 1 / 1;
+  background: var(--sim-stage-bg, #333333);
+  touch-action: none;              /* pointer-drag tilts the horizon line */
+  cursor: var(--sim-cursor-grab);
+}
+.sphere-holder.is-dragging { cursor: var(--sim-cursor-grabbing); }
+
+/* Fallback for browsers without aspect-ratio: the canvas itself sets the
+   height and the overlays are absolutely positioned over it. */
+@supports not (aspect-ratio: 1 / 1) {
+  .sphere-holder { height: auto; }
+}
+
+#sky-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Declination tick labels and the fixed sky marks share the stage box exactly,
+   so percentage positions track the canvas as it scales. Both are display-only
+   (never tab stops) and are dimmed together with the tick dial when the Earth
+   is enlarged, matching the original's myGrid alpha change. */
+.dec-labels,
+.sky-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.dec-labels { font-size: 0.72rem; }
+.sky-marks  { font-size: 0.78rem; }
+
+.dec-labels .dec-label,
+.sky-marks .sky-mark {
+  position: absolute;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.sphere-holder.is-enlarged .dec-labels { opacity: 0.5; }
+
+/* Keyboard/pointer proxy for the draggable horizon line. It is transparent and
+   ignores pointer events (the stage handles dragging) but still takes focus. */
+.observer-handle {
+  position: absolute;
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+.observer-handle:focus,
+.observer-handle:focus-visible {
+  outline: 0.1875rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* --- Latitude panel ------------------------------------------------------- */
+/* The label and the editable value share the line above the track, with the
+   slider and its end labels spanning the full width beneath, so every edge
+   lines up on one grid. */
+.lat-row {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.lat-row > .control-row__label { grid-row: 1; grid-column: 1; }
+.lat-field                     { grid-row: 1; grid-column: 2; justify-self: end; }
+.lat-slider                    { grid-row: 2; grid-column: 1 / -1; }
+.lat-limit--min                { grid-row: 3; grid-column: 1; justify-self: start; }
+.lat-limit--max                { grid-row: 3; grid-column: 2; justify-self: end; }
+
+/* The editable field and its degree sign travel together as one unit. */
+.lat-field {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.lat-number {
+  box-sizing: border-box;          /* padding must not push past the 2.75rem box */
+  width: 5.5rem;
+  min-height: 2.75rem;
+  font-size: 1rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Min / max end labels sit under the ends of the track, as in the original. */
+.lat-limit {
+  font-size: 0.85rem;
+  margin-top: -0.35rem;
+}
+
+.lat-slider {
+  width: 100%;
+  min-height: 2.75rem;             /* >= 44px touch target */
+  cursor: pointer;
+}
+
+.enlarge-row {
+  min-height: 2.75rem;             /* comfortable touch target */
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+/* The foundation sizes checkboxes at 1.25rem (20px), below the 24px minimum
+   target size. Nudged up here rather than by editing kl-unl.css; the label is
+   clickable too, so the effective target is the whole 2.75rem row. */
+.enlarge-row input[type="checkbox"] {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.enlarge-row label { font-size: 1.05rem; }
+
+/* --- Declination ranges panel --------------------------------------------- */
+/* The three ranges are a description list: a coloured swatch plus a text label
+   (colour is never the only signal), with the range right-aligned in a shared
+   value column so the digits line up down the panel. */
+.range-list { margin: 0; }
+
+.range-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color, #767676);
+}
+.range-item:last-child { border-bottom: 0; }
+
+.range-term {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+.range-swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border: 1px solid var(--foreground-color, #1a1a1a);
+  /* The swatch shows the band colour over the same dark stage background it
+     sits on in the diagram, so the chip matches what is on the canvas. */
+  background-color: var(--sim-stage-bg, #333333);
+  box-shadow: inset 0 0 0 1rem var(--sim-swatch, transparent);
+}
+.range-swatch--cir  { --sim-swatch: var(--sim-cir-color,  #ff9900); }
+.range-swatch--rise { --sim-swatch: var(--sim-rise-color, #33ccff); }
+.range-swatch--nev  { --sim-swatch: var(--sim-nev-color,  #33cc66); }
+
+.range-value {
+  margin: 0;
+  justify-self: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- MathJax -------------------------------------------------------------- */
+/* Typeset math is display-only: keep it out of the tab order and stop it from
+   forcing a horizontal scrollbar on narrow screens. */
+mjx-container { max-width: 100%; }
+mjx-container svg { vertical-align: -0.15em; }
+mjx-container:focus { outline: none; }
+
+/* --- Narrow / portrait tuning --------------------------------------------- */
+@media (max-width: 56rem) {
+  .panel-body { max-width: 32rem; }
+  .sphere-holder { max-width: 30rem; }
+}
+
+@media (max-width: 30rem) {
+  /* Phone portrait: everything stacks full width, nothing scrolls sideways.
+     The label and the value box still fit side by side at this width, so the
+     desktop grid carries over unchanged. */
+  .dec-labels { font-size: 0.6rem; }
+  .sky-marks  { font-size: 0.65rem; }
+  .sim-sphere-panel .panel__canvas-wrap { padding: 0 0.5rem 0.5rem; }
+}
+
+/* --- Reduced motion ------------------------------------------------------- */
+/* The sim has no free-running animation: every redraw is the direct result of a
+   user action, so there is nothing to stop. This is kept as a guard in case a
+   transition is added later. */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

@@ -1,0 +1,424 @@
+/* ==========================================================================
+   Meridional Altitude Simulator -- sim-specific styles ONLY.
+   Shared palette, panels, controls and the 56rem collapse come from
+   foundation/kl-unl.css, which is copied in byte-for-byte unchanged.
+   Nothing here edits or forks the foundation; it only layers on top.
+   ========================================================================== */
+
+:root {
+  /* ---- Canvas palette (drawn on the dark #333333 diagram background) ----
+     Values marked ORIG are the original Flash colours, reused unchanged.
+     Values marked A11Y were lightened within the same hue so that they clear
+     WCAG 1.4.3 / 1.4.11 against #333333 (see ACCESSIBILITY.md). */
+  --sim-stage-bg:      #333333;  /* ORIG 0x333333 panel fill                */
+  --sim-pole:          #ffffcc;  /* ORIG 0xFFFFCC  celestial-pole arrow     */
+  --sim-equator:       #ffffff;  /* ORIG 0xFFFFFF  celestial-equator arrow  */
+  --sim-north:         #33cc99;  /* ORIG 0x33CC99  north horizon arrow      */
+  --sim-south:         #66cc33;  /* A11Y was 0x33990C (3.4:1) -> 6.2:1      */
+  --sim-zenith:        #b3b3b3;  /* A11Y was 0x999999 (4.4:1) -> 5.9:1      */
+  --sim-lat-wedge:     #ff6b6b;  /* A11Y was 0xD80101 (2.4:1) -> 4.6:1      */
+  --sim-dec-wedge:     #ffff00;  /* ORIG 0xFFFF00  declination wedge        */
+  --sim-sun-range:     #ff9999;  /* ORIG 0xFF9999  sun/planet range fill    */
+  --sim-sun-edge:      #ffb3b3;  /* A11Y added outline, 6.1:1               */
+  --sim-moon-range:    #ff9933;  /* ORIG 0xFF9933  moon range fill          */
+  --sim-moon-edge:     #ffc266;  /* A11Y added outline, 7.4:1               */
+
+  /* ---- Equation palette (drawn on the light KL-UNL panel background) ----
+     The original tinted the latitude and declination terms of the equation
+     to match the diagram. Those bright hues are unreadable on white, so the
+     equation uses darker members of the same hues (>= 6:1 on #ffffff), and
+     the terms are additionally named in text so colour is never the only cue. */
+  --sim-lat-text:      #c00000;
+  --sim-dec-text:      #7a5c00;
+
+  /* Spacing scale: one set of values reused everywhere for even rhythm. */
+  --sim-gap-xs:        0.35rem;
+  --sim-gap-sm:        0.6rem;
+  --sim-gap-md:        1rem;
+  --sim-gap-lg:        1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Type scale. Body copy sits above the 1.125rem floor and everything is in
+   rem/em so it tracks the browser font setting and reflows at 200% zoom.
+   -------------------------------------------------------------------------- */
+body {
+  font-size:            1.125rem;
+  line-height:          1.5;
+}
+
+/* The masthead's shadow DOM lays its title and three buttons out in a flex row
+   that does not wrap, so on a narrow screen at high zoom it is wider than the
+   viewport and drags the whole page into horizontal scrolling. The component's
+   code is off-limits (and exposes no variable for this), but the host element
+   belongs to this document, so constraining its box here keeps the page itself
+   reflow-clean -- at worst the bar alone scrolls. Its appearance is untouched.
+   Worth fixing upstream with a flex-wrap in kl-unl-masthead.js. */
+kl-unl-masthead {
+  display:              block;
+  max-width:            100%;
+  overflow-x:           auto;
+}
+
+.sim-main {
+  display:              flex;
+  flex-direction:       column;
+  gap:                  var(--sim-gap-sm);
+  padding-bottom:       var(--sim-gap-md);
+}
+
+.sim-panel {
+  padding-bottom:       var(--sim-gap-sm);
+}
+
+.panel__heading {
+  font-size:            1.25rem;
+  padding:              var(--sim-gap-sm) var(--sim-gap-md);
+}
+
+.control-fieldset {
+  padding:              0 var(--sim-gap-md) var(--sim-gap-sm);
+  /* Browsers give <fieldset> a UA min-width of min-content, so it refuses to
+     shrink below its widest label and pushes the page sideways at high zoom.
+     Resetting it lets the labels wrap instead. */
+  min-width:            0;
+}
+
+/* Long control labels wrap rather than forcing their row wider. */
+.control-choice label {
+  min-width:            0;
+  overflow-wrap:        break-word;
+}
+
+.control-fieldset__legend {
+  font-size:            1.0625rem;
+  padding-bottom:       var(--sim-gap-xs);
+}
+
+.sim-help {
+  font-size:            1rem;
+  line-height:          1.45;
+  margin:               var(--sim-gap-sm) var(--sim-gap-md) 0;
+}
+
+/* --------------------------------------------------------------------------
+   Diagram stage. The canvas keeps the original 720 x 400 Flash stage
+   coordinates internally; CSS scales it while preserving aspect ratio, so no
+   ported drawing or physics maths is ever recomputed from the display size.
+   -------------------------------------------------------------------------- */
+.sim-canvas-wrap {
+  padding:              0 var(--sim-gap-md);
+}
+
+.sim-stage {
+  position:             relative;
+  width:                100%;
+  max-width:            45rem;      /* 720px at the default root size */
+  margin:               0 auto;
+  aspect-ratio:         720 / 400;
+  line-height:          0;
+  /* The label overlays are absolutely positioned in stage coordinates. Clipping
+     to the stage guarantees they can never widen the document and introduce a
+     horizontal scrollbar, however narrow the viewport gets. Every label anchor
+     sits well inside the stage, so nothing visible is ever cut off. */
+  overflow:             hidden;
+}
+
+#stage-canvas {
+  display:              block;
+  width:                100%;
+  height:               100%;
+  background:           var(--sim-stage-bg);
+  touch-action:         none;       /* dragging must not scroll the page */
+}
+
+/* --------------------------------------------------------------------------
+   Diagram symbols: real HTML, typeset by MathJax, laid over the canvas.
+   Each is centred horizontally on its anchor with the text sitting just above
+   it, which is how the original positioned its (centre-aligned) text fields.
+   Font size is in em of the stage width so the labels scale with the diagram
+   but still respond to browser zoom.
+   -------------------------------------------------------------------------- */
+.sim-label {
+  position:             absolute;
+  left:                 0;
+  top:                  0;
+  transform:            translate(-50%, -82%);
+  transform-origin:     center;
+  line-height:          1;
+  white-space:          nowrap;
+  pointer-events:       auto;       /* the MathJax context menu must work */
+  font-size:            clamp(0.75rem, 2.6cqw, 1.0625rem);
+  will-change:          transform;
+}
+
+.sim-stage {
+  container-type:       inline-size;
+}
+
+.sim-label--pole    { color: var(--sim-pole);    }
+.sim-label--equator { color: var(--sim-equator); }
+.sim-label--north   { color: var(--sim-north);   }
+.sim-label--south   { color: var(--sim-south);   }
+.sim-label--zenith  { color: var(--sim-zenith);  }
+.sim-label--fixed   { color: var(--sim-equator); }
+
+.sim-label[hidden]  { display: none; }
+
+/* MathJax paints with currentColor, so the rules above tint the typeset SVG. */
+.sim-label mjx-container[jax="SVG"] > svg { vertical-align: middle; }
+
+/* --------------------------------------------------------------------------
+   Observer handle: the draggable / arrow-key target on the cross-section.
+   Kept as a ring rather than a fill so it never hides the arrows underneath,
+   and sized to the 44px touch-target minimum.
+   -------------------------------------------------------------------------- */
+.sim-handle {
+  position:             absolute;
+  left:                 0;
+  top:                  0;
+  width:                2.75rem;
+  height:               2.75rem;
+  margin:               -1.375rem 0 0 -1.375rem;
+  border-radius:        50%;
+  border:               2px dashed rgba(255, 255, 255, 0.55);
+  background:           transparent;
+  cursor:               grab;
+  touch-action:         none;
+}
+
+.sim-handle:hover {
+  border-style:         solid;
+  border-color:         #ffffff;
+}
+
+.sim-handle:active {
+  cursor:               grabbing;
+}
+
+/* The foundation supplies :focus-visible; make it unmistakable on the dark
+   canvas as well, where the default ring can be hard to pick out. */
+.sim-handle:focus-visible {
+  border-style:         solid;
+  border-color:         #ffffff;
+  outline-width:        0.1875rem;
+  outline-style:        solid;
+  outline-color:        var(--button-outline-color, #ffbc00);
+  outline-offset:       0.125rem;
+}
+
+/* --------------------------------------------------------------------------
+   Controls row. The foundation's .app-layout supplies the primary two-column
+   split and its own 56rem collapse. The pair on the right gets one
+   sim-specific breakpoint so all three groups sit side by side on a desktop,
+   exactly as they do along the bottom of the original.
+   -------------------------------------------------------------------------- */
+.sim-controls-row {
+  gap:                  var(--sim-gap-sm);
+  align-items:          stretch;
+  /* The foundation's .app-layout is a fixed 25rem + 1fr, which leaves the
+     altitude panel too narrow for the longest equation (the "180 - (...)"
+     form). Reproportioning the row here -- in the sim's own stylesheet, never
+     in the foundation -- also tracks the original more closely, where the
+     Meridional Altitude group is the widest of the three along the bottom. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.05fr);
+}
+
+/* All three panels in this row are the same height, so the bottom of the page
+   reads as one band rather than a ragged edge -- as it does in the original.
+   The foundation makes .app-layout__left a COLUMN flex container, which sizes
+   its panel to content; switching both wrappers to a stretching row lets each
+   panel fill the row height set by the tallest one. */
+.sim-controls-row > .app-layout__left,
+.sim-controls-row > .app-layout__right {
+  display:              flex;
+  flex-direction:       row;
+  align-items:          stretch;
+  gap:                  var(--sim-gap-sm);
+}
+
+.sim-controls-pair {
+  display:              grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  align-items:          stretch;
+  gap:                  var(--sim-gap-sm);
+  width:                100%;
+}
+
+.sim-controls-row .sim-panel {
+  width:                100%;
+}
+
+/* Object radios: two aligned columns, matching the original's arrangement. */
+.sim-object-grid {
+  gap:                  var(--sim-gap-xs) var(--sim-gap-md);
+  align-items:          center;
+}
+
+.control-choice {
+  min-height:           2.75rem;    /* comfortable touch target */
+  gap:                  var(--sim-gap-sm);
+}
+
+.control-choice input[type="checkbox"],
+.control-choice input[type="radio"] {
+  width:                1.375rem;
+  height:               1.375rem;
+}
+
+/* --------------------------------------------------------------------------
+   Slider rows. Label column and value column line up down the panel; the two
+   sliders share identical geometry so equal-purpose controls look equal.
+   -------------------------------------------------------------------------- */
+.sim-slider-row {
+  grid-template-columns: auto minmax(4.5rem, auto);
+  align-items:          baseline;
+  row-gap:              0.15rem;
+  column-gap:           var(--sim-gap-sm);
+  margin-bottom:        var(--sim-gap-md);
+}
+
+.sim-slider-row .control-row__label {
+  font-size:            1.0625rem;
+}
+
+/* Fixed-width value box so the readout never shifts the layout as digits
+   change, and both sliders' readouts share the same box. */
+.sim-slider-value {
+  justify-self:         end;
+  min-width:            5rem;
+  text-align:           right;
+  line-height:          1.2;
+}
+
+.sim-slider {
+  grid-column:          1 / -1;
+  width:                100%;
+  min-height:           2.75rem;
+  margin:               0;
+}
+
+.sim-slider-end {
+  font-size:            0.9375rem;
+  line-height:          1;
+  opacity:              0.85;
+}
+
+.sim-slider-end--min { grid-column: 1; justify-self: start; }
+.sim-slider-end--max { grid-column: 2; justify-self: end;   }
+
+/* Declination controls disappear entirely when "No Object" is selected,
+   exactly as the original hides that slider. */
+#dec-row[hidden] { display: none; }
+
+/* --------------------------------------------------------------------------
+   Meridional altitude equation.
+   -------------------------------------------------------------------------- */
+/* The panel is the sizing container for the equation, so the equation can be
+   measured against the width it actually has rather than the viewport. */
+.sim-altitude-panel {
+  container-type:       inline-size;
+}
+
+.sim-equation {
+  margin:               0 var(--sim-gap-sm) var(--sim-gap-sm);
+  padding:              var(--sim-gap-sm);
+  min-height:           3.25rem;    /* min-height, not height: never crops */
+  display:              flex;
+  align-items:          center;
+  border-width:         var(--border-width, 1px);
+  border-style:         var(--border-style, solid);
+  border-color:         var(--border-color, #767676);
+}
+
+/* The longest form this readout ever takes is "180 - (90 - 15.3 + 23.5) = 81.8"
+   -- about 31.8ex, or 16.5x the font size. Sizing the type against the panel
+   width keeps that whole line inside the box at every layout width, with room
+   to spare for the font-metric differences between platforms. The floor is the
+   body size, so this readout is never smaller than the surrounding copy; the
+   ceiling is the full 1.25rem, which the container query below restores as
+   soon as the panel is wide enough to hold it comfortably. */
+.sim-equation__math {
+  font-size:            clamp(1.125rem, 4.5cqi, 1.25rem);
+  line-height:          1.4;
+  overflow-x:           auto;       /* last-resort fallback; page never scrolls */
+  overflow-y:           hidden;
+  max-width:            100%;
+  /* Flex items default to min-width:auto, which refuses to shrink below the
+     content's min-content width -- so without this the typeset equation pushes
+     the whole page wider instead of scrolling inside its own box. Only reachable
+     at extreme zoom on a narrow screen, but that is exactly where reflow matters. */
+  min-width:            0;
+  padding-bottom:       0.125rem;
+}
+
+/* Stacked layouts give the panel the full width, so the equation can go back to
+   full size rather than staying shrunk to a narrow-column measurement. */
+@container (min-width: 28rem) {
+  .sim-equation__math {
+    font-size:          1.25rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Typeset maths is output the user reads, not a control: keep it out of the
+   tab order. (The MathJax context menu still works with tabindex="-1".)
+   -------------------------------------------------------------------------- */
+.sim-label mjx-container,
+.sim-slider-value mjx-container,
+.sim-slider-end mjx-container,
+.sim-equation__math mjx-container,
+.sim-label mjx-container svg,
+.sim-slider-value mjx-container svg,
+.sim-slider-end mjx-container svg,
+.sim-equation__math mjx-container svg {
+  outline:              none;
+}
+
+/* --------------------------------------------------------------------------
+   Narrow / phone-portrait widths. Everything collapses to a single column in
+   reading order: diagram, object, coordinates, altitude. No horizontal scroll.
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  /* styles.css loads after kl-unl.css, so the reproportioned row above would
+     otherwise out-cascade the foundation's own collapse at this width. Restore
+     the single column here so the foundation's breakpoint behaviour is kept. */
+  .sim-controls-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sim-controls-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 34rem) {
+  body {
+    font-size:          1.0625rem;
+  }
+
+  .sim-canvas-wrap {
+    padding:            0 var(--sim-gap-sm);
+  }
+
+  .sim-object-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sim-equation,
+  .control-fieldset {
+    margin-left:        var(--sim-gap-sm);
+    margin-right:       var(--sim-gap-sm);
+    padding-left:       var(--sim-gap-sm);
+    padding-right:      var(--sim-gap-sm);
+  }
+}
+
+/* No animation runs without user input, so there is nothing to stop; this is
+   here only so any future transition inherits the right behaviour. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration:  0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,6 @@
+# Store every file byte-for-byte, with no end-of-line normalisation.
+#
+# The KL-UNL foundation files must stay byte-identical to the shared
+# originals, and fla/ holds a binary SWF plus its decompiled export (fonts,
+# bitmaps, SVGs). Checking out on Windows must not rewrite any of it.
+* -text

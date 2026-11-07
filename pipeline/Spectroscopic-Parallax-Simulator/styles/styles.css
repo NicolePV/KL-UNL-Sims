@@ -1,0 +1,567 @@
+/* ===========================================================================
+   Spectroscopic Parallax Simulator -- sim-specific styles.
+   Layered on top of foundation/kl-unl.css, which is never edited. Everything
+   here is either layout the foundation does not provide, or a documented
+   accessibility remap of an original Flash colour (see ACCESSIBILITY.md).
+   =========================================================================== */
+
+:root {
+  /* Accessible remaps of the original Flash label colours. Each keeps the hue
+     of the curve it names but is darkened to at least 4.5:1 on white. */
+  --sp-ionized-helium: #a35c00;   /* was #ff9900, 2.14:1 -> 5.14:1 */
+  --sp-neutral-helium: #0063a8;   /* was #0099ff, 3.00:1 -> 6.27:1 */
+  --sp-hydrogen:       #cc0000;   /* was #ff0000, 4.00:1 -> 5.89:1 */
+  --sp-ionized-metals: #006b00;   /* was #009900, 3.78:1 -> 6.77:1 */
+  --sp-neutral-metals: #a800a8;   /* was #ff00ff, 3.14:1 -> 6.50:1 */
+  --sp-molecules:      #8a4500;   /* was #cc6600, 3.84:1 -> 7.16:1 */
+
+  --sp-supergiants:    #164ea9;   /* unchanged, 7.79:1 */
+  --sp-giants:         #b44401;   /* unchanged, 5.57:1 */
+  --sp-dwarfs:         #2f7018;   /* was #3a8c1e, 4.24:1 -> 6.08:1 */
+  --sp-white-dwarfs:   #666666;   /* unchanged, 5.74:1 */
+
+  --sp-mv:             #cc0000;   /* was #ff0000 */
+  --sp-absm:           #666666;   /* unchanged */
+  --sp-d:              #00647f;   /* was #00ccff, 1.90:1 -> 6.71:1 */
+
+  --sp-panel-border:   #767676;
+  --sp-gap:            0.5rem;
+  --sp-pad:            1rem;
+}
+
+/* Border-box sizing inside the simulation's own panels, so declared widths are
+   the widths the grid tracks reserve. Scoped to this sim; the foundation's own
+   rules are untouched. */
+.sp-panel,
+.sp-panel *,
+.sp-panel *::before,
+.sp-panel *::after {
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   Typography: comfortably large, and sized in rem so it tracks the browser's
+   own font setting and reflows rather than clipping at 200% zoom.
+   -------------------------------------------------------------------------- */
+body {
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+.panel__heading {
+  font-size: 1.125rem;
+  padding: 0.5rem var(--sp-pad);
+  border-bottom: 1px solid #d5d5d5;
+}
+
+/* --------------------------------------------------------------------------
+   Page skeleton. The five panels sit in the same arrangement as the original
+   stage: three stacked on the left, the HR diagram spanning the first two rows
+   on the right, the star attributes beneath it.
+   -------------------------------------------------------------------------- */
+.sp-layout {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    "lines hr"
+    "spec  hr"
+    "dm    attrs";
+  gap: var(--sp-gap);
+  padding: var(--sp-gap) var(--sp-gap) 1.5rem;
+  align-items: stretch;
+}
+
+.sp-panel {
+  border: 1px solid var(--sp-panel-border);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sp-panel--lines    { grid-area: lines; }
+.sp-panel--spectrum { grid-area: spec; }
+.sp-panel--hr       { grid-area: hr; }
+.sp-panel--dm       { grid-area: dm; }
+.sp-panel--attrs    { grid-area: attrs; }
+
+/* --------------------------------------------------------------------------
+   Panel 1 -- Absorption Line Intensities
+   -------------------------------------------------------------------------- */
+.sp-lines {
+  padding: 0.6rem var(--sp-pad) 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.sp-lines__readout {
+  margin: 0;
+  text-align: center;
+  font-weight: bold;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 2rem;
+}
+
+.sp-readout__pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.sp-lines__desc {
+  margin: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  min-height: 2.6em;          /* two lines: keeps the plot from jumping */
+}
+
+.sp-lines__grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0 0.25rem;
+}
+
+.sp-lines__col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The stage keeps the original Flash coordinates; CSS scales it to fit. */
+.sp-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 368 / 210;    /* the SVG viewBox */
+  touch-action: none;         /* the cursor is dragged across it */
+}
+
+.sp-stage__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sp-stage__labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sp-curve-label {
+  position: absolute;
+  font-size: 0.8125rem;
+  font-weight: bold;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.sp-curve-label--ihe  { color: var(--sp-ionized-helium); }
+.sp-curve-label--he   { color: var(--sp-neutral-helium); }
+.sp-curve-label--h    { color: var(--sp-hydrogen); }
+.sp-curve-label--imet { color: var(--sp-ionized-metals); }
+.sp-curve-label--met  { color: var(--sp-neutral-metals); }
+.sp-curve-label--mol  { color: var(--sp-molecules); }
+
+/* Draggable / focusable cursor handle. The visible cursor is the exported
+   Flash artwork behind it; this element supplies a touch-sized grab area, the
+   tab stop and the focus ring. */
+.sp-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2.75rem;
+  margin-left: -1.375rem;
+  cursor: ew-resize;
+  touch-action: none;
+  background: transparent;
+  border-radius: 0.25rem;
+}
+
+.sp-handle:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--outline-color, #005fcc);
+  outline-offset: 0;
+  background: rgba(0, 95, 204, 0.08);
+}
+
+.sp-stage__xticks {
+  position: relative;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+}
+
+.sp-xtick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-weight: bold;
+}
+
+.sp-axis-title {
+  margin: 0;
+  font-weight: bold;
+  text-align: center;
+}
+
+.sp-axis-title--x {
+  margin-top: 0.1rem;
+}
+
+/* Vertical axis titles. The label is rotated in place inside a narrow gutter
+   rather than with writing-mode, so that typeset mathematics inside it turns
+   with the words instead of being stacked glyph by glyph. */
+.sp-axis-title--y {
+  position: relative;
+  width: 1.75rem;
+  align-self: stretch;
+}
+
+.sp-axis-title--y > .sp-axis-title__rot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center;
+  white-space: nowrap;
+}
+
+.sp-help {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+}
+
+/* --------------------------------------------------------------------------
+   Panel 2 -- Simulated Spectrum
+   -------------------------------------------------------------------------- */
+.sp-spectrum__wrap {
+  padding: 0.75rem var(--sp-pad) 1rem;
+}
+
+.sp-spectrum__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 500 / 50;
+  border: 1px solid var(--sp-panel-border);
+}
+
+/* --------------------------------------------------------------------------
+   Panel 3 -- HR Diagram
+   -------------------------------------------------------------------------- */
+.sp-hr {
+  padding: 0.75rem var(--sp-pad) 0.75rem 0.5rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 0.25rem;
+  flex: 1;
+  align-content: center;      /* keeps the diagram centred in the tall panel */
+}
+
+.sp-hr__col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The gutter for the 10^n tick labels is padding on the column, so the stage
+   simply fills what is left and can never overflow the panel. */
+.sp-hr__col {
+  padding-left: 2.6rem;
+}
+
+.sp-hr__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 305 / 330;
+}
+
+.sp-hr__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Plot rectangle: the exported region artwork is clipped to it, exactly as the
+   original component masks its plot area. */
+.sp-hr__plot {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sp-hr__regions {
+  position: absolute;
+  display: block;
+}
+
+.sp-hr__labels {
+  position: absolute;
+  inset: 0;
+}
+
+.sp-hr-label {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.sp-hr-label--super { color: var(--sp-supergiants); }
+.sp-hr-label--giant { color: var(--sp-giants); }
+.sp-hr-label--dwarf { color: var(--sp-dwarfs); }
+.sp-hr-label--wd    { color: var(--sp-white-dwarfs); }
+
+.sp-hr-label--note {
+  color: var(--foreground-color, #1a1a1a);
+  font-style: italic;
+  font-weight: normal;
+  font-size: 0.6875rem;
+}
+
+.sp-hr__yticks {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+
+.sp-ytick {
+  position: absolute;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.sp-hr__xticks {
+  position: relative;
+  height: 1.4rem;
+  margin: 0.15rem 0 0;
+}
+
+.sp-hr-xtick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Panel 4 -- Distance Modulus Calculation
+   -------------------------------------------------------------------------- */
+.sp-dm {
+  padding: 0.75rem var(--sp-pad) 1rem;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Two rows of six aligned cells: symbols on top, values underneath. */
+.sp-dm__eqn {
+  display: grid;
+  grid-template-columns: repeat(6, auto);
+  justify-content: center;
+  align-items: center;
+  justify-items: center;
+  column-gap: 0.4rem;
+  row-gap: 0.5rem;
+  font-size: 1.15rem;
+}
+
+.sp-dm__cell {
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.sp-dm--mv   { color: var(--sp-mv); }
+.sp-dm--absm { color: var(--sp-absm); }
+.sp-dm--d    { color: var(--sp-d); }
+.sp-dm--op,
+.sp-dm--rhs  { color: var(--foreground-color, #1a1a1a); }
+
+/* --------------------------------------------------------------------------
+   Panel 5 -- Star Attributes
+   -------------------------------------------------------------------------- */
+.sp-fieldset {
+  padding: 0.75rem var(--sp-pad) 0.25rem;
+}
+
+.sp-fieldset--class {
+  padding-top: 0.25rem;
+}
+
+.sp-row--mag {
+  grid-template-columns: auto 5.5rem minmax(6rem, 1fr);
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.sp-row__label {
+  justify-self: start;
+}
+
+.sp-row__field {
+  width: 5.5rem;
+  min-height: 2.25rem;
+  font-size: 1.0625rem;
+  text-align: center;
+}
+
+.sp-row__slider {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.sp-legend {
+  padding-bottom: 0.35rem;
+}
+
+.sp-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+}
+
+.sp-choice {
+  min-height: 2.75rem;
+  gap: 0.4rem;
+}
+
+.sp-choice label {
+  min-width: 1.75rem;
+}
+
+.sp-attrs__readouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 2rem;
+  padding: 0.25rem var(--sp-pad) 1rem;
+  margin-top: auto;
+}
+
+.sp-attrs__item {
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.sp-attrs__key {
+  font-weight: normal;
+}
+
+.sp-attrs__val {
+  font-weight: bold;
+}
+
+/* --------------------------------------------------------------------------
+   MathJax output is display-only: it must never be a tab stop, and it must
+   inherit the surrounding colour so the palette lives here rather than in TeX.
+   The contextual menu is deliberately left enabled.
+   -------------------------------------------------------------------------- */
+.sp-math {
+  display: inline-block;
+  line-height: 1;
+}
+
+mjx-container[jax="SVG"] {
+  outline: none;
+}
+
+mjx-container[jax="SVG"] > svg {
+  vertical-align: middle;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive: desktop -> iPad -> phone portrait. Below the foundation's own
+   56rem breakpoint the layout becomes a single column in reading order.
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .sp-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "lines"
+      "spec"
+      "hr"
+      "dm"
+      "attrs";
+  }
+
+  .sp-hr__col {
+    max-width: 36rem;
+  }
+}
+
+@media (max-width: 34rem) {
+  :root {
+    --sp-pad: 0.65rem;
+  }
+
+  body {
+    font-size: 1.0625rem;
+  }
+
+  .sp-curve-label {
+    font-size: 0.6875rem;
+  }
+
+  .sp-hr-label {
+    font-size: 0.625rem;
+  }
+
+  .sp-hr-label--note {
+    font-size: 0.5625rem;
+  }
+
+  .sp-ytick,
+  .sp-hr-xtick {
+    font-size: 0.625rem;
+  }
+
+  .sp-hr__col {
+    padding-left: 2.1rem;
+  }
+
+  .sp-row--mag {
+    grid-template-columns: auto 5.5rem;
+  }
+
+  .sp-row__slider {
+    grid-column: 1 / -1;
+  }
+
+  .sp-dm__eqn {
+    font-size: 1rem;
+    column-gap: 0.25rem;
+  }
+
+  .sp-lines__readout {
+    gap: 0.15rem 1rem;
+  }
+}
+
+/* No part of this simulation animates on its own, so there is nothing to stop
+   for prefers-reduced-motion; the rule below simply removes the focus-ring
+   transition inherited from the masthead for users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

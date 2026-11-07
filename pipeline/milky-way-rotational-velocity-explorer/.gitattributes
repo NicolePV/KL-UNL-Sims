@@ -1,0 +1,6 @@
+# Preserve every file byte-for-byte: no end-of-line conversion on any platform.
+#
+# The KL-UNL foundation files must stay byte-identical to the shared originals,
+# and fla/ holds decompiled binary and exported art. Letting Git rewrite line
+# endings on checkout would silently change both.
+* -text

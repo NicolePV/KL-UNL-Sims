@@ -1,0 +1,277 @@
+/* ----------------------------------------------------------------------------
+   Retrograde Motion -- sim-specific styles only.
+
+   The shared palette, layout grid, control classes, focus handling and
+   responsive breakpoint all come from foundation/kl-unl.css, which is copied in
+   byte-for-byte unchanged and is never edited or overridden wholesale. Anything
+   the foundation does not provide (the layered stage, the sky caption, the
+   legend) is added here as a separate component on top of it.
+
+   Everything is sized in relative units (rem / % / clamp / container units) so
+   the page reflows from desktop through iPad to phone portrait and stays
+   readable and unclipped at 200% browser zoom.
+---------------------------------------------------------------------------- */
+
+/* Body copy noticeably larger than the browser default, in rem so it tracks the
+   user's own font setting (WCAG 1.4.4). */
+body { font-size: 1.125rem; }
+
+/* Panel headings line up with the masthead title (it pads content by 1.25rem). */
+.panel__heading { font-size: 1.25rem; padding-left: 1.25rem; }
+.control-fieldset__legend { font-size: 1.1rem; }
+
+/* ---- Page layout ----
+   The original is a single 700 x 600 stage with its controls down the right-hand
+   edge, so the two-column arrangement below is also the closer match to it: the
+   stage on the left, the timeline and buttons beside it. Sizing the stage against
+   the viewport height (see .sim-stage) keeps the whole simulation on one screen,
+   with no vertical scrolling.
+
+   The diagram comes first in the DOM, so it is also first in reading order and
+   first in the stacked layout. */
+.sim-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: 0.5rem;
+  align-items: start;
+}
+.sim-panel { min-width: 0; }
+
+/* Match the foundation's own 56rem collapse: one column, diagram then controls.
+   Once stacked, the page is expected to scroll, so the stage stops being capped
+   against the viewport height and simply takes the column width. */
+@media (max-width: 56rem) {
+  .sim-main  { grid-template-columns: 1fr; }
+  .sim-stage { max-width: 100%; }
+}
+
+/* Verbatim stage subtitle, carried under the masthead title. */
+.sim-subtitle {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+  font-weight: normal;
+}
+
+/* ---- The stage ----
+   A black box holding three layers at the original Flash geometry:
+     1. the exported star field SVG, reused as-is;
+     2. the exported orbit ellipses SVG, reused as-is;
+     3. a transparent canvas carrying only the art the ActionScript drew at
+        runtime (sight line) plus the exported planet/Sun bitmaps.
+   Every layer is positioned as a percentage of the 700 x 600 stage, so the
+   whole scene scales together with no coordinate maths in the layout. */
+.sim-canvas-wrap { line-height: 0; padding: 0.5rem 1.25rem 0.75rem; }
+
+.sim-stage {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  /* Keep the stage inside the viewport so the page never scrolls vertically.
+     The subtrahend is the fixed chrome above and below it (masthead, heading,
+     caption, legend, padding); multiplying by 7/6 converts that height budget
+     into the width cap this 700 x 600 box may take. Capping the WIDTH lets
+     aspect-ratio derive the height, so the ratio is never broken.
+     dvh first-wins on mobile browsers with retracting toolbars; the vh line
+     above it is the fallback for engines without dvh. */
+  max-width: calc((100vh - 19rem) * 7 / 6);
+  max-width: calc((100dvh - 19rem) * 7 / 6);
+  /* 700 x 600 original stage. The canvas element's own width/height attributes
+     give the same intrinsic ratio, so this is belt-and-braces for engines that
+     lay the box out before the canvas is sized. */
+  aspect-ratio: 700 / 600;
+  background: #000000;
+  overflow: hidden;
+  /* Lets the direction labels size themselves against the stage rather than the
+     viewport, so they stay in proportion at every width. */
+  container-type: inline-size;
+}
+
+.sim-stage__layer {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+/* Star field: intrinsic 702.1 x 601.3, its own origin at (0.5, 0), placed at
+   stage (0, 0) in the original. */
+.sim-stage__starfield {
+  left: -0.0714%;
+  top: 0;
+  width: 100.3%;
+  height: 100.2167%;
+}
+
+/* Orbit ellipses: intrinsic 403 x 283, origin at (201.45, 141.5), placed at the
+   Sun, stage (349.95, 556). */
+.sim-stage__orbits {
+  left: 21.2143%;
+  top: 69.0833%;
+  width: 57.5714%;
+  height: 47.1667%;
+}
+
+.sim-stage__canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Nothing on the canvas is draggable, but keep the usual guards so a stray
+     touch or drag never selects page text or fires the iOS callout. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* EAST / WEST, at their original stage positions, as real HTML so they zoom
+   with the page instead of being baked into the scaled canvas. cqi keeps them
+   in proportion to the stage; the rem value is the fallback for engines without
+   container query units. */
+.sim-stage__dir {
+  position: absolute;
+  top: 28.8333%;
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 1.1rem;
+  font-size: clamp(0.75rem, 2.9cqi, 1.375rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.sim-stage__dir--east { left: 6.7143%; }
+.sim-stage__dir--west { left: 85.85%; }
+
+/* ---- Sky caption ----
+   The original painted this annotation over the middle of the star field. It is
+   placed directly beneath the sky instead, on the same black, so that long text
+   can never clip or overlap the diagram at large font sizes or 200% zoom. Its
+   height is reserved for two lines so the layout does not jump as it changes. */
+.sim-caption {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  min-height: 3.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: #000000;
+  color: #ffffff;              /* 21:1 on black */
+  font-size: 1rem;
+  font-weight: bold;
+  line-height: 1.35;
+  white-space: pre-line;       /* honours the original's embedded line break */
+}
+
+/* ---- Legend ----
+   Names every element that the original distinguished only by colour. */
+.sim-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.5rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.sim-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.sim-legend__swatch {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 0.35rem;
+  border-radius: 0.2rem;
+  /* A hairline keeps the bright swatches visible against a white panel. */
+  border: 1px solid var(--border-color, #767676);
+}
+.sim-legend__swatch--earth  { background: #00ff00; }
+.sim-legend__swatch--mars   { background: #00ccff; }
+.sim-legend__swatch--sight  { background: #ff00ff; }
+
+/* ---- Controls ---- */
+
+/* Label and value share the first row, flush to the left and right edges of the
+   track below them, so the three line up on the same column edges at every
+   width. The value has a fixed character width so the digits never shift. */
+.sim-slider-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}
+/* Placed explicitly rather than by auto-flow: the track spans both columns, so
+   auto-placement would push the value down past it into a third row. */
+.sim-slider-row .control-row__label { grid-area: 1 / 1; white-space: nowrap; }
+.sim-value  { grid-area: 1 / 2; }
+.sim-slider { grid-area: 2 / 1 / 3 / -1; }
+
+.sim-slider {
+  width: 100%;
+  min-width: 6rem;
+  min-height: 2.75rem;         /* comfortable touch target */
+  margin: 0;                   /* some engines add a default margin here, which
+                                  would break the shared left/right edges */
+  cursor: pointer;
+  accent-color: var(--button-background-color, #005a9c);
+  touch-action: pan-y;         /* horizontal drags belong to the slider */
+}
+
+.sim-value {
+  min-width: 4ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: bold;
+}
+
+/* Equal-purpose buttons get identical dimensions so the row reads as one unit
+   rather than a jumble of sizes. */
+.sim-buttons {
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+/* flex-basis 0 rather than auto, so the two share the row equally instead of
+   being sized by their differing label lengths (equal-purpose, equal size). */
+.sim-button {
+  flex: 1 1 0;
+  min-width: 7rem;
+  font-size: 1rem;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  color: var(--button-foreground-color, #ffffff);
+  background-color: var(--button-background-color, #005a9c);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+  border-radius: 4px;
+}
+.sim-button:hover {
+  filter: brightness(var(--button-hover-darken, 0.9));
+}
+
+.sim-help { margin-bottom: 0.75rem; max-width: 60ch; }
+
+/* ---- Phone portrait ----
+   The foundation's own 56rem rule is left untouched; this only tightens the
+   sim's own padding and lets the buttons fill the width so they stay above the
+   44px touch minimum without crowding. */
+@media (max-width: 30rem) {
+  .sim-canvas-wrap { padding: 0.5rem 0.75rem 0.75rem; }
+  .panel__heading  { padding-left: 0.75rem; }
+  .control-fieldset { padding: 0 0.75rem 0.5rem; }
+  .sim-caption { padding: 0.6rem 0.75rem; font-size: 0.95rem; }
+  .sim-button  { flex: 1 1 10rem; }
+}
+
+/* ---- Reduced motion ----
+   The animation is never automatic: it only runs after the user presses START,
+   and STOP halts it at any moment. The timeline slider walks the identical
+   sequence with no motion at all, so a reduced-motion user has a complete
+   static path through the demonstration. Nothing here flashes. */

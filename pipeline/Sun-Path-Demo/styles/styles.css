@@ -1,0 +1,153 @@
+/* ==========================================================================
+   Paths of the Sun Demonstrator — sim-specific styles.
+   Layered ON TOP of the KL-UNL foundation (foundation/kl-unl.css). The
+   foundation files are never edited; everything sim-specific lives here.
+   Sizing is in rem/em so it tracks the browser font size and reflows at 200%.
+   ========================================================================== */
+
+/* Body copy noticeably larger than the browser default (>= 1.125rem floor). */
+body {
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+/* --- Layout: diagram (wide, left) + controls (narrow, right) -------------- */
+/* Own grid so the diagram sits left/wide like the original screenshot.
+   Collapses to a single stacked column at the foundation's 56rem breakpoint. */
+.sim-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 0.75rem;
+  align-items: stretch;          /* both panels share the same height */
+}
+
+.sim-diagram { min-width: 0; }
+
+@media (max-width: 56rem) {
+  .sim-layout {
+    grid-template-columns: 1fr;   /* phone / tablet portrait: single column */
+  }
+}
+
+/* --- Diagram panel -------------------------------------------------------- */
+.sim-canvas-box {
+  background: #000;               /* matches the original black stage */
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+#sky-canvas {
+  display: block;
+  width: 100%;
+  height: auto;                   /* CSS scales; backing store keeps stage coords */
+  max-width: 100%;
+  touch-action: none;             /* let pointer-drag rotate without scrolling */
+  cursor: grab;
+}
+#sky-canvas:active { cursor: grabbing; }
+
+/* --- Controls panel ------------------------------------------------------- */
+.sim-controls { padding-bottom: 1rem; }
+
+.sim-rule {
+  border: 0;
+  border-top: 1px solid var(--border-color, #767676);
+  margin: 0.85rem 1rem;
+}
+
+/* Latitude slider row: label + value on one line, slider full width below,
+   min/max endpoints under the ends of the track. */
+.sim-slider-row {
+  grid-template-columns: 1fr auto;
+  row-gap: 0.15rem;
+  margin-top: 0.25rem;
+}
+.sim-slider-row .control-row__label { font-weight: bold; }
+
+.sim-readout {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;   /* digits line up as the value changes */
+  font-weight: bold;
+}
+
+/* The readout is an editable text field (type the latitude directly). */
+input.sim-readout {
+  width: 6.75rem;
+  font-size: 1.4rem;
+  line-height: 1.2;
+  text-align: right;
+  min-height: 2.4rem;
+  padding: 0.25rem 0.5rem;
+  color: var(--foreground-color, #1a1a1a);
+  background: var(--background-color, #ffffff);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+}
+
+.sim-slider {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 2.75rem;            /* >= 44px touch target */
+}
+
+.sim-slider-min,
+.sim-slider-max {
+  grid-row: 3;
+  font-size: 0.9rem;
+  color: var(--foreground-color, #1a1a1a);
+}
+.sim-slider-min { grid-column: 1; justify-self: start; }
+.sim-slider-max { grid-column: 2; justify-self: end; }
+
+.sim-animate-row {
+  margin-top: 0.75rem;
+  min-height: 2.75rem;           /* comfortable touch target */
+}
+.sim-animate-row label { font-weight: bold; }
+
+/* --- Date readout --------------------------------------------------------- */
+.sim-date {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin: 0.5rem 1rem;
+}
+
+/* --- Legend --------------------------------------------------------------- */
+.sim-legend {
+  list-style: none;
+  margin: 0.5rem 1rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.sim-legend li {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  align-items: center;
+  gap: 0.6rem;
+}
+/* Swatches are small filled bars in the EXACT diagram line colours, with a thin
+   outline so the light ones stay visible on the white panel. The text label
+   always names the colour AND the feature, so colour is never the only signal. */
+.sim-swatch {
+  display: inline-block;
+  width: 2.25rem;
+  height: 0.34rem;
+  border-radius: 1px;
+  outline: 1px solid rgba(0, 0, 0, 0.22);
+  outline-offset: 0;
+}
+.sim-swatch[data-key="equator"]  { background: #505050; }  /* 5263440  "black" */
+.sim-swatch[data-key="ecliptic"] { background: #ff5050; }  /* 16732240 red     */
+.sim-swatch[data-key="sunpath"]  { background: #ffffc0; }  /* 16777152 yellow  */
+.sim-swatch[data-key="meridian"] { background: #c0c0c0; }  /* 12632256 gray — same as the diagram line */
+
+.sim-legend-text { font-size: 1.05rem; }
+.sim-legend-color { font-weight: bold; }
+
+/* --- Narrow / portrait tuning -------------------------------------------- */
+@media (max-width: 56rem) {
+  .sim-controls { max-width: 32rem; }
+}

@@ -1,0 +1,274 @@
+/* =====================================================================
+   Blackbody Curves and Filters Explorer -- sim-specific styles only.
+   Layered on top of kl-unl.css; the foundation files are never edited.
+   ===================================================================== */
+
+/* Comfortable, zoomable base type (rem-based so it tracks browser setting) */
+.sim-layout {
+  font-size: 1.125rem;
+  line-height: 1.4;
+  color: var(--foreground-color, #1a1a1a);
+}
+
+/* Plot (wide) on the left, controls (narrow) on the right -- mirrors the
+   original Flash layout. Collapses to one column at the foundation's 56rem. */
+.sim-layout.app-layout {
+  grid-template-columns: minmax(0, 1fr) 26rem;
+  gap: 0.75rem;
+  align-items: stretch;      /* left plot box matches the right column height */
+}
+@media (max-width: 56rem) {
+  .sim-layout.app-layout { grid-template-columns: 1fr; align-items: start; }
+}
+
+.controls-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.panel { border: 1px solid var(--border-color, #767676); }
+
+/* ---------------- Plot panel ---------------- */
+.plot-panel { display: flex; flex-direction: column; }
+.plot-panel .panel__canvas-wrap {
+  padding: 0.5rem;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* center the plot vertically when the box is taller */
+}
+
+.plot-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 612 / 500;      /* internal stage size (keeps curve math intact) */
+}
+#plot-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.plot-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+/* MathJax-typeset axis tick labels (positioned in % of the stage) */
+.tick {
+  position: absolute;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--foreground-color, #1a1a1a);
+}
+.tick--y { transform: translate(-100%, -50%); }
+.tick--x { transform: translate(-50%, 0); font-size: 0.72rem; }
+/* common ×10^n multiplier centered above the top of the y-axis */
+.tick--yexp { transform: translate(-50%, -50%); font-size: 0.8rem; font-weight: bold; }
+.tick--peak {
+  transform: translate(-50%, -100%);
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0 0.15rem;
+  border-radius: 2px;
+}
+
+/* Axis titles */
+.axis-title {
+  position: absolute;
+  font-weight: bold;
+  font-size: 0.85rem;
+  color: var(--foreground-color, #1a1a1a);
+}
+.axis-title--y {
+  left: 1.1rem;                /* sits just left of the y-labels, matching the x-title gap */
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left center;
+  white-space: nowrap;
+}
+.axis-title--x {
+  left: 55%;
+  bottom: 0.15rem;
+  transform: translateX(-50%);
+}
+
+/* ---------------- Tabs ---------------- */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem 0.5rem 0;
+  border-bottom: 1px solid var(--border-color, #767676);
+}
+.tab {
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.4rem 0.9rem;
+  min-height: 2.5rem;
+  border: 1px solid var(--border-color, #767676);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: #ececec;
+  color: var(--foreground-color, #1a1a1a);
+  cursor: pointer;
+}
+.tab[aria-selected="true"] {
+  background: var(--background-color, #fff);
+  font-weight: bold;
+  position: relative;
+  top: 1px;
+}
+.tabpanel { padding: 1rem; }
+.tabpanel[hidden] { display: none; }
+
+/* ---------------- Temperature / hscale rows ---------------- */
+.temp-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.temp-row__label { font-weight: normal; }
+.temp-row__input {
+  flex: 0 0 auto;
+  width: 4.5rem;              /* sized to ~5 digits; the unit sits clearly outside */
+  text-align: center;
+  font-size: 1rem;
+}
+.temp-row__units { flex: 0 0 auto; font-weight: normal; }
+.hscale-out { font-weight: bold; }
+
+/* Accessible range slider (native; keyboard works out of the box) */
+.sim-slider {
+  width: 100%;
+  min-height: 2.75rem;          /* comfortable touch target */
+  margin: 0;
+  accent-color: var(--button-background-color, #005a9c);
+  cursor: pointer;
+}
+
+/* ---------------- Checkboxes / radios ---------------- */
+.control-fieldset .control-choice { margin: 0.35rem 0; min-height: 2rem; }
+.control-choice label { font-size: 1.0625rem; }
+.scale-modes { padding-top: 0.5rem; }
+
+/* ---------------- Curves list (radiogroup as table) ---------------- */
+.curves-list { margin: 0.5rem 0 0.75rem; }
+.curves-list__head,
+.curve-row {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr 1fr 1.4fr;
+  align-items: center;
+  gap: 0.35rem;
+}
+.curves-list__head {
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-align: left;
+  color: #444;
+  padding: 0 0.3rem 0.25rem;
+  border-bottom: 1px solid var(--border-color, #767676);
+  line-height: 1.15;
+}
+.curves-list__head .cl-swatch { text-align: left; }
+.curves-list__rows {
+  min-height: 6.5rem;
+  border: 1px solid var(--border-color, #767676);
+  border-top: none;
+  padding: 0.25rem;
+}
+.curve-row {
+  font-size: 0.95rem;
+  padding: 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.curve-row:hover { background: #f0f0f0; }
+.curve-row--selected { background: #dbeaf7; outline: 2px solid var(--button-background-color, #005a9c); }
+.curve-row .cl-temp,
+.curve-row .cl-peak { text-align: left; font-variant-numeric: tabular-nums; }
+.curve-row .cl-area { text-align: left; }
+.swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+/* keyboard focus on the (visually hidden) radio -> ring on its row */
+.curve-row:focus-within { outline: 2px solid var(--outline-color, #005fcc); outline-offset: 1px; }
+
+.curve-buttons { gap: 0.5rem; padding: 0 0.25rem; }
+.curve-buttons .button {
+  flex: 1;
+  font-size: 1rem;
+  background: #ececec;
+  border: 1px solid var(--border-color, #767676);
+  border-radius: 5px;
+  color: var(--foreground-color, #1a1a1a);
+}
+.curve-buttons .button:hover:not(:disabled) { background: #dcdcdc; }
+.curve-buttons .button:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------------- Filters tab ---------------- */
+.filters-caption { margin: 0.25rem 0 0.75rem; font-size: 1rem; }
+.mag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 1rem;
+  margin-bottom: 0.5rem;
+}
+.mag-cell { display: flex; align-items: baseline; gap: 0.4rem; }
+.mag-label { font-weight: bold; width: 1.4rem; }
+.mag-val { font-variant-numeric: tabular-nums; min-width: 3rem; }
+.filters-note { font-size: 0.9rem; color: #444; margin: 0.25rem 0 0.9rem; }
+
+.color-index {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.ci-label { font-weight: bold; }
+.ci-select {
+  min-height: 2.75rem;
+  padding: 0.2rem 0.4rem;
+  font: inherit;
+  font-size: 1rem;
+  border: 1px solid var(--border-color, #767676);
+  background: var(--background-color, #fff);
+  color: var(--foreground-color, #1a1a1a);
+}
+
+.bars-caption { font-size: 0.95rem; margin: 0.25rem 0 0.5rem; }
+.bar-graph {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 0.75rem;
+  height: 150px;
+  padding: 0 0.5rem;
+  border-bottom: 2px solid var(--foreground-color, #1a1a1a);
+}
+.bar-col { display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.bar {
+  width: 2.2rem;
+  min-height: 1px;
+  background: var(--button-background-color, #005a9c);  /* set exactly from filter color in JS */
+}
+.bar-lab { font-weight: bold; margin-top: 0.25rem; }
+
+/* ---------------- Phone portrait ---------------- */
+@media (max-width: 40rem) {
+  .sim-layout { font-size: 1.0625rem; }
+  .tabpanel { padding: 0.75rem; }
+  .curves-list__head, .curve-row { grid-template-columns: 1.6rem 1fr 1fr 1.4fr; }
+}
+
+/* Respect reduced motion (this sim has no continuous animation; nothing to
+   disable, but suppress incidental transitions for safety). */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

@@ -1,0 +1,11 @@
+Flux
+--- RECORDSEPARATOR ---
+  (
+--- RECORDSEPARATOR ---
+J/s·m
+--- RECORDSEPARATOR ---
+2
+--- RECORDSEPARATOR ---
+·∆λ·sr
+--- RECORDSEPARATOR ---
+)

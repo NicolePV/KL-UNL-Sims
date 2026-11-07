@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paths of the Sun Demonstrator</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css">
+  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
+  <link rel="stylesheet" href="styles/styles.css">
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <!-- aria-live status region: announces state changes (on commit) with units/context -->
+  <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  <main class="app-shell">
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It renders the <h1>, reads text from foundation/contents.json by sim-id,
+         and dispatches a "sim-reset" event we listen for. -->
+    <kl-unl-masthead sim-id="sunpaths" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout sim-layout">
+
+      <!-- DIAGRAM PANEL (left, wide) : the horizon-diagram dome -->
+      <section class="panel panel--size sim-diagram" aria-labelledby="diagram-heading">
+        <h2 id="diagram-heading" class="panel__heading">Horizon Diagram</h2>
+        <div class="panel__canvas-wrap">
+          <div class="sim-canvas-box">
+            <!-- Focusable diagram: pointer-drag OR arrow keys rotate the view.
+                 The canvas is the visual layer only; the text equivalent below
+                 (and the live region) carry the accessible description. -->
+            <canvas id="sky-canvas" width="360" height="268"
+                    role="application"
+                    tabindex="0"
+                    aria-describedby="canvas-desc canvas-help"></canvas>
+          </div>
+          <p id="canvas-desc" class="sr-only" aria-live="polite"></p>
+          <p id="canvas-help" class="sr-only">
+            Interactive horizon diagram. Drag the sphere, or use the arrow keys,
+            to rotate the view. Drag the sun to move it through the year, or press
+            Enter to switch the arrow keys to moving the sun (Page Up and Page Down
+            jump by a week; Home and End jump to the ends of the year). Press Enter
+            again to return to rotating the view. The latitude slider and the
+            animate control are in the Settings panel.
+          </p>
+        </div>
+      </section>
+
+      <!-- CONTROLS PANEL (right, narrow) -->
+      <section class="panel sim-controls" aria-labelledby="settings-heading">
+        <h2 id="settings-heading" class="panel__heading">Settings</h2>
+
+        <!-- Date readout — kept above the latitude control so it stays visible
+             with the diagram while animating (important in the mobile single
+             column, where controls stack below the diagram). -->
+        <p class="sim-date" id="date-string" aria-live="off">March 21</p>
+        <p class="sr-only" id="date-sr"></p>
+
+        <hr class="sim-rule">
+
+        <fieldset class="control-fieldset">
+          <legend class="control-fieldset__legend sr-only">Latitude and animation</legend>
+
+          <!-- Latitude slider: native range = full keyboard support for free -->
+          <div class="control-row sim-slider-row">
+            <label class="control-row__label" for="latitude">latitude</label>
+            <input class="sim-readout" id="latitude-value" type="text"
+                   inputmode="text" value="41.0&deg; N" autocomplete="off" spellcheck="false"
+                   aria-label="Latitude value in degrees. Type a number; add N for north or S for south (or use a minus sign for south). Press Enter to apply.">
+            <input class="control-row__slider sim-slider" type="range"
+                   id="latitude" name="latitude"
+                   min="-90" max="90" step="0.1" value="41"
+                   aria-valuetext="41.0 degrees north">
+            <span class="sim-slider-min" aria-hidden="true">90&deg; S</span>
+            <span class="sim-slider-max" aria-hidden="true">90&deg; N</span>
+          </div>
+
+          <!-- Animate checkbox -->
+          <div class="control-choice sim-animate-row">
+            <input type="checkbox" id="animate" name="animate">
+            <label for="animate">animate</label>
+          </div>
+        </fieldset>
+
+        <hr class="sim-rule">
+
+        <!-- Legend: colour swatch + text label (never colour alone) -->
+        <ul class="sim-legend" aria-label="Diagram legend">
+          <li><span class="sim-swatch" data-key="equator" aria-hidden="true"></span>
+            <span class="sim-legend-text"><span class="sim-legend-color">black</span> &ndash; celestial equator</span></li>
+          <li><span class="sim-swatch" data-key="ecliptic" aria-hidden="true"></span>
+            <span class="sim-legend-text"><span class="sim-legend-color">red</span> &ndash; ecliptic</span></li>
+          <li><span class="sim-swatch" data-key="sunpath" aria-hidden="true"></span>
+            <span class="sim-legend-text"><span class="sim-legend-color">yellow</span> &ndash; sun's path on the given day</span></li>
+          <li><span class="sim-swatch" data-key="meridian" aria-hidden="true"></span>
+            <span class="sim-legend-text"><span class="sim-legend-color">gray</span> &ndash; north-south meridian</span></li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

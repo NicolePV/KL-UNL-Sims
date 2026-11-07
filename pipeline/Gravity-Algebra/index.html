@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gravity Algebra</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") working on every symbol, and
+       SVG glyphs inherit currentColor so the red coefficients tint correctly. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <!-- aria-live status region: announces coefficient/result changes on commit -->
+  <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  <main class="app-shell">
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It renders the <h1>, reads text from foundation/contents.json by sim-id,
+         and dispatches a bubbling "sim-reset" event we listen for. -->
+    <kl-unl-masthead sim-id="gravalgebra" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout sim-layout">
+
+      <!-- ============ EQUATION PANEL (single, full width) ============ -->
+      <section class="panel sim-panel" aria-labelledby="eq-heading">
+        <h2 id="eq-heading" class="panel__heading">Newton's Law of Universal Gravitation</h2>
+
+        <div class="sim-body">
+
+          <!-- Reference equation: F = G M1 M2 / R^2  (static, MathJax) -->
+          <div class="eq eq--reference">
+            <span class="mj" id="eq-reference"
+                  aria-label="The force of gravity F equals G times mass one times mass two, divided by R squared.">
+              \( F \;=\; \dfrac{G\,M_1\,M_2}{R^{2}} \)
+            </span>
+          </div>
+
+          <!-- Modified equation: F' = G (c1 M1)(c2 M2) / (cr R)^2 = result F
+               Static glyphs are MathJax; the three red coefficients are custom
+               accessible dropdown controls (built in simulation.js + styles.css). -->
+          <div class="eq eq--modified">
+            <span class="mj" aria-hidden="true">\( F' \)</span>
+            <span class="mj eq__rel" aria-hidden="true">\( = \)</span>
+
+            <span class="frac" role="group" aria-label="modified force expression">
+              <span class="frac__num">
+                <span class="mj" aria-hidden="true">\( G \)</span>
+                <span class="coef" data-coef="m1"></span>
+                <span class="mj" aria-hidden="true">\( M_1 \)</span>
+                <span class="coef" data-coef="m2"></span>
+                <span class="mj" aria-hidden="true">\( M_2 \)</span>
+              </span>
+              <span class="frac__bar" aria-hidden="true"></span>
+              <span class="frac__den">
+                <span class="mj" aria-hidden="true">\( \big( \)</span>
+                <span class="coef" data-coef="r"></span>
+                <span class="mj" aria-hidden="true">\( R \big)^{2} \)</span>
+              </span>
+            </span>
+
+            <span class="mj eq__rel" aria-hidden="true">\( = \)</span>
+            <span class="mj eq__result" id="eq-result" aria-hidden="true"></span>
+          </div>
+
+          <!-- Screen-reader equivalent of the modified equation and its result.
+               Kept in sync from the single render() so audio-only users get the
+               same "what it shows" a sighted user sees. -->
+          <p class="sr-only" id="eq-modified-sr"></p>
+
+          <p class="sim-hint" id="sim-hint">click the coefficients to change their values</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blackbody Curves and Filters Explorer</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") working on every symbol. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <!-- Filter transmittance tables (verbatim from Filter Data.as) -->
+  <script defer src="assets/filter-data.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <!-- aria-live status region: announces state changes (on commit) with units/context -->
+  <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  <main class="app-shell">
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It renders the <h1>, reads text from foundation/contents.json by sim-id,
+         and dispatches a "sim-reset" event simulation.js listens for. -->
+    <kl-unl-masthead sim-id="bbexplorer" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout sim-layout">
+
+      <!-- ================= SPECTRUM PLOT PANEL (wide, left) ================= -->
+      <section class="panel plot-panel" aria-labelledby="plot-heading">
+        <h2 id="plot-heading" class="panel__heading sr-only">Blackbody spectrum plot</h2>
+        <div class="panel__canvas-wrap">
+          <div class="plot-stage" id="plot-stage">
+            <!-- Canvas is the visual layer only (curves, spectrum band, axes lines).
+                 It is not the accessibility layer; the description below plus the
+                 curve readouts convey the same information to assistive tech. -->
+            <canvas id="plot-canvas" width="612" height="478" aria-hidden="true"></canvas>
+            <!-- Axis tick labels are injected here as positioned, MathJax-typeset
+                 spans (visual only; values are also in the description + readouts). -->
+            <div id="plot-overlay" class="plot-overlay" aria-hidden="true"></div>
+            <!-- Static axis titles (MathJax-typeset). -->
+            <div class="axis-title axis-title--y" aria-hidden="true">Flux <span class="mj">\((\mathrm{J/s{\cdot}m^{2}{\cdot}\Delta\lambda{\cdot}sr})\)</span></div>
+            <div class="axis-title axis-title--x" aria-hidden="true">Wavelength</div>
+          </div>
+          <!-- Continuously-updated text description of what the plot currently shows. -->
+          <p id="plot-desc" class="sr-only"></p>
+        </div>
+      </section>
+
+      <!-- ================= CONTROLS COLUMN (narrow, right) ================= -->
+      <div class="controls-col">
+
+        <!-- ---------- Curves / Filters tabbed panel ---------- -->
+        <section class="panel tab-panel" aria-labelledby="main-tabs-heading">
+          <h2 id="main-tabs-heading" class="panel__heading sr-only">Curves and filters</h2>
+
+          <div class="tabs" role="tablist" aria-label="Curves and filters">
+            <button class="tab" id="tab-curves" role="tab" aria-selected="true"
+                    aria-controls="panel-curves" tabindex="0">curves</button>
+            <button class="tab" id="tab-filters" role="tab" aria-selected="false"
+                    aria-controls="panel-filters" tabindex="0">filters</button>
+          </div>
+
+          <!-- ===== CURVES TAB ===== -->
+          <div id="panel-curves" class="tabpanel" role="tabpanel"
+               aria-labelledby="tab-curves">
+
+            <div class="control-fieldset">
+              <div class="temp-row">
+                <label for="temp-input" class="temp-row__label">temperature:</label>
+                <input type="text" inputmode="numeric" id="temp-input"
+                       class="control-row__input temp-row__input"
+                       aria-describedby="temp-units" value="6000">
+                <span id="temp-units" class="temp-row__units">K</span>
+              </div>
+              <!-- Temperature slider: native range (full keyboard support). Its
+                   position is logarithmic; value snaps to 3 significant figures,
+                   exactly as the Flash sliderV5 component did. -->
+              <input type="range" id="temp-slider" class="sim-slider"
+                     min="0" max="1000" step="1" value="0"
+                     aria-label="Temperature"
+                     aria-valuetext="Temperature 6000 kelvin">
+            </div>
+
+            <div class="control-fieldset">
+              <div class="control-choice">
+                <input type="checkbox" id="chk-area">
+                <label for="chk-area">highlight area under curve</label>
+              </div>
+              <div class="control-choice">
+                <input type="checkbox" id="chk-peak">
+                <label for="chk-peak">indicate peak wavelength</label>
+              </div>
+            </div>
+
+            <!-- Curves list. A single-select radiogroup styled as a table: each row
+                 is one blackbody curve; selecting it makes it the active curve. -->
+            <div class="curves-list">
+              <div class="curves-list__head" aria-hidden="true">
+                <span class="cl-swatch"></span>
+                <span class="cl-temp">temperature</span>
+                <span class="cl-peak">peak<br>wavelength</span>
+                <span class="cl-area">area under curve</span>
+              </div>
+              <div id="curves-rows" class="curves-list__rows" role="radiogroup"
+                   aria-label="Blackbody curves"></div>
+            </div>
+
+            <div class="button-row curve-buttons">
+              <button type="button" id="btn-add" class="button">add curve</button>
+              <button type="button" id="btn-remove" class="button" disabled>remove curve</button>
+            </div>
+          </div>
+
+          <!-- ===== FILTERS TAB ===== -->
+          <div id="panel-filters" class="tabpanel" role="tabpanel"
+               aria-labelledby="tab-filters" hidden>
+
+            <p class="filters-caption">
+              theoretical magnitudes for 1 <span class="mj">\(R_\odot\)</span> star at 10 pc:
+            </p>
+
+            <div class="mag-grid">
+              <div class="mag-cell"><span class="mag-label">U:</span>
+                <output id="mag-U" class="mag-val">0.00</output></div>
+              <div class="mag-cell"><span class="mag-label">B:</span>
+                <output id="mag-B" class="mag-val">0.00</output></div>
+              <div class="mag-cell"><span class="mag-label">V:</span>
+                <output id="mag-V" class="mag-val">0.00</output></div>
+              <div class="mag-cell"><span class="mag-label">R:</span>
+                <output id="mag-R" class="mag-val">0.00</output></div>
+            </div>
+
+            <p class="filters-note">(note: brighter stars have smaller magnitudes)</p>
+
+            <div class="color-index">
+              <span class="ci-label">color index:</span>
+              <label class="sr-only" for="ci-minuend">color index first filter</label>
+              <select id="ci-minuend" class="ci-select">
+                <option value="U">U</option><option value="B">B</option>
+                <option value="V">V</option><option value="R">R</option>
+              </select>
+              <span class="mj ci-op">\(-\)</span>
+              <label class="sr-only" for="ci-subtrahend">color index second filter</label>
+              <select id="ci-subtrahend" class="ci-select">
+                <option value="U">U</option><option value="B">B</option>
+                <option value="V">V</option><option value="R">R</option>
+              </select>
+              <span class="mj ci-eq" id="ci-result">\(=\ 0.00\)</span>
+            </div>
+
+            <p class="bars-caption">relative strengths of the filters at the given temperature:</p>
+            <div class="bar-graph" id="bar-graph" aria-hidden="true">
+              <div class="bar-col"><div class="bar" id="bar-U"></div><span class="bar-lab">U</span></div>
+              <div class="bar-col"><div class="bar" id="bar-B"></div><span class="bar-lab">B</span></div>
+              <div class="bar-col"><div class="bar" id="bar-V"></div><span class="bar-lab">V</span></div>
+              <div class="bar-col"><div class="bar" id="bar-R"></div><span class="bar-lab">R</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------- Vertical / Horizontal scale panel ---------- -->
+        <section class="panel tab-panel" aria-labelledby="scale-tabs-heading">
+          <h2 id="scale-tabs-heading" class="panel__heading sr-only">Plot scaling</h2>
+
+          <div class="tabs" role="tablist" aria-label="Plot scaling">
+            <button class="tab" id="tab-vscale" role="tab" aria-selected="true"
+                    aria-controls="panel-vscale" tabindex="0">vertical scale</button>
+            <button class="tab" id="tab-hscale" role="tab" aria-selected="false"
+                    aria-controls="panel-hscale" tabindex="0">horizontal scale</button>
+          </div>
+
+          <!-- ===== VERTICAL SCALE TAB ===== -->
+          <div id="panel-vscale" class="tabpanel" role="tabpanel"
+               aria-labelledby="tab-vscale">
+            <!-- role="radiogroup" keeps the group semantics; each radio has a
+                 UNIQUE name so the browser doesn't apply radio "roving" (which
+                 skips unchecked radios during Tab). Single-selection is enforced
+                 in JS so every option is an individual Tab stop. -->
+            <fieldset class="control-fieldset scale-modes" role="radiogroup"
+                      aria-label="Vertical scaling mode">
+              <legend class="sr-only">Vertical scaling mode</legend>
+              <div class="control-choice">
+                <input type="radio" name="scaleMode-locked" class="scale-mode" id="sm-locked" value="locked">
+                <label for="sm-locked">lock scale</label>
+              </div>
+              <div class="control-choice">
+                <input type="radio" name="scaleMode-all" class="scale-mode" id="sm-all" value="all" checked>
+                <label for="sm-all">autoscale to all curves</label>
+              </div>
+              <div class="control-choice">
+                <input type="radio" name="scaleMode-selected" class="scale-mode" id="sm-selected" value="selected">
+                <label for="sm-selected">autoscale to selected curve</label>
+              </div>
+            </fieldset>
+          </div>
+
+          <!-- ===== HORIZONTAL SCALE TAB ===== -->
+          <div id="panel-hscale" class="tabpanel" role="tabpanel"
+               aria-labelledby="tab-hscale" hidden>
+            <div class="control-fieldset">
+              <div class="temp-row">
+                <label for="hscale-slider" class="temp-row__label">rightmost limit:</label>
+                <output id="hscale-out" class="hscale-out">1 µm</output>
+              </div>
+              <input type="range" id="hscale-slider" class="sim-slider"
+                     min="1000" max="5000" step="10" value="1000"
+                     aria-label="Rightmost wavelength limit"
+                     aria-valuetext="Rightmost limit 1000 nanometers, 1 micrometer">
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /.controls-col -->
+    </div><!-- /.app-layout -->
+  </main>
+</body>
+</html>

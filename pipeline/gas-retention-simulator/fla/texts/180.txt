@@ -1,0 +1,3 @@
+Maxwell-Boltzmann 
+--- RECORDSEPARATOR ---
+Distriubtion Plot Component

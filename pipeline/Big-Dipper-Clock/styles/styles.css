@@ -1,0 +1,314 @@
+/* =============================================================================
+   Big Dipper Clock -- sim-specific styles.
+   Layered ON TOP of foundation/kl-unl.css. The foundation files are never
+   edited; everything custom (the day-of-year strip slider, canvas sizing,
+   responsive tweaks) lives here.
+============================================================================= */
+
+/* Comfortable, zoomable base type (>=1.125rem floor for body copy). */
+body {
+  font-size: 1.05rem;
+}
+
+.app-shell {
+  padding: 0.5rem;
+}
+
+/* Two-column layout: sky on the left, controls on the right. Falls back to a
+   single column via the foundation's own 56rem breakpoint, reinforced below. */
+.app-layout {
+  grid-template-columns: minmax(18rem, 26rem) 1fr;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.panel {
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 4px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.panel__heading {
+  font-size: 1.15rem;
+  border-bottom: 1px solid #d9d9d9;
+}
+
+/* ---------------- Sky panel ---------------- */
+.sky-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem;
+  overflow: hidden;
+}
+
+.sky-stage {
+  position: relative;
+}
+
+#sky-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  border-radius: 2px;
+}
+
+.sky-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0.4rem 0.3rem 0.15rem;
+}
+
+/* "N" overlaid on the green ground at the bottom-center of the sky (the middle
+   of the horizon), like the original: white, bold, centered. */
+.sky-stage__dir {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.sky-controls__toggle {
+  min-height: 2.75rem;
+}
+
+.sky-controls__toggle label {
+  font-size: 1rem;
+}
+
+/* ---------------- Controls card ---------------- */
+.controls-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.controls-card__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.clock-block {
+  flex: 0 0 auto;
+}
+
+.clock-stage {
+  width: clamp(13rem, 22vw, 19rem);
+}
+
+#clock-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  touch-action: none;            /* dragging hands must not scroll the page */
+  cursor: pointer;
+}
+
+.settings-block {
+  flex: 1 1 12rem;
+  min-width: 11rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-top: 0.5rem;
+}
+
+.control-fieldset {
+  padding: 0;
+}
+
+/* time row: HH : MM  +  optional DST note */
+.time-row,
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.time-input-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Equal-purpose fields share consistent sizing */
+.field--time {
+  width: 2.9rem;
+  text-align: center;
+}
+
+.time-colon {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.field--day {
+  width: 2.9rem;
+  text-align: center;
+}
+
+/* Match the foundation .control-row__input boxes exactly: same total height,
+   padding, font size, and sharp (non-rounded) corners. The input is content-box
+   (min-height 1.5rem + 0.5rem padding + 0.125rem border = 2.125rem total), so the
+   select is pinned to that total height via border-box. */
+.field--month {
+  box-sizing: border-box;
+  height: 2.125rem;
+  font-size: 0.95rem;
+  padding: 0.25rem 0.35rem;
+  color: var(--foreground-color, #1a1a1a);
+  background: var(--background-color, #ffffff);
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 0;
+}
+
+.dst-note {
+  font-style: italic;
+  color: var(--foreground-color, #1a1a1a);
+  font-size: 0.95rem;
+  max-width: 9rem;
+  line-height: 1.25;
+}
+
+.button-block {
+  display: flex;
+}
+
+/* ---------------- Day-of-year strip slider ---------------- */
+.doy-slider-wrap {
+  padding: 0.25rem 1rem 1rem;
+  margin-top: auto;
+}
+
+.doy-slider {
+  position: relative;
+  height: 2.4rem;
+  margin-top: 1.4rem;
+  background: #ffffff;
+  border: 1px solid #000000;
+  border-radius: 2px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.doy-slider:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--outline-color, #005fcc);
+  outline-offset: 0.2rem;
+}
+
+.doy-slider__months {
+  position: absolute;
+  inset: 0;
+}
+
+.doy-slider__month {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #000000;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.doy-slider__divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #000000;
+  pointer-events: none;
+}
+
+/* Draggable cursor: a downward triangle above the strip joined to a vertical
+   line that runs down through the strip. The whole handle is grabbable. */
+.doy-slider__cursor {
+  position: absolute;
+  top: -1.1rem;
+  left: 0;
+  width: 1.6rem;            /* clickable hit area around the handle */
+  height: 3.6rem;           /* triangle + line through the strip */
+  transform: translateX(-50%);
+  pointer-events: auto;     /* the handle itself is clickable/draggable */
+  cursor: grab;
+  touch-action: none;
+  z-index: 3;
+}
+.doy-slider__cursor:active {
+  cursor: grabbing;
+}
+.doy-slider__cursor::before {
+  /* the downward-pointing triangle */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 0.6rem solid transparent;
+  border-right: 0.6rem solid transparent;
+  border-top: 0.9rem solid #222;
+}
+.doy-slider__cursor::after {
+  /* the vertical line, joined to the triangle, running through the strip */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.8rem;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 2.7rem;
+  background: #222;
+}
+
+/* ---------------- Responsive: tablet / phone portrait ---------------- */
+@media (max-width: 56rem) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+  .controls-card__body {
+    justify-content: center;
+  }
+  .clock-stage {
+    width: clamp(13rem, 60vw, 18rem);
+  }
+}
+
+@media (max-width: 30rem) {
+  .controls-card__body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .clock-block {
+    align-self: center;
+  }
+  .settings-block {
+    min-width: 0;
+  }
+  .dst-note {
+    max-width: none;
+  }
+}
+
+/* Respect reduced motion (no continuous animation exists, but be explicit). */
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+}

@@ -1,0 +1,7 @@
+log
+--- RECORDSEPARATOR ---
+10
+--- RECORDSEPARATOR ---
+ 
+--- RECORDSEPARATOR ---
+d 

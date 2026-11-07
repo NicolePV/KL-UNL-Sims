@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solar System Properties Explorer</title>
+  <link rel="icon" href="foundation/klunl_favicon_32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="foundation/klunl_favicon_180.png">
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#planet-types-heading">Skip to controls</a>
+
+  <div class="app-shell">
+
+    <!-- Title bar + Reset / Help / About all come from the shared masthead
+         component. The original Flash title bar had "reset" and "about" links;
+         the masthead supplies those (and fires "sim-reset" for Reset). -->
+    <kl-unl-masthead sim-id="solarsystemproperties" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="sim-main">
+
+      <!-- ================= Histogram panel =================
+           Mirrors the original Flash layout: the chart occupies the top of the
+           panel, with the property name centred above it as the chart title. -->
+      <section class="panel sim-panel sim-chart-panel" aria-labelledby="chart-heading">
+
+        <!-- The chart title is the panel heading. It is typeset by MathJax so
+             that units (notably g/cm^3) carry real math notation; the .sr-only
+             twin gives screen readers a clean, units-complete spoken form. -->
+        <h2 id="chart-heading" class="panel__heading sim-chart-title">
+          <span class="sr-only" id="chart-title-sr">Semi-major axis in astronomical units</span>
+          <span class="sim-chart-title__math" id="chart-title-math" aria-hidden="true"></span>
+        </h2>
+
+        <div class="panel__canvas-wrap sim-canvas-wrap">
+          <!-- Positioned wrapper: the canvas carries only the code-drawn
+               geometry (axis, tick marks, bars). Every piece of TEXT lives in
+               HTML on top of / below it, so it zooms, reflows and — for the
+               numeric axis labels — is typeset by MathJax. -->
+          <div class="sim-stage" id="sim-stage">
+            <div class="sim-plot" id="sim-plot">
+              <canvas id="chart-canvas" role="img"
+                      aria-label="Bar chart of solar system properties"
+                      aria-describedby="chart-desc"></canvas>
+              <!-- Axis value labels (MathJax). Populated and positioned in JS. -->
+              <div class="sim-tick-labels" id="tick-labels" aria-hidden="true"></div>
+            </div>
+            <!-- Planet names under the bars. Populated and positioned in JS. -->
+            <div class="sim-bar-labels" id="bar-labels" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <!-- Text equivalent for the chart (1.1.1). Not a tab stop. -->
+        <p id="chart-desc" class="sr-only"></p>
+
+        <!-- Full data equivalent: a real table screen-reader users can walk. -->
+        <div class="sr-only">
+          <table id="chart-table">
+            <caption id="chart-table-caption">Data shown in the histogram</caption>
+            <thead>
+              <tr>
+                <th scope="col">Planet</th>
+                <th scope="col">Type</th>
+                <th scope="col" id="chart-table-value">Value</th>
+              </tr>
+            </thead>
+            <tbody id="chart-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= Controls row =================
+           The foundation .app-layout puts the two control panels side by side
+           on desktop / iPad and collapses them to one column at its own 56rem
+           breakpoint, matching the original's two-group control strip. -->
+      <div class="app-layout sim-controls-row">
+
+        <div class="app-layout__left">
+          <section class="panel sim-panel" aria-labelledby="planet-types-heading">
+            <h2 id="planet-types-heading" class="panel__heading">Types of Planets</h2>
+            <fieldset class="control-fieldset sim-control-body">
+              <legend class="sr-only">Types of planets to show</legend>
+
+              <div class="control-choice sim-choice">
+                <input type="checkbox" id="show-terrestrial" checked>
+                <label for="show-terrestrial">
+                  <span class="sim-swatch sim-swatch--terrestrial" aria-hidden="true"></span>Terrestrial
+                </label>
+              </div>
+
+              <div class="control-choice sim-choice">
+                <input type="checkbox" id="show-jovian" checked>
+                <label for="show-jovian">
+                  <span class="sim-swatch sim-swatch--jovian" aria-hidden="true"></span>Jovian
+                </label>
+              </div>
+
+              <div class="control-choice sim-choice">
+                <input type="checkbox" id="show-pluto" checked>
+                <label for="show-pluto">
+                  <span class="sim-swatch sim-swatch--pluto" aria-hidden="true"></span>Pluto (not a planet)
+                </label>
+              </div>
+            </fieldset>
+          </section>
+        </div><!-- /app-layout__left -->
+
+        <div class="app-layout__right">
+          <section class="panel sim-panel" aria-labelledby="properties-heading">
+            <h2 id="properties-heading" class="panel__heading">Properties</h2>
+            <fieldset class="control-fieldset sim-control-body">
+              <legend class="sr-only">Property to plot</legend>
+              <!-- Two columns of three, in the same visual order as the
+                   original Flash panel (reading left to right, top to bottom). -->
+              <div class="control-grid sim-property-grid">
+
+                <div class="control-choice sim-choice">
+                  <input type="radio" name="property" id="prop-axis" value="axis" checked>
+                  <label for="prop-axis">Semi-Major Axis</label>
+                </div>
+
+                <div class="control-choice sim-choice">
+                  <input type="radio" name="property" id="prop-satellite" value="satellite">
+                  <label for="prop-satellite">Satellites</label>
+                </div>
+
+                <div class="control-choice sim-choice">
+                  <input type="radio" name="property" id="prop-orbital" value="orbital">
+                  <label for="prop-orbital">Orbital Period</label>
+                </div>
+
+                <div class="control-choice sim-choice">
+                  <input type="radio" name="property" id="prop-density" value="density">
+                  <label for="prop-density">Density</label>
+                </div>
+
+                <div class="control-choice sim-choice">
+                  <input type="radio" name="property" id="prop-mass" value="mass">
+                  <label for="prop-mass">Mass</label>
+                </div>
+
+                <div class="control-choice sim-choice">
+                  <input type="radio" name="property" id="prop-radius" value="radius">
+                  <label for="prop-radius">Radius</label>
+                </div>
+
+              </div>
+            </fieldset>
+          </section>
+        </div><!-- /app-layout__right -->
+
+      </div><!-- /app-layout -->
+
+    </main>
+  </div>
+
+  <!-- Announcements for state changes (committed changes only, not per tick). -->
+  <p id="sim-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+  <!-- Foundation equation helper (copied in unchanged) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Shared masthead custom element (copied in unchanged) -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- MathJax (vendored locally; SVG output is self-contained, no CDN). -->
+  <script>
+    window.MathJax = {
+      loader: { failed: function (err) { console.warn('[MathJax] optional component not vendored:', err.message); } },
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'local' },
+      options: { enableMenu: true, menuOptions: { settings: { assistiveMml: false } } }
+    };
+  </script>
+  <script src="assets/mathjax/tex-mml-svg.js"></script>
+
+  <!-- Sim logic -->
+  <script src="simulation.js"></script>
+</body>
+</html>

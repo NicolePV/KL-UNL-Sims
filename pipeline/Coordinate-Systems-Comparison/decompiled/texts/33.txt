@@ -1,0 +1,53 @@
+This simulator is designed to show how the rotation of the earth leads to the 
+--- RECORDSEPARATOR ---
+apparent rotation of the sky and associated diurnal phenomena. In the upper left 
+--- RECORDSEPARATOR ---
+panel the earth is shown at the center of the celestial sphere. The right panel 
+--- RECORDSEPARATOR ---
+shows the corresponding horizon diagram for an observer at the indicated position 
+--- RECORDSEPARATOR ---
+on the globe. As the earth rotates it seems to the observer that the sky is rotating, 
+--- RECORDSEPARATOR ---
+causing stars to rise and set.
+--- RECORDSEPARATOR ---
+Stars can be added to the sphere by clicking the 
+--- RECORDSEPARATOR ---
+add star randomly
+--- RECORDSEPARATOR ---
+ button. The 
+--- RECORDSEPARATOR ---
+other way to add a star is to hold down the shift key and click on either sphere.
+--- RECORDSEPARATOR ---
+Click on a star to select it. Selecting a star causes its coordinates in the celestial 
+--- RECORDSEPARATOR ---
+and horizon systems to be displayed (these can also be edited). Click the star 
+--- RECORDSEPARATOR ---
+again to deselect it.
+--- RECORDSEPARATOR ---
+To remove an individual star click on that star while holding down the delete key.
+--- RECORDSEPARATOR ---
+The observer's location can be set in the 
+--- RECORDSEPARATOR ---
+Observer's Location
+--- RECORDSEPARATOR ---
+ panel by editing 
+--- RECORDSEPARATOR ---
+the text fields, clicking a location on the map, or by using the arrow keys. 
+--- RECORDSEPARATOR ---
+Use the 
+--- RECORDSEPARATOR ---
+start animation
+--- RECORDSEPARATOR ---
+ button to put the simulation in motion. Depending on 
+--- RECORDSEPARATOR ---
+the selection in the drop-down list the animation will either run continuously or for 
+--- RECORDSEPARATOR ---
+a fixed period of time and then stop.
+--- RECORDSEPARATOR ---
+Use the star trails option in the 
+--- RECORDSEPARATOR ---
+Star Controls
+--- RECORDSEPARATOR ---
+ panel to show the star paths in the 
+--- RECORDSEPARATOR ---
+horizon diagram. The star trails will grow in length as the simulation is animated.

@@ -1,0 +1,33 @@
+This simulator models the motions of the sun in the sky using a horizon 
+--- RECORDSEPARATOR ---
+diagram, demonstrating daily and seasonal changes in the sun's position.
+--- RECORDSEPARATOR ---
+The upper left panel shows the horizon diagram visualization. This is a 
+--- RECORDSEPARATOR ---
+representation of the sky as if it were a large sphere centered on an 
+--- RECORDSEPARATOR ---
+observer (the stickfigure). The location and local time for this observer 
+--- RECORDSEPARATOR ---
+are set in the 
+--- RECORDSEPARATOR ---
+Time and Location Controls
+--- RECORDSEPARATOR ---
+ panel. 
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+General Settings
+--- RECORDSEPARATOR ---
+ panel allows one to show or hide various features 
+--- RECORDSEPARATOR ---
+of the horizon diagram, as well as controlling the behavior when dragging 
+--- RECORDSEPARATOR ---
+the sun disk on the horizon diagram.
+--- RECORDSEPARATOR ---
+When animating this simulator can run continuously (as if in fast forward) 
+--- RECORDSEPARATOR ---
+or it can step by day. Stepping by day keeps the time of day fixed as the 
+--- RECORDSEPARATOR ---
+day of year changes. For example, one can use this mode to see the path 
+--- RECORDSEPARATOR ---
+the noon time sun traces over the year.

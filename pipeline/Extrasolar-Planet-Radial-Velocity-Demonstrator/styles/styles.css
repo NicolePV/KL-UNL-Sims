@@ -1,0 +1,260 @@
+/* ==========================================================================
+   Radial Velocity Demonstrator - sim-specific styles ONLY.
+
+   Everything shared (palette custom properties, .app-shell, .app-layout,
+   .panel, .control-*, .button, .sr-only, focus ring, the 56rem collapse)
+   comes from foundation/kl-unl.css, which is copied in byte-for-byte and is
+   never edited. Anything below is either a sim component the foundation does
+   not provide, or a scoped adjustment required by the accessibility rules.
+   ========================================================================== */
+
+:root {
+  /* One spacing scale, reused everywhere, so panels and rows breathe equally. */
+  --sim-space-xs:   0.25rem;
+  --sim-space-sm:   0.5rem;
+  --sim-space-md:   0.75rem;
+  --sim-space-lg:   1rem;
+  --sim-space-xl:   1.25rem;
+
+  /* Shared width for every equal-purpose small value field. */
+  --sim-field-width: 5.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Stage beside controls.
+   The foundation .app-layout is a 25rem + 1fr grid meant for a narrow control
+   rail beside a wide plot; here the wide element is on the LEFT, so the sim
+   asks for its own tracks. The left column is sized to hold the 600 px stage
+   plus its panel padding, and the right column has a floor so the controls
+   never get crushed. Below the foundation's own 56rem breakpoint both collapse
+   to one column, stage first.
+
+   `min-width: 0` is re-declared because a stray `u` on line 101 of kl-unl.css
+   turns the next selector into `u .app-layout__right`, so the foundation's own
+   rule never applies. Fixing it there would mean editing a foundation file.
+   -------------------------------------------------------------------------- */
+.sim-split {
+  grid-template-columns: minmax(0, 40rem) minmax(18rem, 1fr);
+  gap:            var(--sim-space-sm);
+  align-items:    stretch;      /* panel top AND bottom edges line up */
+  padding-top:    0;
+}
+
+.sim-split > .app-layout__left,
+.sim-split > .app-layout__right {
+  min-width:      0;
+  display:        flex;
+  flex-direction: column;
+}
+
+.sim-split .sim-panel {
+  flex:           1 1 auto;
+  display:        flex;
+  flex-direction: column;
+}
+
+@media (max-width: 56rem) {
+  .sim-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Type size.
+   The foundation sets body to 0.9rem. WCAG-driven rule for this pipeline asks
+   for body copy at 1.125rem or larger, sized in rem so it tracks the browser
+   font setting, so the sim scopes a larger scale onto its own subtree rather
+   than editing the foundation.
+   -------------------------------------------------------------------------- */
+.sim-main {
+  font-size:      1.125rem;
+  line-height:    1.5;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sim-space-sm);
+  padding:        var(--sim-space-xs) 0 var(--sim-space-lg);
+}
+
+.sim-panel .panel__heading {
+  font-size:      1.25rem;
+  padding:        var(--sim-space-md) var(--sim-space-lg);
+  border-bottom:  1px solid var(--border-color, #767676);
+}
+
+.sim-panel .control-fieldset__legend {
+  font-size:      1.125rem;
+  padding-bottom: var(--sim-space-sm);
+}
+
+.sim-panel .panel__help,
+.sim-panel .sim-caption {
+  font-size:      1rem;
+  line-height:    1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Simulation stage.
+   The SVG keeps the original Flash stage coordinate system (600 x 450 in the
+   viewBox); CSS only scales the element, so no ported geometry ever depends on
+   the on-screen size.
+   -------------------------------------------------------------------------- */
+.sim-canvas-wrap {
+  padding:        var(--sim-space-lg) var(--sim-space-xl) var(--sim-space-xl);
+}
+
+.sim-stage {
+  display:        block;
+  width:          100%;
+  height:         auto;
+  max-width:      37.5rem;   /* 600 px at the default root size */
+  margin:         0 auto;
+  aspect-ratio:   600 / 450;
+  background:     #000000;   /* matches SetBackgroundColorTag while the art loads */
+}
+
+/* Lettering baked into the original stage, kept as real SVG text so it stays
+   vector-sharp and scales with the drawing instead of being rasterised.
+   Both colours are lightened from the Flash originals for contrast; see
+   ACCESSIBILITY.md. */
+.sim-plate-text {
+  font-family:    Arial, Helvetica, "Liberation Sans", "Nimbus Sans", sans-serif;
+  font-size:      23.72px;   /* 700 twips x 0.6777191 */
+  fill:           #ffffff;   /* was #d36488 (2.5:1 on the plate) */
+}
+
+.sim-note-text {
+  font-family:    Verdana, Geneva, "DejaVu Sans", Tahoma, sans-serif;
+  font-style:     italic;
+  font-size:      12px;      /* 240 twips */
+  fill:           #000000;   /* was #333333 (3.2:1 on the grey case) */
+}
+
+/* --------------------------------------------------------------------------
+   Controls panel.
+   -------------------------------------------------------------------------- */
+.sim-control-body {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sim-space-md);
+  padding:        var(--sim-space-md) var(--sim-space-lg) var(--sim-space-lg);
+  margin:         0;
+  border:         0;
+  flex:           1 1 auto;
+}
+
+.sim-button-row {
+  justify-content: flex-start;
+}
+
+.sim-button {
+  font-size:      1.0625rem;
+  min-width:      12.5rem;
+  color:          var(--button-foreground-color, #ffffff);
+  background:     var(--button-background-color, #005a9c);
+  border-width:   var(--border-width, 1px);
+  border-style:   var(--border-style, solid);
+  border-color:   var(--border-color,  #767676);
+  border-radius:  4px;
+  font-weight:    600;
+}
+
+.sim-button:hover {
+  filter:         brightness(var(--button-hover-darken, 0.9));
+}
+
+/* --------------------------------------------------------------------------
+   Slider row: label and value share one baseline, the track spans the row.
+   -------------------------------------------------------------------------- */
+/* label | value | unit | spacer. The trailing 1fr lets the row fill the panel so
+   the track below it can stretch, while the first three columns stay packed
+   together on the left and share a baseline. */
+.sim-slider-row {
+  grid-template-columns: auto var(--sim-field-width) auto 1fr;
+  align-items:    center;
+  gap:            var(--sim-space-xs) var(--sim-space-sm);
+  margin-bottom:  0;
+}
+
+/* The editable phase field. Native <input type="number"> so the spinner, the
+   up/down arrow keys and mobile numeric keypads all come for free; the sim adds
+   Page Up/Down, Home/End and the mouse wheel on top. */
+.sim-value {
+  width:          var(--sim-field-width);
+  min-height:     2.75rem;   /* touch target */
+  padding:        var(--sim-space-xs) 0.35rem;
+  font-size:      1.0625rem;
+  font-family:    inherit;
+  font-variant-numeric: tabular-nums;
+  text-align:     right;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width, 1px);
+  border-style:   var(--border-style, solid);
+  border-color:   var(--border-color,  #767676);
+  box-sizing:     border-box;
+}
+
+/* Flag a value the field itself rejects, without relying on colour alone --
+   the border weight changes too. */
+.sim-value:invalid {
+  border-width:   2px;
+  border-color:   var(--alert-color-r, #ea351f);
+}
+
+.sim-units {
+  font-size:      1rem;
+}
+
+.sim-slider {
+  grid-column:    1 / -1;
+  width:          100%;
+  max-width:      34rem;     /* a full-panel-width track reads as unmoored */
+  min-height:     2.75rem;   /* keeps the touch target at or above 44 px */
+  margin:         0;
+  cursor:         pointer;
+  touch-action:   pan-y;     /* horizontal drags adjust; vertical still scrolls */
+  accent-color:   var(--button-background-color, #005a9c);
+}
+
+/* Shown only when the visitor's system asks for reduced motion. */
+.sim-reduced-note {
+  display:        none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-reduced-note {
+    display:      block;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Phone portrait.
+   The panels are already one full-width column at every size, so the sim only
+   has to tighten its own padding and let the stage fill the width.
+   -------------------------------------------------------------------------- */
+@media (max-width: 34rem) {
+  .sim-main {
+    font-size:    1.0625rem;
+  }
+
+  .sim-canvas-wrap {
+    padding:      var(--sim-space-sm) var(--sim-space-sm) var(--sim-space-md);
+  }
+
+  .sim-control-body {
+    padding:      var(--sim-space-sm) var(--sim-space-md) var(--sim-space-md);
+  }
+
+  .sim-panel .panel__heading {
+    padding:      var(--sim-space-sm) var(--sim-space-md);
+  }
+
+  .sim-button {
+    min-width:    0;
+    width:        100%;
+  }
+
+  .sim-button-row {
+    display:      block;
+  }
+}

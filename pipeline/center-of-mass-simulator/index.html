@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Center of Mass Simulator</title>
+
+  <!-- Shared KL-UNL foundation, copied in unchanged (its code is never edited). -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles, layered on top of the foundation (never editing it). -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax typesets every mathematical symbol shown by this simulator: the
+    m1 / m2 labels on the two objects, the CM marker, the r1 and r2 distance
+    labels on the diagram, and the center-of-mass relation (which is written as
+    MathML so its terms can be colour-matched to the arrows - see
+    updateEquation in simulation.js). It is part of the shared KL-UNL
+    foundation and is vendored at
+    foundation/mathjax/tex-mml-chtml.js (self-contained; never loaded from a
+    CDN). The MathJax contextual menu is deliberately left enabled and
+    un-overridden, so right-clicking any symbol opens "Show Math As -> TeX /
+    MathML".
+  -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      // Any <mtext> should adopt the surrounding CSS font stack rather than
+      // MathJax's serif, so mixed text stays consistent with the rest of the
+      // UI while remaining real MathJax output.
+      chtml: { mtextInheritFont: true, merrorInheritFont: true },
+      startup: { typeset: false }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <div class="app-shell com-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About all come from the shared masthead
+         component. It reads its text from foundation/contents.json by sim-id
+         and dispatches a bubbling "sim-reset" event that simulation.js listens
+         for. Do not add a competing <h1>, Reset, Help or About. -->
+    <kl-unl-masthead sim-id="centerofmass"
+                     json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <!-- Single polite live region. Announces committed changes only (slider
+         release / Enter in a value box / checkbox toggle / Reset), never on
+         every drag tick. -->
+    <p id="liveRegion" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+
+    <main class="app-layout com-layout">
+
+      <!-- ===================== DIAGRAM ===================== -->
+      <section class="panel com-panel com-panel--diagram" aria-labelledby="hdgDiagram">
+        <h2 class="panel__heading" id="hdgDiagram">Diagram</h2>
+
+        <div class="panel__canvas-wrap com-canvas-wrap">
+          <!-- The stage is one composite image for assistive technology: the
+               role="img" container hides the decorative pieces inside it and
+               is described by #canvasDesc, which simulation.js rewrites from
+               the same render() that draws the picture. -->
+          <div class="com-stage" id="stage" role="img"
+               aria-label="Two objects on a scaled grid with their center of mass marked"
+               aria-describedby="canvasDesc">
+
+            <!-- Code-drawn art only (the grid and the two arrow shafts), exactly
+                 as the ActionScript drew them with lineStyle/moveTo/lineTo. -->
+            <canvas id="simCanvas" class="com-canvas" aria-hidden="true"></canvas>
+
+            <!-- Exported Flash assets, reused as-is from assets/shapes/, plus the
+                 MathJax-typeset labels. Positioned in percentages of the stage box
+                 so everything scales with the canvas. -->
+            <div class="com-overlay">
+              <div class="com-arrow com-arrow--blue" id="arrowLeft1"></div>
+              <div class="com-arrow com-arrow--blue" id="arrowRight1"></div>
+              <div class="com-arrow com-arrow--red"  id="arrowLeft2"></div>
+              <div class="com-arrow com-arrow--red"  id="arrowRight2"></div>
+
+              <img class="com-mass" id="mass1" src="assets/shapes/53.svg" alt="">
+              <img class="com-mass" id="mass2" src="assets/shapes/53.svg" alt="">
+
+              <span class="com-lbl com-lbl--mass" id="lblM1">\(m_1\)</span>
+              <span class="com-lbl com-lbl--mass" id="lblM2">\(m_2\)</span>
+
+              <!-- The CM marker is the exported dark-green cross. The SWF also
+                   stacked assets/shapes/69.svg (a pale 50%-alpha copy) on top,
+                   which lightened the rendered cross to #6dbf6d - only 2.3:1
+                   against white. That highlight layer is omitted so the marker
+                   keeps the exported #017e01 and clears 3:1. See ACCESSIBILITY.md. -->
+              <img class="com-cm-cross" id="cmCross" src="assets/shapes/51.svg" alt="">
+              <span class="com-lbl com-lbl--cm" id="lblCM">\(\mathrm{CM}\)</span>
+
+              <span class="com-lbl com-lbl--r1" id="lblR1"></span>
+              <span class="com-lbl com-lbl--r2" id="lblR2"></span>
+            </div>
+          </div>
+          <p id="canvasDesc" class="sr-only"></p>
+        </div>
+
+        <p class="panel__help">
+          Each grid square is one distance unit on a side, so the grid rescales
+          when you change the separation. The blue arrow spans the distance from
+          object 1 to the center of mass; the red arrow spans the distance from
+          object 2 to the center of mass.
+        </p>
+      </section>
+
+      <!-- ===================== CONTROLS ===================== -->
+      <section class="panel com-panel com-panel--controls" aria-labelledby="hdgControls">
+        <!-- Visually hidden rather than deleted: the three labelled rows already
+             say what this panel is, so the visible heading was redundant, but it
+             stays in the DOM so the section keeps an accessible name and the
+             heading hierarchy does not skip a level. -->
+        <h2 class="sr-only" id="hdgControls">Controls</h2>
+
+        <fieldset class="control-fieldset com-fieldset">
+          <legend class="control-fieldset__legend">Masses and separation</legend>
+
+          <!-- One shared grid for all three rows, so the label column, the value
+               boxes and the sliders line up down the whole panel. -->
+          <div class="com-rows">
+          <div class="control-row com-row">
+            <label class="control-row__label com-row__label" for="mass1Num">object 1 mass:</label>
+            <input class="control-row__input com-row__num" id="mass1Num"
+                   type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
+                   value="7.0" aria-describedby="massRangeHint">
+            <label class="sr-only" for="mass1Slider">object 1 mass slider</label>
+            <input class="control-row__slider com-row__slider" id="mass1Slider"
+                   type="range" min="1" max="10" step="0.1" value="7">
+          </div>
+
+          <div class="control-row com-row">
+            <label class="control-row__label com-row__label" for="mass2Num">object 2 mass:</label>
+            <input class="control-row__input com-row__num" id="mass2Num"
+                   type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
+                   value="3.0" aria-describedby="massRangeHint">
+            <label class="sr-only" for="mass2Slider">object 2 mass slider</label>
+            <input class="control-row__slider com-row__slider" id="mass2Slider"
+                   type="range" min="1" max="10" step="0.1" value="3">
+          </div>
+
+          <div class="control-row com-row">
+            <label class="control-row__label com-row__label" for="sepNum">separation:</label>
+            <input class="control-row__input com-row__num" id="sepNum"
+                   type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
+                   value="10.0" aria-describedby="sepRangeHint">
+            <label class="sr-only" for="sepSlider">separation slider</label>
+            <input class="control-row__slider com-row__slider" id="sepSlider"
+                   type="range" min="1" max="20" step="0.1" value="10">
+          </div>
+
+          <p id="massRangeHint" class="com-hint">
+            Masses are in mass units, from 1.0 to 10.0 in steps of 0.1. Type a
+            value and press Enter, or use the arrow keys on the slider.
+          </p>
+          <p id="sepRangeHint" class="com-hint">
+            Separation is in distance units, from 1.0 to 20.0 in steps of 0.1.
+            Type a value and press Enter, or use the arrow keys on the slider.
+          </p>
+          </div>
+        </fieldset>
+
+      </section>
+
+      <!-- ===================== RELATION + FRAME ===================== -->
+      <section class="panel com-panel com-panel--relation" aria-labelledby="hdgRelation">
+        <h2 class="panel__heading" id="hdgRelation">Center of Mass</h2>
+
+        <!-- Updated through the foundation helper klunlShowEquation() in
+             foundation/kl-unl.js, which also fills the two screen-reader
+             message paragraphs below. The distances are not repeated as
+             separate readouts: they are already labelled on the diagram, and
+             they appear here at full page-text size in the substitution line,
+             colour-matched to their arrows. -->
+        <div class="com-eqn" id="eqnMain" tabindex="-1"></div>
+        <p class="sr-only" id="eqnSrMsg"></p>
+        <p class="sr-only" id="eqnSrFig"></p>
+
+        <p class="panel__help">
+          The heavier object sits closer to the center of mass, and the two
+          products stay equal.
+        </p>
+
+        <fieldset class="control-fieldset com-fieldset com-fieldset--frame">
+          <legend class="control-fieldset__legend">Frame of reference</legend>
+          <div class="control-choice com-choice">
+            <input type="checkbox" id="fixCM" checked>
+            <label for="fixCM">keep CM fixed</label>
+          </div>
+          <p class="com-hint">
+            Unchecked, the objects stay put and the CM moves.
+          </p>
+        </fieldset>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Foundation scripts, copied in unchanged. -->
+  <script src="foundation/kl-unl.js"></script>
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <!-- All simulator logic. -->
+  <script src="simulation.js"></script>
+</body>
+</html>

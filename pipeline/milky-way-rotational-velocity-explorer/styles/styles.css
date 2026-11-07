@@ -1,0 +1,583 @@
+/* ===========================================================================
+   Milky Way Rotational Velocity Explorer -- sim-specific styles.
+
+   These styles are layered ON TOP of foundation/kl-unl.css; none of the
+   foundation files are edited. Everything sizes in rem/em/% so the layout
+   tracks the user's browser font size and reflows (rather than clipping) at
+   200% zoom, down to phone-portrait widths.
+
+   Local spacing scale, so panels/rows/boxes breathe evenly:
+     --mwrv-gap-xs 0.35rem | -sm 0.6rem | -md 1rem | -lg 1.5rem
+   =========================================================================== */
+
+.mwrv-layout {
+  /* Body copy noticeably larger than the browser default (WCAG 1.4.4). */
+  font-size:              1.125rem;
+  line-height:            1.5;
+
+  --mwrv-gap-xs:          0.35rem;
+  --mwrv-gap-sm:          0.6rem;
+  --mwrv-gap-md:          1rem;
+  --mwrv-gap-lg:          1.5rem;
+
+  /* Curve colour: the original Flash salmon (#FF7070) reaches only 2.7:1
+     against white, so it is darkened to #E85C50 (3.45:1) to satisfy
+     WCAG 1.4.11. See ACCESSIBILITY.md. */
+  --mwrv-curve-color:     #e85c50;
+  --mwrv-guide-color:     #009900;   /* dashed guide lines, as exported */
+  --mwrv-axis-color:      #000000;
+
+  gap:                    var(--mwrv-gap-md);
+  align-items:            stretch;
+  padding:                var(--mwrv-gap-xs) 0 var(--mwrv-gap-md);
+}
+
+/* --------------------------------------------------------------------------
+   Panels
+   -------------------------------------------------------------------------- */
+
+.mwrv-panel {
+  display:                flex;
+  flex-direction:         column;
+  min-width:              0;
+  border-width:           var(--border-width, 1px);
+  border-style:           var(--border-style, solid);
+  border-color:           var(--border-color, #767676);
+}
+
+.mwrv-panel .panel__heading {
+  font-size:              1.2rem;
+  padding:                var(--mwrv-gap-sm) var(--mwrv-gap-md);
+  border-bottom-width:    var(--border-width, 1px);
+  border-bottom-style:    var(--border-style, solid);
+  border-bottom-color:    var(--border-color, #767676);
+}
+
+.mwrv-panel .panel__canvas-wrap {
+  flex:                   1 1 auto;
+  display:                flex;
+  flex-direction:         column;
+  gap:                    var(--mwrv-gap-sm);
+  padding:                var(--mwrv-gap-md);
+  line-height:            1.5;      /* foundation zeroes this for bare canvases */
+}
+
+.mwrv-help {
+  margin:                 auto 0 0;
+  padding-top:            var(--mwrv-gap-sm);
+  font-size:              0.95rem;
+  line-height:            1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Left panel: face-on view of the galaxy
+   -------------------------------------------------------------------------- */
+
+.mwrv-galaxy-stage {
+  position:               relative;
+  width:                  100%;
+  max-width:              22rem;
+  margin:                 0 auto;
+  aspect-ratio:           1 / 1;
+  background:             #000000;
+  border-width:           var(--border-width, 1px);
+  border-style:           var(--border-style, solid);
+  border-color:           var(--border-color, #767676);
+  overflow:               hidden;   /* == the Flash discMaskMC 350x350 clip */
+}
+
+/* Safari < 15 has no aspect-ratio: fall back to the classic padding box. */
+@supports not (aspect-ratio: 1 / 1) {
+  .mwrv-galaxy-stage::before {
+    content:              "";
+    display:              block;
+    padding-top:          100%;
+  }
+}
+
+/* Pressing on or near the red ring starts a resize drag, so the stage itself
+   takes pointer input. Dragging must not pan the page or start a native image
+   drag. */
+.mwrv-galaxy-stage {
+  touch-action:           none;
+  -webkit-user-select:    none;
+  user-select:            none;
+}
+
+.mwrv-galaxy-img,
+.mwrv-galaxy-canvas {
+  position:               absolute;
+  inset:                  0;
+  display:                block;
+  width:                  100%;
+  height:                 100%;
+  max-width:              100%;
+}
+
+.mwrv-galaxy-canvas {
+  pointer-events:         none;
+}
+
+/* Sun marker: sits 8.0 kpc from the galactic centre (1.6, 66.7 in the
+   350 x 350 stage of the original), i.e. 50.457% / 69.057% of the stage. */
+.mwrv-sun {
+  position:               absolute;
+  left:                   50.457%;
+  top:                    69.057%;
+  display:                flex;
+  align-items:            center;
+  gap:                    0.3em;
+  transform:              translate(-0.2em, -50%);
+  pointer-events:         none;
+}
+
+.mwrv-sun__dot {
+  width:                  0.4em;
+  height:                 0.4em;
+  flex:                   0 0 auto;
+  overflow:               visible;
+}
+
+.mwrv-sun__label,
+.mwrv-credit {
+  color:                  #ffffff;
+  /* White on the near-black sky is > 15:1; the shadow keeps it legible where
+     the label crosses a bright spiral arm. */
+  text-shadow:            0 0 0.25em #000, 0 0 0.5em #000, 0 0 0.15em #000;
+}
+
+.mwrv-sun__label {
+  font-size:              0.85rem;
+  font-weight:            bold;
+  line-height:            1;
+}
+
+.mwrv-credit {
+  position:               absolute;
+  right:                  var(--mwrv-gap-sm);
+  bottom:                 var(--mwrv-gap-xs);
+  margin:                 0;
+  font-size:              0.8rem;
+  line-height:            1.2;
+}
+
+.mwrv-caption {
+  margin:                 0;
+  font-size:              0.95rem;
+  line-height:            1.45;
+}
+
+/* --- grip for resizing the red radius ring --- */
+
+.mwrv-radius-handle {
+  position:               absolute;
+  left:                   50%;
+  top:                    50%;
+  width:                  2.75rem;      /* >= 44px touch target */
+  height:                 2.75rem;
+  display:                flex;
+  align-items:            center;
+  justify-content:        center;
+  margin:                 0;
+  padding:                0;
+  transform:              translate(-50%, -50%);
+  cursor:                 grab;
+  touch-action:           none;
+  background:             transparent;
+  border:                 0;
+}
+
+.mwrv-radius-handle:active {
+  cursor:                 grabbing;
+}
+
+.mwrv-radius-handle__dot {
+  display:                flex;
+  align-items:            center;
+  justify-content:        center;
+  width:                  1.05rem;
+  height:                 1.05rem;
+  border-radius:          50%;
+  /* The ring sits on a photograph, so the grip needs its own separation from
+     whatever is behind it. */
+  box-shadow:             0 0 0 0.125rem rgba(0, 0, 0, 0.55);
+}
+
+.mwrv-radius-handle__svg {
+  display:                block;
+  width:                  100%;
+  height:                 100%;
+  overflow:               visible;
+}
+
+.mwrv-radius-handle:hover .mwrv-radius-handle__dot,
+.mwrv-radius-handle.is-active .mwrv-radius-handle__dot {
+  width:                  1.35rem;
+  height:                 1.35rem;
+}
+
+.mwrv-radius-handle:focus-visible {
+  outline:                none;
+}
+
+.mwrv-radius-handle:focus-visible .mwrv-radius-handle__dot {
+  outline-width:          0.1875rem;
+  outline-style:          solid;
+  outline-color:          var(--outline-color, #005fcc);
+  outline-offset:         0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   Right panel: the rotation-curve plot
+   -------------------------------------------------------------------------- */
+
+.mwrv-plot-wrap {
+  position:               relative;
+}
+
+/*  [ y title ][ y ticks ][ plot stage ]
+    [         ][         ][ x ticks    ]
+    [         ][         ][ x title    ]   */
+.mwrv-plot-grid {
+  display:                grid;
+  grid-template-columns:  auto auto minmax(0, 1fr);
+  grid-template-rows:     auto auto auto;
+  align-items:            stretch;
+  column-gap:             var(--mwrv-gap-xs);
+}
+
+.mwrv-plot-stage {
+  position:               relative;
+  grid-column:            3;
+  grid-row:               1;
+  width:                  100%;
+  aspect-ratio:           540 / 318;   /* the canvas's internal stage size */
+}
+
+@supports not (aspect-ratio: 540 / 318) {
+  .mwrv-plot-stage::before {
+    content:              "";
+    display:              block;
+    padding-top:          58.8889%;    /* 318 / 540 */
+  }
+}
+
+.mwrv-plot-canvas {
+  position:               absolute;
+  inset:                  0;
+  display:                block;
+  width:                  100%;
+  height:                 100%;
+  max-width:              100%;
+}
+
+/* --- axis tick labels (MathJax-typeset, positioned from the stage geometry) */
+
+.mwrv-ticks {
+  position:               relative;
+  font-size:              1rem;
+}
+
+.mwrv-ticks--y {
+  grid-column:            2;
+  grid-row:               1;
+  min-width:              2.2em;
+}
+
+.mwrv-ticks--x {
+  grid-column:            3;
+  grid-row:               2;
+  height:                 1.9em;
+}
+
+.mwrv-tick {
+  position:               absolute;
+  white-space:            nowrap;
+  line-height:            1;
+}
+
+/* y ticks: right-aligned against the axis so the digits line up in a column */
+.mwrv-ticks--y .mwrv-tick {
+  right:                  0.25em;
+  transform:              translateY(-50%);
+  text-align:             right;
+}
+
+/* x ticks: centred on their tick mark */
+.mwrv-ticks--x .mwrv-tick {
+  top:                    0.15em;
+  transform:              translateX(-50%);
+  text-align:             center;
+}
+
+/* --- axis titles --- */
+
+.mwrv-axis-title {
+  display:                flex;
+  align-items:            center;
+  justify-content:        center;
+  font-size:              1rem;
+}
+
+/* The y-axis title is rotated as a whole rather than set in a vertical
+   writing mode. Under `writing-mode: vertical-rl` the inline direction is
+   vertical, so MathJax's separate boxes -- the parentheses, "km", "/", "s" --
+   stack one below another instead of flowing into a line, which reads as
+   "( k m / s )" with a gap between every character. Rotating a normal
+   horizontal line keeps MathJax's own spacing intact.
+
+   The rotation is a transform, so it contributes no layout size; the column is
+   given an explicit width in em (it therefore still tracks the font size). */
+.mwrv-axis-title--y {
+  grid-column:            1;
+  grid-row:               1;
+  position:               relative;
+  width:                  2.6em;
+  margin-right:           var(--mwrv-gap-xs);
+}
+
+.mwrv-axis-title--y .mwrv-axis-title__text {
+  position:               absolute;
+  left:                   50%;
+  top:                    50%;
+  transform-origin:       center center;
+  transform:              translate(-50%, -50%) rotate(-90deg);
+  white-space:            nowrap;
+  line-height:            1.3;
+}
+
+.mwrv-axis-title--x {
+  grid-column:            3;
+  grid-row:               3;
+  padding-top:            var(--mwrv-gap-xs);
+  text-align:             center;
+}
+
+/* --------------------------------------------------------------------------
+   The draggable plot cursor
+   -------------------------------------------------------------------------- */
+
+.mwrv-point {
+  position:               absolute;
+  left:                   0;
+  top:                    0;
+  width:                  2.75rem;    /* >= 44px touch target (the painted
+                                         marker itself stays 10px, as in Flash) */
+  height:                 2.75rem;
+  margin:                 0;
+  padding:                0;
+  display:                flex;
+  align-items:            center;
+  justify-content:        center;
+  transform:              translate(-50%, -50%);
+  cursor:                 grab;
+  touch-action:           none;       /* dragging must not pan/zoom the page */
+  background:             transparent;
+  border:                 0;
+}
+
+.mwrv-point:active {
+  cursor:                 grabbing;
+}
+
+.mwrv-point__dot {
+  position:               relative;
+  display:                flex;
+  align-items:            center;
+  justify-content:        center;
+  width:                  1.05rem;
+  height:                 1.05rem;
+  border-radius:          50%;
+}
+
+.mwrv-point__svg {
+  display:                block;
+  width:                  100%;
+  height:                 100%;
+  overflow:               visible;
+}
+
+.mwrv-point__svg--active {
+  display:                none;
+}
+
+/* Flash frame 2 (the larger, darker ring) on hover, press and keyboard focus. */
+.mwrv-point:hover  .mwrv-point__svg--idle,
+.mwrv-point.is-active .mwrv-point__svg--idle,
+.mwrv-point:focus-visible .mwrv-point__svg--idle {
+  display:                none;
+}
+
+.mwrv-point:hover  .mwrv-point__svg--active,
+.mwrv-point.is-active .mwrv-point__svg--active,
+.mwrv-point:focus-visible .mwrv-point__svg--active {
+  display:                block;
+}
+
+/* Keep the focus ring tight around the 10px marker, not the 44px hit area. */
+.mwrv-point:focus-visible {
+  outline:                none;
+}
+
+.mwrv-point:focus-visible .mwrv-point__dot {
+  outline-width:          0.1875rem;
+  outline-style:          solid;
+  outline-color:          var(--outline-color, #005fcc);
+  outline-offset:         0.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   Enclosed-mass equation box
+   -------------------------------------------------------------------------- */
+
+.mwrv-eqbox {
+  box-sizing:             border-box;
+  padding:                var(--mwrv-gap-sm) var(--mwrv-gap-md);
+  color:                  var(--foreground-color, #1a1a1a);
+  background:             var(--background-color, #ffffff);
+  border-width:           var(--border-width, 1px);
+  border-style:           var(--border-style, solid);
+  border-color:           var(--border-color, #767676);
+  text-align:             center;
+  overflow-x:             auto;       /* never force the page to scroll sideways */
+}
+
+/* Overlay position inside the plot, echoing the original Flash layout.
+   simulation.js only parks the box here on wide viewports. */
+.mwrv-plot-stage > .mwrv-eqbox {
+  position:               absolute;
+  right:                  3%;
+  bottom:                 9%;
+  max-width:              76%;
+  font-size:              0.92rem;
+}
+
+/* Static position (single-column / narrow layouts). */
+.mwrv-plot-wrap > .mwrv-eqbox {
+  position:               static;
+  width:                  100%;
+  margin-top:             var(--mwrv-gap-md);
+  font-size:              1rem;
+}
+
+.mwrv-eqbox__eqn mjx-container {
+  margin:                 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive: desktop -> iPad -> phone portrait
+   -------------------------------------------------------------------------- */
+
+/* Two columns above the foundation's 56rem collapse: the galaxy column is
+   sized like the original 350 px panel, the plot takes the rest. */
+@media (min-width: 56.0625rem) {
+  .mwrv-layout {
+    grid-template-columns: 24rem minmax(0, 1fr);
+  }
+}
+
+/* At/below the foundation's 56rem breakpoint the grid is already one column;
+   just keep the two panels from stretching awkwardly wide. */
+@media (max-width: 56rem) {
+  .mwrv-galaxy-stage {
+    max-width:            26rem;
+  }
+
+  .mwrv-ticks,
+  .mwrv-axis-title {
+    font-size:            0.95rem;
+  }
+}
+
+/* Phone portrait. */
+@media (max-width: 34rem) {
+  .mwrv-layout {
+    font-size:            1.05rem;
+    padding-left:         0;
+    padding-right:        0;
+  }
+
+  .mwrv-panel .panel__canvas-wrap {
+    padding:              var(--mwrv-gap-sm);
+  }
+
+  .mwrv-ticks,
+  .mwrv-axis-title {
+    font-size:            0.82rem;
+  }
+
+  .mwrv-ticks--y {
+    min-width:            1.9em;
+  }
+
+  .mwrv-sun__label {
+    font-size:            0.78rem;
+  }
+}
+
+/* Very narrow viewports -- or a large browser default font, since these queries
+   are in rem. */
+@media (max-width: 22rem) {
+  /* Drop every other x tick label so the numbers never collide.
+     simulation.js marks the odd ones. */
+  .mwrv-ticks--x .mwrv-tick--minor {
+    display:              none;
+  }
+
+  /* The plot keeps its 540:318 aspect, so by this width the stage is shorter
+     than the rotated y-axis title. Set the title horizontally above the plot
+     instead of letting it overhang the stage. */
+  .mwrv-plot-grid {
+    grid-template-rows:   auto auto auto auto;
+  }
+
+  .mwrv-axis-title--y {
+    grid-column:          1 / -1;
+    grid-row:             1;
+    position:             static;
+    width:                auto;
+    margin:               0 0 var(--mwrv-gap-xs);
+    justify-content:      flex-start;
+  }
+
+  .mwrv-axis-title--y .mwrv-axis-title__text {
+    position:             static;
+    transform:            none;
+  }
+
+  .mwrv-ticks--y,
+  .mwrv-plot-stage {
+    grid-row:             2;
+  }
+
+  .mwrv-ticks--x {
+    grid-row:             3;
+  }
+
+  .mwrv-axis-title--x {
+    grid-row:             4;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion / forced colours
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration:  0.01ms !important;
+    animation-duration:   0.01ms !important;
+    scroll-behavior:      auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .mwrv-point:focus-visible .mwrv-point__dot {
+    outline-color:        Highlight;
+  }
+
+  .mwrv-eqbox,
+  .mwrv-panel {
+    border-color:         CanvasText;
+  }
+}

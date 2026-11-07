@@ -1,0 +1,42 @@
+name: Deploy simulation to GitHub Pages
+
+# Publishes the contents of html5/ as the site root, so the simulation loads
+# at the Pages URL itself (the masthead fetches foundation/contents.json
+# relative to index.html, which requires being served over HTTP).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel a run that is mid-deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload html5/ as the site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./html5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

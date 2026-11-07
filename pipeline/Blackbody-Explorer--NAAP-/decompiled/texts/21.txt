@@ -1,0 +1,7 @@
+This simulator is part of the Blackbody Curves & UBV Filters 
+--- RECORDSEPARATOR ---
+Module of the Nebraska Astronomy Applet Project. Supporting 
+--- RECORDSEPARATOR ---
+materials and additional astronomy education resources can be 
+--- RECORDSEPARATOR ---
+found at

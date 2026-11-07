@@ -1,0 +1,46 @@
+name: Deploy simulation to GitHub Pages
+
+# Publishes the contents of html5/ as the site root, so the simulation lives at
+# https://<user>.github.io/<repo>/ and every relative reference inside it
+# (foundation/, styles/, assets/) resolves exactly as it does locally.
+#
+# The artifact-based deployment is used rather than "serve from a branch folder"
+# because Pages can only serve a branch's root or /docs, and the sim needs to
+# stay in html5/ alongside the fla/ source archive.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deployment finish rather than cancelling it midway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload html5/ as the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./html5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

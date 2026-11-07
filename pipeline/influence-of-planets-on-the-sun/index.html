@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Influence of Planets on the Sun Explorer</title>
+
+  <!-- Shared KL-UNL foundation (copied in unchanged; never edited) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles, layered on top of the foundation -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    No MathJax. The original simulation displays no equations, formulas or
+    mathematical notation of any kind -- only plain numbers and the unit "AU".
+    Those are rendered as ordinary sans-serif text so the digits never change
+    typeface as the value updates. See CONVERSION_NOTES.md.
+  -->
+</head>
+<body>
+  <div class="app-shell ips-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About all come from the shared masthead
+         component. It reads its text from foundation/contents.json by sim-id
+         and dispatches a bubbling "sim-reset" event that simulation.js listens
+         for. No competing <h1>, Reset, Help or About UI is built here. -->
+    <kl-unl-masthead sim-id="ca_extrasolarplanets_starwobble"
+                     json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout ips-layout">
+
+      <!-- ---------------- Top left: the stage ---------------- -->
+      <section class="panel ips-panel ips-panel--viz" aria-labelledby="hdgViz">
+        <h2 class="panel__heading" id="hdgViz">Effect of Planets on the Sun</h2>
+
+        <div class="ips-status">
+          <span class="ips-status__label" id="yearsLabel">Years Elapsed:</span>
+          <span class="ips-status__value" id="yearsValue" aria-hidden="true">0.0</span>
+          <span class="sr-only" id="yearsSr"></span>
+        </div>
+
+        <div class="panel__canvas-wrap ips-canvas-wrap">
+          <!-- Internal coordinate system is the original 780 x 420 Flash
+               stage (x 0..540 of it); CSS scales the element only. -->
+          <canvas id="stage" class="ips-canvas" width="540" height="420"
+                  role="img" aria-describedby="stageDesc"></canvas>
+        </div>
+
+        <!-- Legend: state is never signalled by colour alone. -->
+        <ul class="ips-legend" aria-label="Diagram key">
+          <li class="ips-legend__item">
+            <span class="ips-legend__swatch ips-legend__swatch--sun" aria-hidden="true"></span>
+            <span>Sun</span>
+          </li>
+          <li class="ips-legend__item">
+            <span class="ips-legend__swatch ips-legend__swatch--com" aria-hidden="true">+</span>
+            <span>Center of mass (fixed)</span>
+          </li>
+          <li class="ips-legend__item">
+            <span class="ips-legend__swatch ips-legend__swatch--path" aria-hidden="true"></span>
+            <span>Path traced by the Sun</span>
+          </li>
+        </ul>
+
+        <!-- Text equivalent of the canvas, kept current from render(). -->
+        <p id="stageDesc" class="sr-only"></p>
+      </section>
+
+      <!-- ---------------- Top right: the planet list ---------------- -->
+      <section class="panel ips-panel ips-panel--planets" aria-labelledby="hdgPlanets">
+        <h2 class="panel__heading" id="hdgPlanets">Planets</h2>
+
+        <fieldset class="control-fieldset ips-fieldset">
+          <legend class="sr-only">
+            Planets included in the center of mass calculation, with their mean
+            orbital distances in astronomical units
+          </legend>
+          <!-- The nine planet rows are built by simulation.js from the same
+               planetArray the physics uses, so the list and the model can
+               never disagree. -->
+          <div class="ips-planet-list" id="planetList"></div>
+        </fieldset>
+
+        <p class="panel__help ips-help">
+          Select a planet to add its gravitational pull to the calculation.
+          Changing a selection clears the traced path and resets the elapsed-time
+          counter, exactly as in the original.
+        </p>
+      </section>
+
+      <!-- ---------------- Full width: animation speed ---------------- -->
+      <section class="panel ips-panel ips-panel--speed" aria-labelledby="hdgSpeed">
+        <h2 class="panel__heading" id="hdgSpeed">Animation Speed</h2>
+
+        <fieldset class="control-fieldset ips-fieldset">
+          <legend class="sr-only">Animation speed controls</legend>
+
+          <div class="control-row ips-slider-row">
+            <label class="control-row__label" for="speedField">Days Per Second:</label>
+            <input type="text" id="speedField" class="control-row__input ips-value-field"
+                   inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="5"
+                   aria-describedby="speedFieldHint">
+            <input type="range" id="speedSlider" class="control-row__slider ips-slider"
+                   min="0" max="5000" step="1" value="1000"
+                   aria-label="Animation speed"
+                   aria-valuetext="Animation speed 1000 days per second">
+            <button type="button" id="pauseButton" class="button ips-button"
+                    aria-label="Pause the animation">Pause</button>
+            <span class="sr-only" id="speedFieldHint">Type a whole number of days per second
+                  from 0 to 5000 and press Enter.</span>
+          </div>
+        </fieldset>
+
+        <p class="panel__help ips-help">
+          The Sun is drawn to scale; its motion around the center of mass is not
+          to scale relative to the planets&rsquo; orbits, which lie far outside
+          the picture. Keyboard: the speed slider responds to the left and right
+          arrow keys (1 day per second), Page&nbsp;Up and Page&nbsp;Down
+          (larger steps) and Home and End (0 and 5000).
+        </p>
+      </section>
+
+    </main>
+
+    <!-- Polite status region: announces committed changes only, never per tick. -->
+    <p id="srStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+  </div>
+
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <script src="foundation/kl-unl.js"></script>
+  <script src="simulation.js"></script>
+</body>
+</html>

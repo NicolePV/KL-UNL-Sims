@@ -1,0 +1,61 @@
+This simulator models the motion of a hypothetical planet that orbits the sun 
+--- RECORDSEPARATOR ---
+according to Kepler's laws of motion.
+--- RECORDSEPARATOR ---
+The size and eccentricity of the planet's orbit can set using the sliders in the 
+--- RECORDSEPARATOR ---
+Orbit Settings
+--- RECORDSEPARATOR ---
+ panel. Presets for the existing planets can be loaded by 
+--- RECORDSEPARATOR ---
+selecting a planet from the combo box and clicking OK.
+--- RECORDSEPARATOR ---
+Since the planets take months to years to orbit the sun the animation is 
+--- RECORDSEPARATOR ---
+shown speeded up. You can control the animation rate in the 
+--- RECORDSEPARATOR ---
+Animation 
+--- RECORDSEPARATOR ---
+Controls
+--- RECORDSEPARATOR ---
+ panel. The rate is specified in simulated years per second.
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+Visualization Options
+--- RECORDSEPARATOR ---
+ panel provides options for showing the solar 
+--- RECORDSEPARATOR ---
+system planets and their orbits. One thing to note is that all of the planets' 
+--- RECORDSEPARATOR ---
+orbits are shown pointing in the same direction. In reality this is not the case 
+--- RECORDSEPARATOR ---
+(nor are the planets in exactly the same plane).
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+clear optional features
+--- RECORDSEPARATOR ---
+ hides the solar system planets and resets the 
+--- RECORDSEPARATOR ---
+features selected in the tabbed panel.
+--- RECORDSEPARATOR ---
+The tabbed panel beneath the visualization lets you control options specific to 
+--- RECORDSEPARATOR ---
+each of Kepler's laws. The 
+--- RECORDSEPARATOR ---
+Newtonian Features
+--- RECORDSEPARATOR ---
+ tab lets you see the velocity 
+--- RECORDSEPARATOR ---
+and acceleration vectors of the planet.
+--- RECORDSEPARATOR ---
+The orbit visualization window is partially interactive. The planet's position in 
+--- RECORDSEPARATOR ---
+the diagram can be adjusted by dragging it around, as can the sweeps 
+--- RECORDSEPARATOR ---
+created using the 
+--- RECORDSEPARATOR ---
+Kepler's 2nd Law
+--- RECORDSEPARATOR ---
+ tab controls.

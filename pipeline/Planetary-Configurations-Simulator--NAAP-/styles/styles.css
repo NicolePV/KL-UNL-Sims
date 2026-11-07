@@ -1,0 +1,246 @@
+/* ============================================================================
+   Planetary Configurations Simulator — sim-specific styles.
+   Layered ON TOP of the KL-UNL foundation (foundation/kl-unl.css); the
+   foundation files are never edited. Shared palette variables and layout
+   classes come from there; only sim-specific presentation lives here.
+   ========================================================================== */
+
+/* Body copy floor per accessibility rules (rem-based so it tracks zoom). */
+body {
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.app-shell {
+  padding: 0.25rem;
+}
+
+/* 60% left / 40% right (override the foundation's 25rem/1fr grid), and make both
+   columns equal height by stretching the grid items. The foundation collapses to
+   a single column at 56rem; re-declare that here since our rule would otherwise
+   win at all widths. */
+.app-layout {
+  grid-template-columns: 3fr 2fr;   /* 60% / 40% */
+  align-items: stretch;             /* left column height == right column height */
+}
+@media (max-width: 56rem) {
+  .app-layout {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}
+
+/* Space the stacked panels apart so their drop-shadows breathe. Both columns are
+   flex columns that fill the (equal) grid-item height; panels pack from the top
+   with a single consistent gap, so every box-to-box space is identical. Any
+   leftover height in the shorter column sits as whitespace at the bottom rather
+   than stretching the gaps. */
+.app-layout__left,
+.app-layout__right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.45rem;
+  justify-content: flex-start;
+}
+
+.sim-panel {
+  padding-bottom: 0.85rem;
+  border: 1px solid var(--border-color, #767676);
+}
+
+.panel__heading {
+  font-size: 1.15rem;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 0.6rem;
+}
+
+/* ---- Canvas stages: keep original internal coords, scale via CSS ---- */
+.sim-canvas-wrap {
+  position: relative;
+  line-height: 0;
+  padding: 0 1rem;
+}
+.sim-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  touch-action: none;           /* draggable stages: don't scroll/zoom the page */
+  background: #ffffff;
+}
+#diagram-canvas {
+  max-width: 600px;
+  margin: 0 auto;
+}
+.timeline-canvas-wrap canvas {
+  max-width: 260px;
+  margin: 0 auto;
+  border: 1px solid #9a9a9a;
+  cursor: ns-resize;
+}
+#zodiac-canvas:focus-visible,
+#timeline-canvas:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--outline-color, #005fcc);
+  outline-offset: 2px;
+}
+
+/* ---- Draggable planet handles overlaid on the diagram canvas ---- */
+.planet-handle {
+  position: absolute;
+  width: 8%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  cursor: grab;
+  background: transparent;
+}
+.planet-handle:active { cursor: grabbing; }
+.planet-handle:focus-visible {
+  outline: 0.15rem solid var(--outline-color, #005fcc);
+  outline-offset: 2px;
+}
+
+/* ---- Diagram option checkboxes ---- */
+.sim-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  padding-top: 0.6rem;
+}
+.sim-options .control-choice { min-height: 2.4rem; }
+
+/* ---- Orbit Sizes rows ---- */
+.orbit-fieldset { padding-bottom: 0.9rem; }
+.orbit-fieldset:not(:last-child) { border-bottom: 1px solid #ececec; margin-bottom: 0.4rem; }
+
+.orbit-dot {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  vertical-align: baseline;
+  margin-right: 0.35rem;
+  border: 1px solid rgba(0,0,0,0.35);
+}
+.orbit-dot--observer { background: #8399bc; }   /* observer's planet (blue-grey) */
+.orbit-dot--target   { background: #98988e; }   /* target planet (grey) */
+
+.orbit-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+}
+.orbit-field {
+  width: 3.6rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.orbit-unit { font-weight: 600; }
+.orbit-slider { width: 100%; min-width: 6rem; }
+.orbit-preset { min-height: 2.4rem; justify-self: end; }
+/* Preset labels are for screen readers; the visible cue is the <presets> option. */
+.orbit-preset-label {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+}
+
+/* ---- Animation Controls ---- */
+.anim-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.75rem;
+}
+.anim-speed-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+.anim-speed-label { font-weight: normal; }
+.anim-speed-row input[type="range"] { flex: 1 1 auto; }
+.anim-btn { white-space: nowrap; }
+
+.anim-events-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+.anim-pause-choice { gap: 0.4rem; }
+.pause-field {
+  width: 2.6rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.anim-countdown {
+  margin: 0.5rem 0 0;
+  min-height: 1.3rem;
+  color: var(--alert-color-r, #ea351f);
+  font-weight: 600;
+}
+
+/* ---- Zodiac strip ---- */
+/* Grow the Zodiac panel to absorb the left column's leftover height so its bottom
+   edge lines up with the Timeline box in the right column, then vertically centre
+   the strip within the taller box. */
+.zodiac-panel {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.zodiac-panel .zodiac-layout {
+  flex: 1 1 auto;   /* .zodiac-layout is align-items:center, so the strip centres vertically */
+}
+.zodiac-layout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.6rem;
+}
+.zodiac-edge {
+  font-size: 0.95rem;
+  color: #444;
+  flex: 0 0 auto;
+}
+.zodiac-canvas-wrap { flex: 1 1 auto; padding: 0; }
+#zodiac-canvas { cursor: ew-resize; }
+
+/* ---- Timeline readouts ---- */
+.timeline-counter {
+  margin: 0.6rem 1rem 0.4rem;
+  font-size: 1.05rem;
+}
+.timeline-counter output { font-variant-numeric: tabular-nums; }
+.timeline-btn-row {
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+}
+
+/* ============================================================================
+   Responsive: foundation collapses two columns to one at 56rem. Below that we
+   keep everything single-column and comfortable for phone portrait.
+   ========================================================================== */
+@media (max-width: 40rem) {
+  body { font-size: 1rem; }
+  .orbit-row {
+    grid-template-columns: auto auto 1fr;
+  }
+  .orbit-preset {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    min-height: 2.75rem;
+  }
+  .anim-events-row { gap: 0.5rem 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Variable Star Photometry Analyzer</title>
+
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+
+  <script>
+    // MathJax configuration must be defined before the MathJax bundle loads.
+    // The contextual (right-click) menu stays enabled per project requirements.
+    window.MathJax = {
+      options: { enableMenu: true },
+      /* Make \text{...} render in the surrounding page font (sans-serif) so
+         word labels like "theta" match the rest of the simulation's text.
+         Real math variables still use MathJax's math fonts. */
+      svg: { mtextInheritFont: true },
+      startup: {
+        ready: function () {
+          MathJax.startup.defaultReady();
+          MathJax.startup.promise.then(function () {
+            if (typeof klunlInitEqn === 'function') { klunlInitEqn(); }
+          });
+        }
+      }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <kl-unl-masthead sim-id="variableStarPhotometryAnalyzer"
+                   json-url="foundation/contents.json"></kl-unl-masthead>
+
+  <main>
+    <div class="app-layout sim-layout">
+
+      <!-- ================= Star Field panel ================= -->
+      <section class="panel sim-panel" aria-labelledby="starfield-heading">
+        <h2 class="panel__heading" id="starfield-heading">Star Field</h2>
+
+        <div class="panel__canvas-wrap sim-canvas-wrap sim-starfield-wrap">
+          <canvas id="starfieldCanvas" width="400" height="300" aria-hidden="true"></canvas>
+
+          <!-- Single tab stop for the whole field; arrow keys move between the
+               star options, which simulation.js inserts here. -->
+          <div id="haloButtonLayer" class="sim-halo-layer"
+               role="listbox" aria-multiselectable="true" tabindex="0"
+               aria-label="Star field"
+               aria-describedby="starfieldKeyboardHelp"></div>
+
+          <!-- Crosshair readout (mouse/touch affordance only; reuses exported shape 169) -->
+          <div id="crosshairOverlay" class="sim-crosshair" aria-hidden="true" hidden>
+            <img src="assets/shapes/169.svg" alt="" draggable="false">
+            <span class="sim-crosshair__rows">
+              <span class="sim-crosshair__row"><span class="sim-math-x">\(x\)</span>:<span id="crosshairX"></span></span>
+              <span class="sim-crosshair__row"><span class="sim-math-y">\(y\)</span>:<span id="crosshairY"></span></span>
+            </span>
+          </div>
+
+          <!-- Loading overlay -->
+          <div id="loadingInfo" class="sim-loading" role="status">
+            <p class="sim-loading__text">Loading data, please wait.</p>
+            <p class="sim-loading__status" id="loadingStatus"></p>
+          </div>
+        </div>
+
+        <div class="sim-key-row">
+          <span class="sim-key-row__label">key:</span>
+          <span class="sim-key-item">
+            <svg class="sim-key-swatch" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false">
+              <rect x="2.5" y="2.5" width="15" height="15" fill="none" stroke="#3399FF" stroke-width="1.5"></rect>
+            </svg>
+            <span>comparison star</span>
+          </span>
+          <span class="sim-key-item">
+            <svg class="sim-key-swatch" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false">
+              <circle cx="10" cy="10" r="7.5" fill="none" stroke="#339900" stroke-width="1.5"></circle>
+            </svg>
+            <span>star of interest</span>
+          </span>
+          <span class="sim-key-row__divider" aria-hidden="true"></span>
+          <span class="control-choice">
+            <input type="checkbox" id="showCrosshairCheckBox" checked>
+            <label for="showCrosshairCheckBox">show crosshairs</label>
+          </span>
+        </div>
+
+        <p id="starfieldDescription" class="sr-only">
+          Simulated CCD image of a star field, 400 by 300 pixels, containing 26 stars.
+        </p>
+        <p id="starfieldKeyboardHelp" class="sr-only">
+          Use the arrow keys to move between stars, Home and End for the first and last
+          star, then press Enter or Space to choose the highlighted star. The first star
+          chosen becomes the comparison star and the second becomes the star of interest.
+          Press Tab to leave the star field.
+        </p>
+      </section>
+
+      <!-- ================= Observations Plot panel ================= -->
+      <section class="panel sim-panel" aria-labelledby="obs-heading">
+        <h2 class="panel__heading" id="obs-heading">Observations Plot</h2>
+
+        <div class="sim-plot-block">
+          <span class="sim-axis-title sim-axis-title--y" aria-hidden="true">magnitude difference</span>
+          <div class="panel__canvas-wrap sim-canvas-wrap sim-lightcurve-wrap">
+            <canvas id="lightcurveCanvas" width="452" height="312" aria-hidden="true"></canvas>
+
+            <!-- Difference (delta magnitude) tool: two draggable horizontal bars -->
+            <div id="deltaBar1" class="sim-delta-bar" role="slider" tabindex="0" hidden
+                 aria-orientation="vertical" aria-label="Difference tool bar 1"></div>
+            <div id="deltaBar2" class="sim-delta-bar" role="slider" tabindex="0" hidden
+                 aria-orientation="vertical" aria-label="Difference tool bar 2"></div>
+            <div id="deltaMagLabel" class="sim-delta-label" hidden></div>
+
+            <!-- Shown until two stars have been selected -->
+            <div id="clickToBegin" class="sim-click-to-begin">
+              Select two stars to compare by clicking
+              on them in the star field at left.
+            </div>
+          </div>
+        </div>
+
+        <div class="sim-plot-controls">
+          <fieldset class="control-fieldset sim-inline-fieldset">
+            <legend class="control-fieldset__legend sim-inline-legend">lightcurve plot type:</legend>
+            <span class="control-choice">
+              <input type="radio" name="plotType" id="plotTypeTime" value="epoch" checked>
+              <label for="plotTypeTime">time</label>
+            </span>
+            <span class="control-choice">
+              <input type="radio" name="plotType" id="plotTypePhase" value="phase">
+              <label for="plotTypePhase">phase</label>
+            </span>
+          </fieldset>
+          <span class="sim-key-row__divider" aria-hidden="true"></span>
+          <span class="control-choice">
+            <input type="checkbox" id="showDifferenceToolCheckBox">
+            <label for="showDifferenceToolCheckBox">show difference tool</label>
+          </span>
+        </div>
+
+        <p id="lightcurveDescription" class="sr-only">
+          Plot of the measured magnitude difference between the star of interest and the
+          comparison star, versus time in days or versus phase. The magnitude axis is
+          inverted, so brighter measurements appear higher.
+        </p>
+      </section>
+
+      <!-- ================= PDM panel ================= -->
+      <section class="panel sim-panel sim-pdm-panel" aria-labelledby="pdm-heading">
+        <h2 class="panel__heading" id="pdm-heading">PDM Plot and Period Selection</h2>
+
+        <div class="sim-pdm-layout">
+
+          <div class="sim-pdm-controls">
+            <div class="sim-period-row">
+              <label for="periodTextInput" id="periodLabel">period:</label>
+              <input class="control-row__input sim-period-input" id="periodTextInput"
+                     type="text" inputmode="decimal" maxlength="8" autocomplete="off"
+                     aria-describedby="periodUnits">
+              <span id="periodUnits">days</span>
+            </div>
+
+            <div class="sim-zoom-buttons">
+              <button type="button" class="button sim-zoom-button" id="zoomIn3TimesButton">zoom in around period</button>
+              <button type="button" class="button sim-zoom-button" id="zoomOut3TimesButton">zoom out around period</button>
+              <button type="button" class="button sim-zoom-button" id="zoomOutButton">zoom out to full range</button>
+              <button type="button" class="button sim-zoom-button" id="undoLastZoomButton">undo last zoom</button>
+            </div>
+
+            <p class="panel__help sim-zoom-instructions">Click and drag on the plot to
+              create a custom zoom
+              window. Click on the window
+              to complete the zoom.</p>
+          </div>
+
+          <div class="sim-pdm-plot-area">
+            <div class="sim-pointer-strip">
+              <span id="periodAtLeft" class="sim-offscale sim-offscale--left" hidden>
+                <img src="assets/shapes/153.svg" alt="" draggable="false">
+                <span>selected period is off to the left</span>
+              </span>
+              <span id="periodAtRight" class="sim-offscale sim-offscale--right" hidden>
+                <span>selected period is off to the right</span>
+                <img src="assets/shapes/156.svg" alt="" draggable="false">
+              </span>
+              <button type="button" id="periodPointer" class="sim-period-pointer" role="slider"
+                      aria-label="Selected period" aria-orientation="horizontal">
+                <img src="assets/shapes/146.svg" alt="" draggable="false">
+              </button>
+            </div>
+
+            <span class="sim-axis-title sim-axis-title--y sim-axis-title--theta" id="pdm-ytitle-wrap"
+                  aria-hidden="true"><span id="pdm-ytitle">\(\text{theta}\)</span></span>
+            <span class="sr-only" id="pdm-ytitle-sr"></span>
+
+            <div class="panel__canvas-wrap sim-canvas-wrap sim-pdm-wrap">
+              <canvas id="pdmCanvas" width="722" height="278" aria-hidden="true"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <p id="pdmDescription" class="sr-only">
+          Phase dispersion minimization plot: the statistic theta versus trial period in
+          days. Deep minima in theta mark candidate periods. Use the period pointer
+          slider above the plot, the period text field, or the zoom buttons to explore.
+        </p>
+      </section>
+
+    </div>
+  </main>
+
+  <div id="liveRegion" class="sr-only" aria-live="polite"></div>
+</div>
+
+</body>
+</html>

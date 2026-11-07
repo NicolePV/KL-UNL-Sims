@@ -1,0 +1,501 @@
+/* ==========================================================================
+   Galactic Redshift Simulator — sim-specific styles.
+
+   Layered ON TOP of the KL-UNL foundation (foundation/kl-unl.css is never
+   edited, and there is no override <style> block in index.html). All chrome
+   colours come from the foundation's custom properties.
+
+   Layout mirrors the original Flash sim: three side-by-side areas across the
+   top (introductory text | the z control and its equation | filter text,
+   filter-strengths chart and the show/hide button) with the full-width
+   spectrum stage beneath them.
+   ========================================================================== */
+
+/* Larger, zoomable base type (WCAG 1.4.4): rem-based so it tracks the
+   browser font setting. Floor of 1.125rem for body copy. */
+body {
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+.grs-panel .panel__heading {
+  font-size: 1.25rem;
+  border-bottom-width: var(--border-width, 1px);
+  border-bottom-style: var(--border-style, solid);
+  border-bottom-color: var(--border-color, #767676);
+}
+
+.grs-panel {
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* One consistent internal padding for every panel body (visual rhythm).
+   Content is spread through the panel rather than pinned to the top, so the
+   equal-height cards do not show a block of dead space at the bottom. */
+.grs-panel__body {
+  padding: 0.625rem 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.625rem;
+  flex: 1 1 auto;
+}
+
+/* The three top panels run 1 pt smaller than the page body copy.
+   1 pt = 4/3 px at 96 dpi, so 1.125rem (18px) - 1pt = 16.667px = 1.0417rem.
+   Everything inside these panels is sized in em from here, so this one value
+   scales the whole group. (This dips just under the 1.125rem body-copy floor
+   noted in ACCESSIBILITY.md — still above the 16px browser default, and the
+   stage panel below keeps the full 1.125rem.) */
+.grs-panel--intro .grs-panel__body,
+.grs-panel--control .grs-panel__body,
+.grs-panel--filters .grs-panel__body {
+  font-size: 1.0417rem;
+}
+
+.grs-prose {
+  margin: 0;
+  max-width: 34em;
+}
+
+/* Justified body copy in the two prose panels.
+   Caveat worth knowing: these columns are only ~277 px wide, so a line that
+   ends just before a long word ("wavelengths.") has to stretch a long way.
+   Measured here, the worst line in About Redshift fills 66.8% naturally and
+   justification widens its word gaps to ~6x a normal space — a visible river.
+   hyphens:auto is set to soften that, and does help on engines that ship
+   hyphenation dictionaries (Safari, Firefox), but it is a NO-OP in Chromium
+   builds without one — verified: a test word's wrapped height is identical
+   with hyphens auto and none. Revert to text-align:left, or widen these two
+   columns, if the gaps read badly. */
+.grs-panel--intro .grs-prose,
+.grs-panel--filters .grs-prose {
+  text-align: justify;
+  -webkit-hyphens: auto;   /* additive fallback for older WebKit */
+  hyphens: auto;
+}
+
+.grs-nowrap {
+  white-space: nowrap;
+}
+
+/* ---- Layout: three columns across the top, stage full width -------------- */
+
+/* The two text columns carry the tall content, so they get the extra width:
+   at 1fr/1.35fr/1fr the intro paragraph wrapped to nine lines and set the
+   height of the whole row. */
+.grs-layout {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr) minmax(0, 1.1fr);
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem 1rem;
+  align-items: stretch;
+}
+
+.grs-panel--stage {
+  grid-column: 1 / -1;
+}
+
+/* ---- The z control ------------------------------------------------------ */
+
+.grs-fieldset {
+  padding: 0;
+  margin: 0;
+}
+
+/* label | number box | slider — a single baseline-aligned row, matching the
+   original's "z (redshift): [ 0.00 ] ——|——————" arrangement. */
+.grs-row--z {
+  grid-template-columns: auto auto minmax(6rem, 1fr);
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0;
+}
+
+.grs-z-label {
+  white-space: nowrap;
+}
+
+/* Numeric readouts share one width/height so equal-purpose fields look equal.
+   2.75rem (44px) matches the slider height and the foundation's touch-target
+   floor, so the label / field / slider row shares one baseline. */
+.grs-z-input {
+  width: 5.5rem;
+  min-height: 2.75rem;   /* rem, so the touch target survives the smaller type */
+  font-size: 0.944em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  border-radius: 0.75rem;
+  box-sizing: border-box;
+}
+
+.grs-z-slider {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;   /* >= 44px touch target */
+  accent-color: var(--button-background-color, #005a9c);
+  touch-action: manipulation;
+}
+
+/* Displayed equation, centred like the original. */
+.grs-eqn {
+  margin: 0;
+  text-align: center;
+  font-size: 1em;
+  overflow-x: auto;      /* wide math scrolls inside its own box, never the page */
+  overflow-y: hidden;
+}
+
+/* MathJax gives display equations a 1em margin top and bottom (~42px of the
+   panel's height here). The panel already provides its own rhythm, so trim it. */
+.grs-eqn mjx-container[display="true"] {
+  margin: 0.35rem 0;
+}
+
+/* ---- Filter strengths chart --------------------------------------------- */
+
+/* Chart and button sit side by side, as they do in the original (the chart at
+   stage x 630-711, the button immediately right of it). Stacking them made the
+   Filters panel the tallest of the three by ~85 px and left a band of blank
+   space in the other two. */
+.grs-filters-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.625rem;
+  /* nowrap on purpose: allowed to wrap, the button drops under the chart and
+     the panel grows ~60 px taller than the other two. The chart shrinks
+     instead, which is what the original does anyway (15 px bars). */
+  flex-wrap: nowrap;
+}
+
+.grs-chart {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 8.5rem;
+  /* Fades in and out with the 200 ms cubic ease, exactly as in the original. */
+  opacity: 0;
+}
+
+.grs-chart__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Fixed-height track; the bar inside is scaled from its bottom edge, which is
+   what MovieClip.scaleY did in the original. */
+/* 3.75rem ≈ the original chart's 60 px height. */
+.grs-chart__track {
+  width: 100%;
+  height: 3.75rem;
+  display: flex;
+  align-items: flex-end;
+  overflow: visible;
+}
+
+.grs-chart__bar {
+  width: 100%;
+  height: 100%;
+  transform-origin: bottom center;
+  transform: scaleY(0);
+}
+
+/* Bar colours sampled from the exported FilterStrengthsChart symbol. */
+.grs-chart__bar--u { background: #d99ffc; }
+.grs-chart__bar--b { background: #8f7fb9; }
+.grs-chart__bar--v { background: #91d47f; }
+.grs-chart__bar--r { background: #f1b67f; }
+
+.grs-chart__lab {
+  border-top-width: var(--border-width, 1px);
+  border-top-style: var(--border-style, solid);
+  border-top-color: var(--border-color, #767676);
+  width: 100%;
+  text-align: center;
+  padding-top: 0.25rem;
+  font-size: 0.889em;
+  line-height: 1.2;
+}
+
+/* The foundation's .button-row is width:100%, which as a flex item claimed the
+   whole filters row and shrank the chart to a sliver. Here it only needs to be
+   as wide as its button so the chart can take the remaining space. */
+.grs-button-row {
+  justify-content: center;
+  width: auto;
+  flex: none;
+}
+
+.grs-button {
+  color: var(--button-foreground-color, #ffffff);
+  background-color: var(--button-background-color, #005a9c);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+  border-radius: 0.25rem;
+  font-size: 0.844em;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  flex: none;
+  padding: 0.35rem 0.6rem;
+}
+
+.grs-button:hover,
+.grs-button:focus {
+  filter: brightness(var(--button-hover-darken, 0.9));
+}
+
+/* ---- The spectrum stage -------------------------------------------------- */
+
+.grs-stage {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 1rem;
+  line-height: normal;   /* the foundation zeroes this on .panel__canvas-wrap */
+}
+
+/* MathJax ships a visually-clipped MathML copy of every expression for screen
+   readers. Inside an aria-hidden wrapper it is dead weight, and inside the
+   rotated Flux title the rotation flips its absolute origin so the clipped box
+   lands at a negative x and drags a horizontal scrollbar onto narrow screens.
+   Dropping it only where the whole subtree is already hidden from assistive
+   technology costs nothing and keeps the page free of horizontal scroll.
+   (MathJax's own files are untouched; this is a sim-level rule.) */
+[aria-hidden="true"] mjx-assistive-mml {
+  display: none !important;
+}
+
+/* Flux axis title in the left gutter: a solid up arrow stacked above the word
+   "Flux", which reads bottom-to-top — the original's arrangement. Only the
+   WORD is rotated; the arrow stays in normal flow so it points up on screen.
+   The pair is vertically centred on the plot. */
+.grs-flux-axis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding-bottom: 3.5rem;   /* skip the tick strip + wavelength title below */
+}
+
+/* "Flux", rotated to read bottom-to-top.
+   This deliberately does NOT use writing-mode. In vertical writing mode the
+   inline box is baseline-anchored and includes descender space, so the glyphs
+   sit ~5 px left of the box centre and the word ends up visibly off-axis from
+   the arrow above it (line-height and vertical-align tweaks both made it
+   worse). Absolutely centring the text in its wrapper and rotating about that
+   centre makes the glyphs' visual centre coincide exactly with the wrapper's
+   centre, so flex centring lines it up with the arrow independently of font
+   metrics. The wrapper carries the post-rotation dimensions. */
+.grs-flux-axis__text {
+  position: relative;
+  width: 1.5em;
+  height: 3.6em;   /* just clears the rotated word; verified not to clip */
+  font-size: 1.125rem;
+  font-weight: bold;
+}
+
+.grs-flux-axis__text-rot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Axis direction arrows.
+   These are drawn as SVG rather than typeset, because the original's arrows
+   are thick solid arrows and MathJax cannot produce that: TeX bolding
+   (\mathbf, \bf) does not apply to arrow glyphs — \mathbf{\uparrow} measures
+   identically to \uparrow — and \boldsymbol lives in an extension that is not
+   part of the self-hosted MathJax bundle (requesting it 404s and rejects
+   MathJax's startup promise, which silently kills the whole page typeset).
+   Drawing them also removes any dependence on OS dingbat fonts.
+   They are ornament, not notation: both live inside aria-hidden containers and
+   the axes are described in words in the canvas descriptions. Sized in em so
+   they scale with the surrounding type, and filled with currentColor so they
+   follow the foundation palette. */
+.grs-axis-arrow {
+  display: block;
+  flex: none;
+  color: var(--foreground-color, #1a1a1a);
+}
+
+.grs-axis-arrow--up {
+  width: 0.78em;
+  height: 1.7em;
+  font-size: 1.25rem;
+}
+
+.grs-axis-arrow--right {
+  width: 1.7em;
+  height: 0.78em;
+  font-size: 1.25rem;
+}
+
+.grs-plot-col {
+  min-width: 0;
+}
+
+/* Visible-spectrum strip. It covers 400–700 nm of a 250–950 nm plot, so it is
+   (700-400)/700 = 42.8571% of the plot width.
+   NOTE: it is CENTRED on the plot by request. The original (and the first cut
+   of this port) instead offset it to margin-left: 21.4286%, which is where
+   400 nm actually falls on the axis, so each colour sat directly above its own
+   wavelength on the graph. Centring trades that correspondence for symmetry.
+   To restore it, swap the `margin` line below for
+   `margin: 0 0 0.625rem 21.4286%;`. */
+.grs-vis {
+  width: 42.8571%;
+  margin: 0 auto 0.625rem;   /* 0.625rem = the original's 10 px gap */
+}
+
+.grs-vis__title {
+  margin: 0 0 0.25rem;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.0625rem;
+}
+
+.grs-vis__canvas,
+.grs-graph__canvas {
+  display: block;
+  width: 100%;
+  height: auto;            /* intrinsic ratio preserved; no aspect-ratio needed */
+  max-width: 100%;
+}
+
+.grs-vis__canvas {
+  image-rendering: auto;
+}
+
+/* ---- Wavelength tick marks and labels ----------------------------------- */
+
+.grs-ticks {
+  position: relative;
+  height: 2.25rem;
+  margin-top: -1px;        /* ticks start on the graph's bottom border */
+}
+
+.grs-tick {
+  position: absolute;
+  top: 0;
+  width: 0;
+  border-left-width: 1px;
+  border-left-style: solid;
+  border-left-color: var(--foreground-color, #1a1a1a);
+  height: 0.25rem;
+}
+
+.grs-tick--major {
+  border-left-width: 2px;
+  height: 0.375rem;
+}
+
+.grs-tick__label {
+  position: absolute;
+  top: 0.5rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.grs-wl-axis {
+  margin: 0.25rem 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: bold;
+}
+
+/* ---- Responsive: desktop -> iPad -> phone portrait ---------------------- */
+
+/* Two columns: intro + control side by side, filters full width beneath. */
+@media (max-width: 68rem) {
+  .grs-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .grs-panel--filters {
+    grid-column: 1 / -1;
+  }
+  .grs-filters-row {
+    gap: 1.5rem;
+  }
+}
+
+/* Single column, panels stacked in reading order (phone portrait, and any
+   zoom level that narrows the viewport to this width). */
+@media (max-width: 48rem) {
+  .grs-layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.5rem 0.5rem 1rem;
+  }
+  .grs-panel--filters {
+    grid-column: auto;
+  }
+  .grs-row--z {
+    grid-template-columns: auto minmax(4.5rem, auto);
+  }
+  .grs-z-slider {
+    grid-column: 1 / -1;
+  }
+  .grs-stage {
+    padding: 0.5rem 0.5rem 1rem;
+  }
+  .grs-flux-axis {
+    padding-bottom: 3rem;
+  }
+  .grs-flux-axis__text {
+    font-size: 1rem;
+  }
+  .grs-axis-arrow--up,
+  .grs-axis-arrow--right {
+    font-size: 1rem;
+  }
+  .grs-tick__label {
+    font-size: 0.875rem;
+  }
+}
+
+/* Very narrow phones. Seven wavelength labels cannot fit across a ~250 px
+   plot without colliding, so every other LABEL is dropped (300/500/700/900
+   remain). All fifteen tick MARKS stay, so the axis is unchanged — only the
+   labelling thins out. */
+@media (max-width: 34rem) {
+  .grs-chart__track {
+    height: 3.25rem;
+  }
+  .grs-tick__label {
+    font-size: 0.75rem;
+  }
+  .grs-tick__label--minor {
+    display: none;
+  }
+}
+
+/* ---- Reduced motion ------------------------------------------------------ */
+/* The only animation is the 200 ms show/hide fade of the filter details; with
+   reduced motion the sim jumps straight to the end state (handled in
+   simulation.js, which reads this same media query). */
+@media (prefers-reduced-motion: reduce) {
+  .grs-chart {
+    transition: none;
+  }
+}

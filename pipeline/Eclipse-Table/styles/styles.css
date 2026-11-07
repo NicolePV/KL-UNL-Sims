@@ -1,0 +1,263 @@
+/* =============================================================================
+   Eclipse Table -- sim-specific styles.
+   These sit ON TOP of the KL-UNL foundation (foundation/kl-unl.css); the
+   foundation files are never edited. Everything here is additive.
+   ========================================================================== */
+
+/* Self-hosted copy of the font the original sim used, so text renders the same
+   on every OS (falls back to the platform sans-serif if unavailable). */
+@font-face {
+  font-family: "ETVerdana";
+  src: url("../assets/verdana.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* eclipse-specific colours pulled from the exported art (documented in
+     ACCESSIBILITY.md); used only for decorative swatches / panel tints. */
+  --et-solar-dot: #feb316;
+  --et-lunar-dot: #8a8a8a;
+  --et-solar-panel: #eaf2ff;   /* light blue  (sprite 10 / shape 9)  */
+  --et-lunar-panel: #eeffee;   /* light green (sprite 24 / shape 23) */
+  --et-font: "ETVerdana", Verdana, Geneva, Tahoma, sans-serif;
+}
+
+/* Comfortable, zoomable base type (rule 10: >= ~1.125rem body copy). */
+.et-main {
+  font-size: 1.125rem;
+  line-height: 1.5;
+  padding: 0 0.5rem 1.5rem;
+  /* never let a floating tooltip create a horizontal scrollbar on the page */
+  overflow-x: clip;
+}
+
+.et-main .panel { margin-top: 0.75rem; }
+
+.panel__help {
+  font-size: 1rem;         /* a little larger than the foundation default */
+  line-height: 1.5;
+  max-width: 60rem;
+}
+
+.et-skip:focus { top: 0.25rem; left: 0.25rem; }
+
+/* Colour-key words in the intro text (never colour alone -- the words say it). */
+.et-key-sun  { color: #a15c00; font-weight: 600; }
+.et-key-moon { color: #5a5a5a; font-weight: 600; }
+
+/* -----------------------------------------------------------------------------
+   THE SCALING STAGE
+   Fixed 700 x 550 aspect ratio; the canvas fills it and CSS scales the whole
+   thing to the panel width. The overlay is a container so its children can be
+   sized in container units (cqi) and stay proportional to the plot, exactly as
+   the original raster did -- but as crisp, zoomable HTML.
+--------------------------------------------------------------------------------*/
+.et-canvas-wrap {
+  padding: 0.25rem 1rem 1rem;
+  line-height: normal;
+}
+
+.et-stage {
+  position: relative;
+  width: 100%;
+  max-width: 44rem;
+  margin: 0 auto;
+  aspect-ratio: 700 / 550;
+  container-type: inline-size;
+}
+
+#et-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.et-overlay {
+  position: absolute;
+  inset: 0;
+  /* let the info panel spill past the plot edges when it must, without clipping */
+  overflow: visible;
+  font-family: var(--et-font);
+}
+
+/* --- axis tick labels (HTML, so they zoom crisply and can be inspected) --- */
+.et-axis {
+  position: absolute;
+  color: var(--foreground-color, #1a1a1a);
+  white-space: nowrap;
+  pointer-events: none;
+  font-weight: 600;
+}
+.et-axis--year {
+  transform: translate(-50%, -50%);
+  font-size: clamp(0.5rem, 2.4cqi, 0.95rem);
+}
+.et-axis--month {
+  transform: translate(-100%, -50%);
+  padding-right: 0.2rem;
+  font-size: clamp(0.5rem, 2.3cqi, 0.9rem);
+}
+
+/* --- branding reused from the original stage --- */
+.et-logo {
+  position: absolute;
+  width: 19cqi;
+  height: auto;
+  pointer-events: none;
+}
+.et-credit {
+  position: absolute;
+  transform: translateX(-100%);
+  white-space: nowrap;
+  font-style: italic;
+  color: var(--foreground-color, #1a1a1a);
+  font-size: clamp(0.5rem, 2.2cqi, 0.9rem);
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------------------------
+   ONE FOCUSABLE BUTTON PER ECLIPSE (over each dot)
+   Transparent -- the coloured dot is painted on the canvas beneath. Focus shows
+   the foundation :focus-visible ring and, via JS, the highlight glow + info panel.
+--------------------------------------------------------------------------------*/
+.et-point {
+  position: absolute;
+  width: 2.7cqi;
+  height: 2.7cqi;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  /* dragging shouldn't scroll on touch; hovering is the interaction */
+  touch-action: manipulation;
+  z-index: 3;
+}
+.et-point:focus-visible {
+  /* clear ring on the small target (colour comes from the foundation variable) */
+  outline: 0.14rem solid var(--outline-color, #005fcc);
+  outline-offset: 0.14rem;
+  border-radius: 50%;
+}
+
+/* -----------------------------------------------------------------------------
+   INFO PANEL (HTML, readable rem-based text; blue for solar, green for lunar)
+--------------------------------------------------------------------------------*/
+.et-info {
+  position: absolute;
+  z-index: 10;
+  width: min(20rem, 82cqi);
+  box-sizing: border-box;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #000000;
+  box-shadow: 0.15rem 0.15rem 0.4rem rgba(0, 0, 0, 0.35);
+  font-family: var(--et-font);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--foreground-color, #1a1a1a);
+  background: #ffffff;
+  pointer-events: none;   /* never steals the hover from the dot beneath */
+}
+.et-info[hidden] { display: none; }
+.et-info--solar { background: var(--et-solar-panel, #eaf2ff); }
+.et-info--lunar { background: var(--et-lunar-panel, #eeffee); }
+
+.et-info__title {
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+  font-size: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  padding-bottom: 0.3rem;
+}
+.et-info__grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 1.1rem;
+  margin-bottom: 0.25rem;
+}
+.et-info__row { margin: 0.2rem 0 0; }
+.et-info__label { font-weight: 600; }
+
+/* -----------------------------------------------------------------------------
+   LEGEND
+--------------------------------------------------------------------------------*/
+.et-legend { padding: 0.25rem 1rem 1rem; }
+.et-legend-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.35rem 0;
+}
+.et-legend-note { margin: 0.5rem 0 0; font-style: italic; }
+.et-swatch {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+.et-swatch--solar {
+  background: radial-gradient(circle at 40% 40%, #ffe9c4, var(--et-solar-dot, #feb316));
+}
+.et-swatch--lunar {
+  background: radial-gradient(circle at 40% 40%, #dadada, var(--et-lunar-dot, #8a8a8a));
+}
+
+/* -----------------------------------------------------------------------------
+   DATA TABLE
+--------------------------------------------------------------------------------*/
+.et-table-scroll {
+  margin: 0 1rem 1rem;
+  max-height: 30rem;
+  overflow: auto;
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+}
+.et-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95rem;
+}
+.et-table caption { text-align: left; }
+.et-table th,
+.et-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #d9d9d9;
+  vertical-align: top;
+}
+.et-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f0f4f8;
+  border-bottom: 2px solid #005a9c;
+  z-index: 1;
+}
+.et-table .et-num { text-align: right; font-variant-numeric: tabular-nums; }
+.et-trow:hover { background: #fff6d9; }
+.et-trow--solar td:first-child { border-left: 4px solid var(--et-solar-dot, #feb316); }
+.et-trow--lunar td:first-child { border-left: 4px solid var(--et-lunar-dot, #8a8a8a); }
+
+/* -----------------------------------------------------------------------------
+   RESPONSIVE -- carry the layout below the foundation's 56rem breakpoint down to
+   phone portrait. Everything is already a single column of full-width panels, so
+   we mainly relax widths and let the table scroll on its own.
+--------------------------------------------------------------------------------*/
+@media (max-width: 40rem) {
+  .et-main { font-size: 1.0625rem; }
+  .et-stage { max-width: 100%; }
+  .et-table-scroll { margin: 0 0.5rem 1rem; }
+  .et-table th, .et-table td { padding: 0.35rem 0.4rem; }
+}
+
+/* Respect reduced-motion (the sim has no animation, but honour the setting for
+   any user-agent transitions on hover). */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

@@ -1,0 +1,9 @@
+Astronomers observe objects 
+--- RECORDSEPARATOR ---
+through various filters. As the 
+--- RECORDSEPARATOR ---
+galaxy's light is redshifted the 
+--- RECORDSEPARATOR ---
+relative brightness observed 
+--- RECORDSEPARATOR ---
+through the filters changes.

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kepler's Third Law</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") working on every symbol. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <!-- aria-live status region: announces the computed counterpart value, with
+       units, after typing settles (on commit, not on every keystroke). -->
+  <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  <main class="app-shell">
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It renders the <h1>, reads text from foundation/contents.json by sim-id,
+         and dispatches a bubbling "sim-reset" event we listen for. -->
+    <kl-unl-masthead sim-id="keplers_third" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout kt-layout">
+
+      <!-- ============ CALCULATOR PANEL (single, full width) ============ -->
+      <section class="panel kt-panel" aria-labelledby="calc-heading">
+        <h2 id="calc-heading" class="panel__heading">Period and Semimajor Axis Calculator</h2>
+
+        <div class="kt-body">
+
+          <!-- Reference equation: P^2 = a^3. Filled in and typeset through
+               kl-unl.js (klunlShowEquation) from klunlInitEqn() in simulation.js. -->
+          <div class="kt-eq kt-eq--reference">
+            <span class="mj" id="eq-reference" aria-hidden="true"></span>
+          </div>
+          <p class="sr-only" id="eq-reference-sr"></p>
+
+          <!-- Interactive row: [P]^2 = [a]^3.
+               The two boxes are the original's p_txt / a_txt edit fields; the
+               exponents and the equals sign are MathJax (hard rule 8a). -->
+          <div class="kt-eq kt-eq--inputs">
+
+            <span class="kt-field">
+              <label class="sr-only" for="p-input">Period P, in years</label>
+              <input id="p-input" class="kt-input" type="text" inputmode="decimal"
+                     maxlength="7" autocomplete="off" spellcheck="false"
+                     enterkeyhint="done">
+              <span class="kt-field__exp mj" aria-hidden="true">\( {}^{2} \)</span>
+            </span>
+
+            <span class="kt-eq__rel mj" aria-hidden="true">\( = \)</span>
+
+            <span class="kt-field">
+              <label class="sr-only" for="a-input">Semimajor axis a, in astronomical units</label>
+              <input id="a-input" class="kt-input" type="text" inputmode="decimal"
+                     maxlength="7" autocomplete="off" spellcheck="false"
+                     enterkeyhint="done">
+              <span class="kt-field__exp mj" aria-hidden="true">\( {}^{3} \)</span>
+            </span>
+
+          </div>
+
+          <!-- Caption, verbatim from the original static text. The two variable
+               names are MathJax; .sr-only twins keep the sentence readable aloud. -->
+          <p class="kt-caption">where
+            <span class="mj" aria-hidden="true">\( P \)</span><span class="sr-only">P</span>
+            is in years and
+            <span class="mj" aria-hidden="true">\( a \)</span><span class="sr-only">a</span>
+            is in AUs</p>
+
+          <!-- Added affordance note (not in the Flash original): the arrow-key and
+               mouse-wheel stepping is not otherwise discoverable. -->
+          <p class="kt-hint" id="kt-hint">Type a value in either box and the other is
+            computed. With a box focused, the up and down arrow keys or the mouse wheel
+            adjust its value.</p>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

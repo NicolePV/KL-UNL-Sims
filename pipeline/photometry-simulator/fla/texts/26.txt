@@ -1,0 +1,15 @@
+f
+--- RECORDSEPARATOR ---
+1
+--- RECORDSEPARATOR ---
+ = counts
+--- RECORDSEPARATOR ---
+ disc 1
+--- RECORDSEPARATOR ---
+ – numPixels
+--- RECORDSEPARATOR ---
+ disc 1
+--- RECORDSEPARATOR ---
+ × average
+--- RECORDSEPARATOR ---
+ ring 1

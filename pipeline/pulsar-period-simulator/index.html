@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulsar Period Simulator</title>
+<link rel="stylesheet" href="foundation/kl-unl.css">
+<link rel="stylesheet" href="styles/styles.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <kl-unl-masthead sim-id="pulsarPeriodSim001" json-url="foundation/contents.json"></kl-unl-masthead>
+
+  <main class="app-layout">
+
+    <section class="panel sim-panel" aria-labelledby="sim-heading">
+      <h2 class="panel__heading sr-only" id="sim-heading">
+        Pulsar orbit and pulse diagram with controls
+      </h2>
+
+      <div class="sim-canvas-wrap">
+        <div class="diagram-stage" id="diagramStage">
+          <canvas id="stageCanvas" width="900" height="600" role="img"
+                  aria-label="Pulsar orbit and pulse-arrival diagram"
+                  aria-describedby="diagram-desc"></canvas>
+
+          <div class="diagram-overlay">
+            <p class="diagram-label diagram-label--plot-heading" style="right:42%; top:17%;">
+              Interval Between Pulse Arrivals
+            </p>
+            <p class="diagram-label diagram-label--time" style="left:78.5%; top:35.5%;">
+              Time
+            </p>
+            <p class="diagram-label diagram-label--earth" style="right:7%; top:90.5%;">
+              earth
+            </p>
+          </div>
+        </div>
+
+        <!-- Controls sit on the main box (lower-left, over the empty stage    -->
+        <!-- area), matching the original compact single-box layout. They      -->
+        <!-- reflow to a normal stacked block below the canvas on narrow /      -->
+        <!-- zoomed viewports (see .stage-controls in styles.css).             -->
+        <div class="stage-controls">
+          <fieldset class="control-fieldset stage-controls__field">
+            <legend class="control-fieldset__legend">pulsar motion:</legend>
+            <div class="control-grid control-grid--motion">
+              <div class="control-choice">
+                <input type="radio" id="motionStationary" name="motionMode" value="stationary" checked>
+                <label for="motionStationary">stationary</label>
+              </div>
+              <div class="control-choice">
+                <input type="radio" id="motionCircular" name="motionMode" value="circular">
+                <label for="motionCircular">circular</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="control-fieldset stage-controls__field">
+            <legend class="sr-only">animation</legend>
+            <div class="control-row control-row--speed">
+              <button type="button" class="button" id="pauseButton">pause</button>
+              <label class="control-row__label" for="speedSlider">speed:</label>
+              <input type="range" class="control-row__slider" id="speedSlider"
+                     min="-2" max="1.1" step="0.01" value="-0.4">
+            </div>
+          </fieldset>
+
+          <fieldset class="control-fieldset stage-controls__field">
+            <legend class="sr-only">display options</legend>
+            <div class="control-choice">
+              <input type="checkbox" id="colorCheckbox">
+              <label for="colorCheckbox">use color coding</label>
+            </div>
+          </fieldset>
+
+          <p class="stage-controls__help">
+            A pulsar is a neutron star that emits radiation beams from
+            its magnetic poles as it rotates &ndash; the pulses we see occur
+            when the beams point at us. For clarity's sake only the
+            pulses emitted towards earth are shown in this simulation.
+          </p>
+        </div>
+
+        <p id="diagram-desc" class="sr-only" aria-live="polite">
+          Diagram loading.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="foundation/kl-unl-masthead.js"></script>
+<script src="foundation/kl-unl.js"></script>
+<script src="simulation.js" type="module"></script>
+</body>
+</html>

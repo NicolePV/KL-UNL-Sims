@@ -1,0 +1,347 @@
+/* =====================================================================
+   Gas Retention Simulator -- sim-specific styles.
+   Layered on top of the KL-UNL foundation (kl-unl.css); the foundation
+   files are never edited. Uses rem/relative units and reflows from
+   desktop -> iPad -> phone portrait. Base body text >= 1.125rem.
+   ===================================================================== */
+
+.app-shell { padding-bottom: 0.75rem; }
+
+/* Larger, zoomable base type for all sim content */
+.sim-panel,
+.sim-panel button,
+.sim-panel select,
+.sim-panel input,
+.sim-panel label,
+.sim-gaslist,
+.sim-cursor,
+.sim-plot { font-size: 1.125rem; line-height: 1.4; }
+
+.panel__heading { font-size: 1.25rem; }
+
+/* --- two-column layout (mirrors the original quadrant arrangement) --- */
+.sim-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+  align-self: stretch;   /* both columns take the height of the taller one */
+}
+.sim-col--left  { padding: 0.25rem 0.45rem 0.25rem 0.25rem; }
+.sim-col--right { padding: 0.25rem 0.25rem 0.25rem 0.45rem; }
+
+/* The bottom panel in each column grows to fill, so the bottoms of
+   "Chamber Properties" and "Gases" line up regardless of the plot/chamber size. */
+.sim-col > .sim-panel:last-child {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+/* distribute Chamber Properties controls evenly through the grown panel */
+.sim-col--left > .sim-panel:last-child .control-fieldset {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+.sim-col--right > .sim-panel:last-child .sim-gases { flex: 1 1 auto; }
+
+.sim-panel { padding-bottom: 0.75rem; border-radius: 2px; }
+
+/* ---------------------------- Chamber ------------------------------ */
+.sim-chamber-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0.25rem 1rem 0.75rem;
+}
+.sim-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  touch-action: none;   /* draggable canvases must not scroll the page */
+}
+.sim-chamber-wrap .sim-canvas { max-width: 24rem; }
+
+/* ---------------------- sliders / control rows --------------------- */
+.sim-slider-row {
+  grid-template-columns: auto 5.5rem 1fr;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+.sim-readout {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 5rem;
+  padding: 0.15rem 0.4rem;
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 3px;
+  background: var(--background-color, #fff);
+  white-space: nowrap;
+}
+
+/* Native range slider: keep it big enough for touch (>=2.75rem tall hit area) */
+.sim-slider {
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: var(--button-background-color, #005a9c);
+  cursor: pointer;
+}
+.sim-slider:disabled { cursor: default; opacity: 0.5; }
+
+.sim-choice { min-height: 2.2rem; margin: 0.35rem 0; gap: 0.5rem; }
+.sim-choice input[type="checkbox"] { width: 1.4rem; height: 1.4rem; }
+
+.sim-button-row { margin-top: 0.6rem; justify-content: center; }
+.sim-button {
+  font-size: 1.125rem;      /* unified control font size */
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 5px;
+  background: #f0f0f0;
+  color: var(--foreground-color, #1a1a1a);
+}
+.sim-button:hover:not(:disabled),
+.sim-button:focus-visible { background: #e2e2e2; }
+.sim-button:disabled { opacity: 0.45; cursor: default; }
+
+/* ------------------------- Distribution plot ----------------------- */
+.sim-plot {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  grid-template-rows: auto auto auto;
+  align-items: stretch;
+  column-gap: 0.4rem;
+  padding: 1.5rem 1rem 0.5rem;   /* top room for the "escape speed" label above the box */
+}
+.sim-plot__ytitle {
+  grid-row: 1; grid-column: 1;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  align-self: center;
+  font-weight: bold;
+  font-size: 1.05rem;
+}
+/* z-index lifts the plot area (and its cursor speed box) above the tick-label
+   row below, so the white speed box paints over the axis numbers, not under. */
+.sim-plot__area { grid-row: 1; grid-column: 2; position: relative; z-index: 2; }
+.sim-plot__xticks {
+  grid-row: 2; grid-column: 2;
+  position: relative;
+  z-index: 1;
+  height: 1.6rem;
+  margin-top: 0.15rem;
+}
+.sim-plot__tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+}
+.sim-plot__xtitle {
+  grid-row: 3; grid-column: 2;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.125rem;
+  margin-top: 0.1rem;
+}
+
+/* escape-speed marker label -- sits ABOVE the plot box */
+.sim-plot__escape-label {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 0.15rem;
+  transform: translateX(-50%);
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* draggable / keyboard cursor */
+.sim-cursor {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1.2rem;                 /* generous grab / touch width */
+  transform: translateX(-50%);
+  cursor: ew-resize;
+}
+.sim-cursor__line {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 3px;
+  transform: translateX(-50%);
+  background: #ee9090;
+}
+.sim-cursor:hover .sim-cursor__line,
+.sim-cursor:focus-visible .sim-cursor__line { background: #ff5050; width: 4px; }
+.sim-cursor:focus-visible { outline: none; }
+.sim-cursor:focus-visible .sim-cursor__line {
+  box-shadow: 0 0 0 2px var(--outline-color, #005fcc);
+}
+.sim-cursor__info {
+  position: absolute;
+  top: 0.3rem;
+  z-index: 2;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  max-width: 6.5rem;
+  background: #ffffff;
+  padding: 0.1rem 0.25rem;
+  pointer-events: none;
+}
+.sim-cursor__info--left  { right: 50%; margin-right: 0.25rem; text-align: right; }
+.sim-cursor__info--right { left: 50%;  margin-left: 0.25rem;  text-align: left; }
+.sim-cursor__speed {
+  position: absolute;
+  left: 50%; top: 100%;
+  transform: translateX(-50%);
+  margin-top: 0.2rem;
+  z-index: 3;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid #ee9090;
+  border-radius: 3px;
+  background: #ffffff;         /* solid white fill so it reads over axis ticks */
+  padding: 0.1rem 0.35rem;
+  white-space: nowrap;
+}
+
+.sim-plot-options { margin-top: 0.5rem; gap: 0.35rem 1rem; }
+
+/* ------------------------------ Gases ------------------------------ */
+.sim-gases {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr auto;   /* add-row | gas list | reset */
+  gap: 0.6rem 1rem;
+  align-items: start;
+  padding: 0.5rem 1rem 0;
+}
+/* proportions box spans the add-row + list rows so its BOTTOM lines up with the
+   bottom of the gas-list box on the right */
+.sim-proportions { grid-column: 1; grid-row: 1 / 3; align-self: stretch; }
+.sim-gases__add  { grid-column: 2; grid-row: 1; }
+.sim-gaslist     { grid-column: 2; grid-row: 2; }
+.sim-gases__reset{ grid-column: 2; grid-row: 3; }
+.sim-proportions {
+  border: 1px solid #ccc;
+  padding: 0.4rem 0.5rem 0.25rem;
+  background: #fff;
+  min-width: 9.5rem;   /* constant width for 0..3 bars */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;   /* keep bars at the bottom when the box is tall */
+}
+.sim-proportions__bars {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  justify-content: center;
+  height: 9.5rem;
+}
+.sim-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 2.2rem;
+  height: 100%;
+  cursor: ns-resize;
+}
+.sim-bar__track {
+  position: relative;
+  flex: 1;
+  width: 1.5rem;
+  border: 1px solid #bbb;
+  background: #fafafa;
+  overflow: hidden;
+}
+.sim-bar__fill {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  opacity: 0.45;
+}
+.sim-bar--selected .sim-bar__fill { opacity: 0.75; }
+.sim-bar--selected .sim-bar__track { border-color: #666; }
+.sim-bar__label { margin-top: 0.3rem; font-size: 1.125rem; font-weight: normal; }
+.sim-bar--selected .sim-bar__label { font-weight: bold; }
+.sim-bar:focus-visible { outline: none; }
+.sim-bar:focus-visible .sim-bar__track {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: 2px;
+}
+
+/* dropdown + "remove selected gas" stay on ONE line */
+.sim-gases__add { display: flex; gap: 0.6rem; align-items: center; flex-wrap: nowrap; min-width: 0; }
+.sim-select {
+  min-height: 2.75rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 1.125rem;
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--foreground-color, #1a1a1a);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#removeGasButton { flex: 0 0 auto; white-space: nowrap; }
+.sim-select:disabled { opacity: 0.55; }
+
+/* Reserve constant height for up to 3 gas rows so the panel doesn't resize as
+   gases are added/removed (matches the original fixed-size list area). */
+.sim-gaslist { list-style: none; margin: 0; padding: 0; border: 1px solid #ccc; min-height: 8.1rem; }
+.sim-gaslist__item { margin: 0; }
+.sim-gaslist__item + .sim-gaslist__item { border-top: 1px solid #eee; }
+.sim-gaslist__btn {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr auto 4rem;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--foreground-color, #1a1a1a);
+  text-align: left;
+  cursor: pointer;
+  font-size: 1.125rem;
+}
+.sim-gaslist__btn:hover { background: #f2f2f2; }
+.sim-gaslist__btn--selected { background: #e9e9ef; font-weight: bold; }
+.sim-gaslist__dot { width: 0.8rem; height: 0.8rem; border-radius: 50%; }
+.sim-gaslist__mass { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sim-gaslist__pct  { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.sim-gases__reset { display: flex; justify-content: flex-start; }
+
+/* ---------------- responsive: below the foundation 56rem collapse -- */
+@media (max-width: 56rem) {
+  .sim-col--left, .sim-col--right { padding: 0.25rem; }
+  .sim-chamber-wrap .sim-canvas { max-width: 26rem; }
+}
+@media (max-width: 40rem) {
+  .sim-gases { grid-template-columns: 1fr; grid-template-rows: none; }
+  .sim-proportions, .sim-gases__add, .sim-gaslist, .sim-gases__reset {
+    grid-column: 1; grid-row: auto;
+  }
+  .sim-proportions { justify-self: center; align-self: auto; }
+  .sim-gases__add { flex-wrap: wrap; }
+  .sim-slider-row { grid-template-columns: auto 1fr; }
+  .sim-slider-row .sim-slider { grid-column: 1 / -1; }
+  .sim-plot__ytitle { font-size: 0.9rem; }
+}
+@media (max-width: 26rem) {
+  .sim-panel, .sim-panel button, .sim-panel select,
+  .sim-panel input, .sim-panel label { font-size: 1.05rem; }
+  .sim-gaslist__btn { grid-template-columns: 1rem 1fr auto; row-gap: 0.15rem; }
+  .sim-gaslist__pct { grid-column: 2 / -1; text-align: left; }
+}
+
+/* reduced motion: nothing auto-animates; motion is user-started and
+   stoppable via the start/stop button. Soften focus transitions only. */
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+}

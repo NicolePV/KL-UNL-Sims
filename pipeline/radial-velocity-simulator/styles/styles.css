@@ -1,0 +1,356 @@
+/* =====================================================================
+   Radial Velocity Simulator -- sim-specific styles.
+   Layered on top of the KL-UNL foundation (kl-unl.css); the foundation
+   files are never edited. Uses rem/relative units and reflows from
+   desktop -> iPad -> phone portrait. Base body text >= 1.125rem.
+   ===================================================================== */
+
+.app-shell { max-width: 75rem; padding-bottom: 0.75rem; }
+
+.rvs-panel,
+.rvs-panel button,
+.rvs-panel select,
+.rvs-panel input,
+.rvs-panel label,
+.rvs-star-info { font-size: 1.125rem; line-height: 1.4; }
+
+.panel__heading { font-size: 1.15rem; }
+
+/* ------------------------------ layout ------------------------------ */
+.rvs-layout { display: block; padding: 0.25rem 0.25rem 0; }
+
+.rvs-top {
+  display: grid;
+  /* Near-equal columns so the square left panel's side length is close to
+     the right panel's natural content height -> the RV plot inside the right
+     panel only has to stretch a little to make the two panels' heights match
+     (see .rvs-panel--viz aspect-ratio + the flexible plot below). */
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+
+.rvs-bottom {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.rvs-col {
+  display: flex;
+  flex-direction: column;
+  /* Same-column panels separated by the SAME 0.6rem gap used everywhere
+     else (.rvs-top / .rvs-bottom column gaps), so the whole grid breathes
+     evenly (per user request; supersedes an earlier flush-stacked look). */
+  gap: 0.6rem;
+  min-width: 0;
+}
+.rvs-col > .rvs-panel:last-child { flex: 1 1 auto; display: flex; flex-direction: column; }
+.rvs-col > .rvs-panel:last-child .control-fieldset { flex: 1 1 auto; }
+
+/* border-box so the JS-forced square height (relayoutTop) includes padding,
+   and the two top panels end up exactly equal in border-box height. */
+.rvs-panel { padding-bottom: 0.6rem; border-radius: 2px; min-width: 0; box-sizing: border-box; }
+/* viz panel: no bottom padding so the black canvas fills the square edge to
+   edge (no thin strip at the bottom). */
+.rvs-panel--viz { padding-bottom: 0; }
+/* Tighter horizontal fieldset padding than the foundation default (1rem) so
+   the narrow bottom-row panels give more width to the sliders. */
+.rvs-panel .control-fieldset { padding-left: 0.6rem; padding-right: 0.6rem; }
+
+/* ------------------------------ canvases ----------------------------- */
+/* Left panel is kept SQUARE (aspect-ratio 1); the row is align-items:stretch
+   and the RV plot in the right panel is flexible (see below), so the right
+   panel's height matches this square rather than the square being forced to
+   fill a taller right panel. The viz canvas fills the whole square wrap; its
+   black background is painted across the full canvas and the diagram centered
+   inside (resizeVizCanvas()/renderVisualization()). */
+.rvs-panel--viz { display: flex; flex-direction: column; aspect-ratio: 1; overflow: hidden; }
+.rvs-viz-wrap {
+  padding: 0;
+  flex: 1 1 auto;
+  position: relative;
+  min-height: 8rem;
+  overflow: hidden;
+}
+
+/* Right panel: flex column so the plot area grows/shrinks to make the panel's
+   height equal the square left panel's, while the controls below stay fixed. */
+.rvs-panel--plot { display: flex; flex-direction: column; }
+.rvs-plot-wrap {
+  padding: 0.5rem 0.75rem 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rvs-viz-stage { position: absolute; inset: 0; line-height: 0; }
+.rvs-plot-stage { position: relative; line-height: 0; min-height: 0; }
+.rvs-viz-stage .rvs-canvas { display: block; width: 100%; height: 100%; }
+/* Absolutely positioned so the canvas's intrinsic 700x380 size doesn't set a
+   minimum height on the plot panel -- that would stop the panel from
+   shrinking to match the square left panel. The plot stage (a 1fr grid row)
+   defines the size; the canvas fills it. */
+.rvs-plot-stage .rvs-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.rvs-plot-grid {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  grid-template-rows: 1fr auto;   /* stage row flexes; x-title row stays auto */
+  column-gap: 0.35rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.rvs-plot-ytitle {
+  grid-row: 1; grid-column: 1;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  align-self: center;
+  font-weight: bold;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+.rvs-plot-stage { grid-row: 1; grid-column: 2; }
+.rvs-plot-xtitle {
+  grid-row: 2; grid-column: 2;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.125rem;
+  /* .panel__canvas-wrap (foundation) sets line-height:0 to hide whitespace
+     under bare canvases; that's an inherited property, so it leaks into
+     this text sibling too unless restored explicitly. */
+  line-height: 1.3;
+  margin-top: 0.3rem;
+}
+
+.rvs-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  background: #000;
+  touch-action: none; /* draggable canvases must not scroll the page */
+}
+.rvs-plot-stage .rvs-canvas { background: #fff; }
+
+/* Invisible focusable proxy elements layered over the canvas for keyboard
+   dragging (per the draggable-object accessibility pattern). */
+.rvs-drag-proxy {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+}
+.rvs-drag-proxy:active { cursor: grabbing; }
+.rvs-drag-proxy:focus-visible {
+  outline: 0.125rem solid var(--outline-color, #005fcc);
+  outline-offset: -0.125rem;
+}
+#vizDragProxy { inset: 0; }
+.rvs-phase-cursor-proxy {
+  top: 0;
+  bottom: 0;
+  width: 1.1rem;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+}
+
+.rvs-crosshair-readout {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: #fff;
+  border: 1px solid #90a4c9;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.95rem;
+  /* .rvs-plot-stage sets line-height:0 (canvas whitespace fix); restore a
+     normal line box here or this readout collapses to ~0 height and its
+     top/bottom borders strike through the text. */
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* --------------------------- plot controls --------------------------- */
+/* More horizontal padding than the tight 0.6rem used on the narrow bottom
+   panels: this (wide) plot panel has room, and the checkboxes / noise /
+   number rows were hugging the panel's left border. The `.control-fieldset`
+   qualifier raises specificity to beat `.rvs-panel .control-fieldset`. */
+.rvs-plot-controls.control-fieldset {
+  padding-top: 0.5rem;
+  padding-left: 1.5rem;
+  padding-right: 1rem;
+}
+.rvs-plot-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 1.25rem;
+  align-items: start;
+}
+.rvs-plot-controls-left { min-width: 0; }
+.rvs-plot-controls-right {
+  border-left: 1px solid #ccc;
+  padding-left: 1.25rem;
+  text-align: right;
+  align-self: center;
+}
+.rvs-period-label { font-size: 1.125rem; }
+.rvs-period-value { font-size: 1.125rem; font-variant-numeric: tabular-nums; margin-top: 0.15rem; }
+
+/* ------------------------ sliders / control rows ---------------------- */
+/* Fallback grid for a stand-alone slider row (not inside an .rvs-align
+   container). Inside .rvs-align the rows use subgrid instead (below). */
+.rvs-slider-row {
+  grid-template-columns: auto auto 1fr;
+  gap: 0.35rem 0.6rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.rvs-slider-row--nofield { grid-template-columns: auto 1fr; }
+
+/* Column alignment within a panel: the fieldset (or plot-controls-left) is a
+   3-column grid [ label | value-box | slider ]; each slider row adopts those
+   same tracks via subgrid, so every value box (and every slider) lines up in
+   a column down the panel regardless of differing label widths. Non-row
+   children (checkboxes, buttons, the star-info paragraph) span all columns.
+   Subgrid is universally supported in current browsers; where it isn't, rows
+   degrade to unaligned (but not broken). */
+.rvs-align {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  align-items: center;
+  /* tight column gap so the slider (3rd, 1fr column) gets as much of the
+     panel width as possible -- the label + value-box columns are already
+     content-sized, so the gaps are the only slack to give back to the bar. */
+  column-gap: 0.4rem;
+  row-gap: 0.55rem;
+}
+.rvs-align > * { grid-column: 1 / -1; margin: 0; }
+/* right-align the row labels so their trailing ":" line up in a column
+   (the label track is content-width; right-aligning pins every colon to its
+   right edge, just before the value-box column). */
+.rvs-align > .rvs-slider-row > .control-row__label { text-align: right; }
+.rvs-align > .rvs-slider-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: 0.4rem;
+  align-items: center;
+}
+/* no-value rows (e.g. animation speed): the label spans the label + value-box
+   columns (so a long label like "animation speed:" doesn't widen the shared
+   label column and shove the value boxes of OTHER rows to the right -- e.g.
+   the phase box should sit right after "phase:"). The slider stays in the
+   3rd column so it still lines up with the other sliders. */
+.rvs-align > .rvs-slider-row--nofield > .control-row__label { grid-column: 1 / 3; }
+.rvs-align > .rvs-slider-row--nofield .rvs-slider { grid-column: 3 / -1; }
+
+/* Editable value field + units text, kept as two separate elements
+   (matching the AS source's valueField vs. unitsTextMC) so the unit sits
+   outside the box rather than being baked into the editable text. */
+.rvs-field-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+.rvs-value-field {
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  width: 4.5rem;
+  padding: 0.15rem 0.4rem;
+  color: var(--foreground-color, #1a1a1a);
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 3px;
+  background: var(--background-color, #fff);
+}
+.rvs-value-field:disabled { opacity: 0.55; }
+.rvs-value-field:focus-visible { outline-offset: 1px; }
+.rvs-units { white-space: nowrap; }
+
+.rvs-slider {
+  width: 100%;
+  min-width: 5rem;   /* keep the bar a usable length even in narrow panels */
+  min-height: 2.75rem;
+  accent-color: var(--button-background-color, #005a9c);
+  cursor: pointer;
+}
+.rvs-slider:disabled { cursor: default; opacity: 0.5; }
+
+.rvs-choice { min-height: 2.2rem; margin: 0.3rem 0; gap: 0.5rem; }
+.rvs-choice input[type="checkbox"] { width: 1.4rem; height: 1.4rem; }
+
+.rvs-button-row { justify-content: flex-start; margin-bottom: 0.6rem; }
+.rvs-button {
+  font-size: 1.125rem;
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 5px;
+  background: #f0f0f0;
+  color: var(--foreground-color, #1a1a1a);
+}
+.rvs-button:hover:not(:disabled),
+.rvs-button:focus-visible { background: #e2e2e2; }
+.rvs-button:disabled { opacity: 0.45; cursor: default; }
+
+.rvs-star-info {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: #333;
+}
+
+.rvs-preset-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.rvs-select {
+  min-height: 2.75rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 1.125rem;
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--foreground-color, #1a1a1a);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------------- responsive: below the foundation 56rem collapse ---- */
+/* Collapse the bottom row 3->2 columns early enough that a column always
+   fits label + value box + a >=5rem slider bar without horizontal overflow
+   (at 3 narrow columns the slider's min-width would otherwise push a page
+   scrollbar). */
+@media (max-width: 74rem) {
+  .rvs-bottom { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 62rem) {
+  .rvs-top { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 40rem) {
+  .rvs-bottom { grid-template-columns: 1fr; }
+  .rvs-slider-row { grid-template-columns: auto 1fr; }
+  .rvs-slider-row .rvs-slider { grid-column: 1 / -1; }
+  .rvs-plot-controls-grid { grid-template-columns: 1fr; }
+  .rvs-plot-controls-right {
+    border-left: 0;
+    border-top: 1px solid #ccc;
+    padding-left: 0;
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+    text-align: left;
+  }
+}
+
+@media (max-width: 26rem) {
+  .rvs-panel, .rvs-panel button, .rvs-panel select,
+  .rvs-panel input, .rvs-panel label { font-size: 1.05rem; }
+}
+
+/* reduced motion: continuous orbital animation is user-started via the
+   Animation Controls button; honor prefers-reduced-motion by not
+   auto-starting anything (nothing does) and softening focus transitions. */
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto; }
+}

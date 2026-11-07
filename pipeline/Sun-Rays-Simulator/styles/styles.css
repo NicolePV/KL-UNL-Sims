@@ -1,0 +1,250 @@
+/* ==========================================================================
+   Sun's Rays Simulator -- sim-specific styles ONLY.
+   The shared palette, panels, buttons and the 56rem collapse all come from
+   foundation/kl-unl.css, which is copied in byte-for-byte unchanged.
+   Nothing here edits or forks the foundation; it only layers on top.
+   ========================================================================== */
+
+:root {
+  /* ---- Diagram palette --------------------------------------------------
+     ORIG = the original Flash colour, reused unchanged.
+     A11Y = adjusted for WCAG 1.4.11 (see ACCESSIBILITY.md). Nothing in the
+     diagram is signalled by colour alone; every region is also labelled. */
+  --sim-stage-bg:     #f3f3f3;  /* ORIG 0xF3F3F3 panel fill                 */
+  --sim-stage-edge:   #767676;  /* A11Y frame replacing the Flash bevel     */
+  --sim-ray:          #ffe000;  /* ORIG 0xFFFF00, a shade down for the core */
+  --sim-ray-edge:     #6b5200;  /* A11Y dark casing, 7.4:1 on #f3f3f3       */
+  --sim-line:         #000000;  /* ORIG 0x000000 latitude lines and axis    */
+  --sim-shadow:       0, 0, 0;  /* ORIG black at alpha 179/256              */
+  --sim-shadow-alpha: 0.6992;   /* ORIG 179/256                             */
+  --sim-box-fill:     #fcca04;  /* ORIG 0xFCCA04 readout box fill           */
+  --sim-box-edge:     #000000;  /* ORIG 0x000000 readout box border         */
+
+  /* Spacing scale: one set of values reused everywhere for an even rhythm. */
+  --sim-gap-xs:       0.35rem;
+  --sim-gap-sm:       0.6rem;
+  --sim-gap-md:       1rem;
+  --sim-gap-lg:       1.5rem;
+
+  /* Label type size, expressed against the stage width so diagram labels keep
+     their proportions as the stage scales, with a floor for small screens. */
+  --sim-label-size:   max(0.625rem, 2.34cqw);
+}
+
+/* --------------------------------------------------------------------------
+   Type scale. Body copy sits above the 1.125rem floor and everything is in
+   rem/em so it tracks the browser font setting and reflows at 200% zoom.
+   -------------------------------------------------------------------------- */
+body {
+  font-size:            1.125rem;
+  line-height:          1.5;
+}
+
+/* The masthead's shadow DOM lays its title and buttons out in a flex row that
+   does not wrap, so at narrow widths / high zoom it is wider than the viewport
+   and drags the whole page into horizontal scrolling. The component's code is
+   off-limits, but the host element belongs to this document, so constraining
+   its box here keeps the page reflow-clean -- at worst the bar alone scrolls.
+   Its appearance is untouched. Worth fixing upstream with a flex-wrap. */
+kl-unl-masthead {
+  display:              block;
+  max-width:            100%;
+  overflow-x:           auto;
+}
+
+.sim-main {
+  display:              flex;
+  flex-direction:       column;
+  gap:                  var(--sim-gap-md);
+  padding:              var(--sim-gap-xs) 0 var(--sim-gap-lg);
+}
+
+.sim-panel .panel__heading {
+  font-size:            1.25rem;
+  padding:              var(--sim-gap-sm) var(--sim-gap-md);
+}
+
+.sim-help {
+  font-size:            1rem;
+  padding-bottom:       var(--sim-gap-sm);
+  max-width:            60ch;
+}
+
+/* --------------------------------------------------------------------------
+   The stage. The canvas keeps the original Flash coordinate system (600 x 400
+   stage units) and is scaled by CSS with its aspect ratio preserved; the HTML
+   label layer is positioned in percentages of the same box, so labels and
+   canvas art stay registered at every size.
+   -------------------------------------------------------------------------- */
+.sim-canvas-wrap {
+  padding:              0 var(--sim-gap-md) var(--sim-gap-md);
+}
+
+.sim-stage {
+  position:             relative;
+  width:                100%;
+  max-width:            54rem;     /* the 600-unit stage, scaled up to fill
+                                      the panel while staying inside the
+                                      438 px native width of earth.png */
+  margin:               0 auto;
+  aspect-ratio:         600 / 400;
+  container-type:       inline-size;
+}
+
+.sim-canvas {
+  display:              block;
+  width:                100%;
+  height:               100%;
+  touch-action:         manipulation;
+}
+
+/* ---- Diagram labels ------------------------------------------------------
+   Real HTML, so they zoom with the page, expose the MathJax menu where they
+   carry math, and can carry their own background for contrast. The plate is
+   what keeps them readable when the rotating night shadow sweeps underneath
+   (the original painted black text straight onto the dark shadow). */
+.sim-label {
+  position:             absolute;
+  font-family:          Arial, Helvetica, sans-serif;
+  font-weight:          bold;
+  font-size:            var(--sim-label-size);
+  line-height:          1.15;
+  color:                var(--foreground-color, #1a1a1a);
+  background:           rgba(255, 255, 255, 0.88);
+  padding:              0 0.25em;
+  border-radius:        0.15em;
+  white-space:          nowrap;
+  pointer-events:       none;
+}
+
+/* Fixed labels: left/top are the original stage positions as percentages. */
+.sim-fixed-labels {
+  position:             absolute;
+  inset:                0;
+}
+
+.sim-label--np         { left: 56.31%; top:  8.98%; }
+.sim-label--arctic     { left: 71.33%; top: 16.09%; }
+.sim-label--cancer     { left: 82.66%; top: 33.34%; }
+.sim-label--eq         { left: 84.23%; top: 49.90%; }
+.sim-label--capricorn  { left: 82.66%; top: 62.59%; }
+.sim-label--antarctic  { left: 69.49%; top: 85.09%; }
+.sim-label--sp         { left: 56.26%; top: 91.04%; }
+
+/* Rotating labels: the layer turns about the centre of the globe, exactly as
+   the Flash LineGroup clip did, so "Most Direct" tilts with the rays. */
+.sim-rotor {
+  position:             absolute;
+  inset:                0;
+  transform-origin:     58.3333% 52%;   /* globe centre, stage (350, 208) */
+  will-change:          transform;
+}
+
+.sim-label--ray {
+  transform:            translate(-50%, -50%);
+}
+
+#lbl-least-1 { left: 22.50%; top: 14.5%; }
+#lbl-most    { left: 22.40%; top: 52.0%; }
+#lbl-least-2 { left: 22.50%; top: 89.5%; }
+
+/* --------------------------------------------------------------------------
+   Readout strip. Two equal boxes plus the run button, aligned on one grid so
+   the boxes share width, height and baselines and the button centres to them.
+   -------------------------------------------------------------------------- */
+.sim-readout-panel {
+  padding-bottom:       var(--sim-gap-md);
+}
+
+.sim-readout-row {
+  display:              grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items:          stretch;
+  gap:                  var(--sim-gap-md);
+  padding:              0 var(--sim-gap-md);
+}
+
+.sim-box {
+  display:              flex;
+  flex-direction:       column;
+  align-items:          center;
+  justify-content:      center;
+  gap:                  0.15em;
+  min-height:           4.25rem;
+  padding:              var(--sim-gap-sm) var(--sim-gap-sm);
+  text-align:           center;
+  font-size:            1.125rem;
+  font-weight:          bold;
+  color:                var(--foreground-color, #1a1a1a);
+  background:           var(--sim-box-fill, #fcca04);
+  border:               3px solid var(--sim-box-edge, #000000);
+}
+
+.sim-box__line {
+  display:              block;
+}
+
+.sim-box__line--season {
+  min-height:           1.5em;    /* reserve the row so nothing jumps */
+}
+
+/* MathJax output is display-only: readable, right-clickable, never a tab stop. */
+.sim-box__math {
+  display:              inline-block;
+  min-width:            4.5em;
+  text-align:           left;
+}
+
+.sim-box__math mjx-container[jax="SVG"] {
+  outline:              0;
+}
+
+.sim-button-cell {
+  display:              flex;
+  align-items:          center;
+  justify-content:      center;
+}
+
+.sim-run-button {
+  width:                100%;
+  min-width:            7rem;
+  font-size:            1.125rem;
+  font-weight:          bold;
+  color:                var(--button-foreground-color, #ffffff);
+  background:           var(--button-background-color, #005a9c);
+  border:               var(--border-width, 1px) var(--border-style, solid)
+                        var(--border-color, #767676);
+  border-radius:        0.25rem;
+}
+
+.sim-run-button:hover {
+  filter:               brightness(var(--button-hover-darken, 0.9));
+}
+
+/* --------------------------------------------------------------------------
+   Responsive: carry the layout below the foundation's own 56rem collapse all
+   the way down to phone portrait. Single column, full-width panels, no
+   horizontal scrolling, touch targets kept at or above 44px.
+   -------------------------------------------------------------------------- */
+@media (max-width: 40rem) {
+  .sim-readout-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-run-button {
+    width:              100%;
+  }
+
+  .sim-canvas-wrap {
+    padding:            0 var(--sim-gap-sm) var(--sim-gap-sm);
+  }
+}
+
+/* Respect a reduced-motion preference: the sim never starts on its own, and
+   simulation.js additionally drops the redraw to a low, steady rate so the
+   diagram steps rather than sweeps. Nothing about the model changes. */
+@media (prefers-reduced-motion: reduce) {
+  .sim-rotor {
+    will-change:        auto;
+  }
+}

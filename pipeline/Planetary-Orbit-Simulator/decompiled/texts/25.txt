@@ -1,0 +1,5 @@
+This simulator is part of the Planetary Orbit Simulator Module of 
+--- RECORDSEPARATOR ---
+the Nebraska Astronomy Applet Project. Supporting materials and 
+--- RECORDSEPARATOR ---
+additional astronomy education resources can be found at

@@ -1,0 +1,61 @@
+This simulator shows the geometry of the earth as it goes around the sun, 
+--- RECORDSEPARATOR ---
+demonstrating why seasons occur.
+--- RECORDSEPARATOR ---
+The large panel at left shows the relative positions of the earth and sun. The 
+--- RECORDSEPARATOR ---
+orbit 
+--- RECORDSEPARATOR ---
+view
+--- RECORDSEPARATOR ---
+ shows the position of the earth in space as it revolves around the sun. The 
+--- RECORDSEPARATOR ---
+celestial sphere view
+--- RECORDSEPARATOR ---
+ shows what the same arrangement looks like to an earth 
+--- RECORDSEPARATOR ---
+observer, where the sun is projected onto the sphere of the sky.
+--- RECORDSEPARATOR ---
+The panel in the upper right shows how the rays of the sun project onto the globe. The 
+--- RECORDSEPARATOR ---
+view from side
+--- RECORDSEPARATOR ---
+ shows the direction of the sun's rays relative to the earth. The 
+--- RECORDSEPARATOR ---
+view 
+--- RECORDSEPARATOR ---
+from sun
+--- RECORDSEPARATOR ---
+ shows what the earth would look like from the sun's perspective – in other 
+--- RECORDSEPARATOR ---
+words, the viewer is looking directly at the illuminated half of the earth.
+--- RECORDSEPARATOR ---
+The lower right panel indicates the direction (
+--- RECORDSEPARATOR ---
+sunlight angle
+--- RECORDSEPARATOR ---
+) or intensity (
+--- RECORDSEPARATOR ---
+sunbeam 
+--- RECORDSEPARATOR ---
+spread
+--- RECORDSEPARATOR ---
+) of the sun's rays for an observer at a given latitude on earth. The latitude is 
+--- RECORDSEPARATOR ---
+selected in the upper right panel by dragging the stick figure or red latitude circle.
+--- RECORDSEPARATOR ---
+The day of year for the simulator is indicated in the timeline panel at bottom. The day 
+--- RECORDSEPARATOR ---
+can be changed by dragging the cursor or pressing the 
+--- RECORDSEPARATOR ---
+start animation
+--- RECORDSEPARATOR ---
+ button. 
+--- RECORDSEPARATOR ---
+The 
+--- RECORDSEPARATOR ---
+show subsolar point
+--- RECORDSEPARATOR ---
+ option places a marker on the globe indicating where the 
+--- RECORDSEPARATOR ---
+sun would appear directly overhead (that is, where the sun's rays are most direct).

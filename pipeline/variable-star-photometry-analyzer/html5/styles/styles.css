@@ -1,0 +1,559 @@
+/* ==========================================================================
+   Variable Star Photometry Analyzer — sim-specific styles.
+   Layered on top of the unmodified KL-UNL foundation (kl-unl.css).
+   Only additive rules live here; foundation files are never edited.
+   ========================================================================== */
+
+/* Exported (subset) Verdana from the original SWF, used as a fallback face so
+   the plots render consistently even where Verdana is not installed. */
+@font-face {
+  font-family: "Verdana Embedded";
+  src: url("../assets/fonts/136_Verdana.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Larger, zoomable base type (rule: body copy >= 1.125rem, rem-based). */
+.app-shell {
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+
+/* --------------------------------------------------------------------------
+   Layout: two panels on the top row, PDM panel spanning the full width.
+   The foundation's 56rem collapse turns everything into one column.
+   -------------------------------------------------------------------------- */
+.sim-layout {
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem 0.75rem;
+  align-items: stretch;   /* top panels share the same row height */
+}
+
+/* Compact panel headings so the top row stays tight vertically. */
+.sim-panel > .panel__heading {
+  padding: 0.35rem 1rem 0.25rem;
+}
+
+.sim-pdm-panel {
+  grid-column: 1 / -1;
+}
+
+.sim-panel {
+  padding-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pin the control rows to the panel bottom so the bottoms of the Star Field
+   and Observations Plot panels line up (as in the original layout). */
+.sim-key-row,
+.sim-plot-controls {
+  margin-top: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Canvas wraps: canvases keep their original internal coordinate systems and
+   are scaled by CSS with preserved aspect ratio. Overlays are positioned in
+   percentages of the wrap so they track the canvas at any display size.
+   -------------------------------------------------------------------------- */
+.sim-canvas-wrap {
+  position: relative;
+  margin: 0 auto;
+}
+
+.sim-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sim-starfield-wrap {
+  max-width: 25rem;
+  margin: 0 1rem;
+  touch-action: none;
+}
+
+.sim-lightcurve-wrap,
+.sim-pdm-wrap {
+  touch-action: none;   /* dragging the zoom window / bars must not scroll */
+}
+
+.sim-plot-block {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;   /* center the (axis label + plot) unit in the panel */
+  padding: 0 1rem;
+}
+
+.sim-plot-block .sim-lightcurve-wrap {
+  /* Width is synced to the PDM plot's scale at runtime (see matchPlotScales()
+     in simulation.js) so both plots render at the same px-per-canvas-unit and
+     therefore show identical tick font size and tick lengths. The rem value
+     here is the pre-script fallback for the design width. */
+  flex: 0 1 27rem;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Rotated axis titles live in HTML (zoomable text, not canvas-baked). */
+.sim-axis-title--y {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  align-self: center;
+  font-weight: bold;
+  font-size: 0.95rem;
+  flex: 0 0 auto;
+  padding-right: 0.1rem;
+  user-select: none;
+}
+
+/* --------------------------------------------------------------------------
+   Star field overlays
+   -------------------------------------------------------------------------- */
+.sim-halo-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* The star field is a single tab stop (role="listbox"); the arrow keys move a
+   highlight between the star options inside it. */
+.sim-halo-layer:focus {
+  outline: none;   /* the ring is drawn on the highlighted star instead */
+}
+
+.sim-halo-layer:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--outline-color, #005fcc);
+  outline-offset: 0.125rem;
+}
+
+/* Highlighted (arrow-key) star: a high-contrast double ring that reads on both
+   the dark sky and the bright star cores. Shown only while the field is
+   focused, so it is not mistaken for a selection when using the mouse. */
+.sim-halo-layer:focus-visible .sim-halo-button.is-active::after {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  border-radius: 50%;
+  border: 2px solid #ffbc00;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.85);
+}
+
+.sim-halo-button {
+  position: absolute;
+  width: 5.5%;                   /* ~22 px of the 400 px field */
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+@supports not (aspect-ratio: 1 / 1) {
+  .sim-halo-button { height: 7.34%; }   /* 22 px of 300 px, WebKit fallback */
+}
+
+.sim-halo-button:focus-visible {
+  outline-width: 0.125rem;
+  outline-style: solid;
+  outline-color: var(--button-outline-color, #ffbc00);
+  outline-offset: 0.125rem;
+}
+
+.sim-halo-button[disabled] { cursor: default; }
+
+/* Crosshair readout box (exported shape 169 + live x/y values).
+   The exported SVG is 48 x 49.8 units, its rounded label box filling the top
+   33 units (66.3%). It is scaled up here so three-digit coordinates (up to
+   399, 299) sit inside the box with clear margins instead of touching the
+   border; the asset itself is reused unchanged and stays crisp when scaled. */
+.sim-crosshair {
+  position: absolute;
+  width: 16%;                    /* 64 px over the 400 px field */
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  line-height: 1;
+}
+
+.sim-crosshair img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* The two readouts are centred as a pair within the label box area, with
+   even spacing above, between and below them. */
+.sim-crosshair__rows {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 66.3%;                 /* the label box part of the SVG */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;           /* both rows are equal width, so this keeps
+                                    them aligned and the margins balanced */
+  gap: 0.14em;
+  padding: 0 6%;
+  box-sizing: border-box;
+}
+
+.sim-crosshair__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15em;
+  font-size: 0.68rem;
+  line-height: 1.15;
+  font-family: Verdana, "Verdana Embedded", Geneva, "DejaVu Sans", sans-serif;
+  font-variant-numeric: tabular-nums;   /* digits keep a steady width */
+  color: #000;
+  white-space: nowrap;
+}
+
+/* Fixed 3-digit fields (the original used "888" placeholder text fields), so
+   the digits do not shift as the cursor moves and both rows stay equal width.
+   3ch = exactly three tabular digits, whichever face actually renders. */
+.sim-crosshair__row > span[id] {
+  display: inline-block;
+  min-width: 3ch;
+  text-align: right;
+}
+
+/* Equalise the italic x and y label widths (they differ by ~1 px), so the
+   colons and values line up down the box. */
+.sim-crosshair__row > span:first-child {
+  display: inline-block;
+  min-width: 0.85em;
+}
+
+.sim-crosshair mjx-container { font-size: 0.68rem; }
+
+/* Loading overlay (original: red "Loading data, please wait." + percent). */
+.sim-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  background: var(--background-color, #ffffff);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+  text-align: center;
+  line-height: 1.4;       /* the canvas wrap sets line-height: 0 */
+}
+
+.sim-loading__text {
+  margin: 0;
+  color: #cc0000;                 /* >= 4.5:1 on white; not the only signal */
+}
+
+.sim-loading__status { margin: 0; }
+
+.sim-loading[hidden] { display: none; }
+
+/* Key row under the star field. */
+.sim-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.5rem 1rem 0;
+  font-size: 1rem;        /* control-label scale, still rem-based for zoom */
+}
+
+.sim-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sim-key-swatch { flex-shrink: 0; }
+
+.sim-key-row__divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-color, #767676);
+}
+
+/* --------------------------------------------------------------------------
+   Observations plot controls + overlays
+   -------------------------------------------------------------------------- */
+.sim-plot-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.5rem 1rem 0;
+  font-size: 1rem;        /* control-label scale, still rem-based for zoom */
+}
+
+.sim-inline-fieldset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0;
+}
+
+.sim-inline-legend {
+  float: left;              /* renders the legend inline with the choices */
+  padding: 0 0.25rem 0 0;
+  font-weight: normal;
+}
+
+.sim-click-to-begin {
+  position: absolute;
+  /* centered on the PLOT area (plot spans 56..436 of the 452 canvas units) */
+  left: 54.42%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  width: 62%;
+  max-width: 78%;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+  background: var(--background-color, #ffffff);
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+  text-align: center;
+  line-height: 1.4;       /* the canvas wrap sets line-height: 0 */
+  font-size: 1rem;        /* matches the control labels, still zoomable */
+}
+
+.sim-click-to-begin[hidden] { display: none; }
+
+/* Difference tool bars: real focusable sliders laid over the plot. */
+.sim-delta-bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0.9rem;                 /* generous grab/touch area */
+  transform: translateY(-50%);
+  cursor: ns-resize;
+  background: transparent;
+  touch-action: none;
+}
+
+.sim-delta-bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #909090;            /* normalBarColor 0x909090 */
+}
+
+.sim-delta-bar.is-active::after {
+  height: 3px;                    /* activeBarThickness 3 */
+  margin-top: -1px;
+}
+
+.sim-delta-bar[hidden] { display: none; }
+
+.sim-delta-label {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  padding: 0 0.15rem;
+  font-family: Verdana, "Verdana Embedded", Geneva, "DejaVu Sans", sans-serif;
+  font-size: 0.75rem;
+  color: #000;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(128, 128, 128, 0.5);
+  white-space: pre;
+  pointer-events: none;
+  line-height: 1.3;       /* the canvas wrap sets line-height: 0 */
+}
+
+.sim-delta-label[hidden] { display: none; }
+
+/* --------------------------------------------------------------------------
+   PDM panel
+   -------------------------------------------------------------------------- */
+.sim-pdm-layout {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  gap: 0.5rem 1rem;
+  align-items: start;
+  padding: 0.25rem 1rem 0;
+}
+
+.sim-pdm-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sim-period-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sim-period-input {
+  width: 6.5rem;
+  font-family: Verdana, "Verdana Embedded", Geneva, "DejaVu Sans", sans-serif;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.sim-period-input.is-editing {
+  font-style: italic;
+  border-color: var(--outline-color, #005fcc);
+}
+
+.sim-zoom-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.sim-zoom-button { width: 100%; }
+
+.sim-zoom-button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sim-zoom-instructions {
+  font-style: italic;
+  margin: 0;
+}
+
+.sim-pdm-plot-area {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+}
+
+.sim-pointer-strip {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  height: 2.25rem;
+}
+
+.sim-axis-title--theta {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: center;
+  /* MathJax SVG output ignores writing-mode, so rotate the box instead of
+     using the vertical-rl + 180deg technique (which flips SVG upside-down). */
+  writing-mode: horizontal-tb;
+  transform: rotate(-90deg);
+  width: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: visible;
+  /* MathJax's mtextInheritFont makes \text{} adopt this font, so the "theta"
+     label matches the sim's other labels instead of MathJax's serif. */
+  font-family: Sans-Serif, Arial, Helvetica, sans-serif;
+}
+
+/* Match the surrounding label typography for the inherited-font math. */
+.sim-axis-title--theta mjx-container,
+.sim-axis-title--theta mjx-container svg text {
+  font-family: inherit;
+  font-weight: bold;
+}
+
+.sim-pdm-wrap {
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+}
+
+.sim-period-pointer {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 2.75rem;                 /* >= 44 px touch target */
+  height: 2.25rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 0 0 0.05rem;
+  cursor: ew-resize;
+  touch-action: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sim-period-pointer img {
+  width: 1.1rem;
+  height: auto;
+  display: block;
+}
+
+.sim-period-pointer.is-offscale img { opacity: 0.4; }
+
+.sim-offscale {
+  position: absolute;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #55556d;                 /* text tone matching the original arrows */
+  white-space: nowrap;
+}
+
+.sim-offscale img { width: 1.9rem; height: auto; }
+
+.sim-offscale--left  { left: 1rem; }
+.sim-offscale--right { right: 1rem; }
+
+.sim-offscale[hidden] { display: none; }
+
+/* --------------------------------------------------------------------------
+   MathJax output must not join the tab order; keep it display-only.
+   -------------------------------------------------------------------------- */
+mjx-container, mjx-container * { outline: none; }
+mjx-container[tabindex] { }
+
+/* --------------------------------------------------------------------------
+   Responsive: PDM panel stacks, then everything is single-column (the
+   foundation's 56rem rule collapses .app-layout itself).
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .sim-starfield-wrap { margin: 0 auto; }
+}
+
+@media (max-width: 44rem) {
+  .sim-pdm-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-zoom-buttons {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .sim-zoom-button {
+    width: auto;
+    flex: 1 1 12rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .sim-plot-block { padding: 0 0.5rem; }
+  .sim-key-row,
+  .sim-plot-controls { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .sim-pdm-layout { padding: 0.25rem 0.5rem 0; }
+}

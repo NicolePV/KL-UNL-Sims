@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spectroscopic Parallax Simulator</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <!-- Shared KL-UNL foundation (copied in byte-for-byte unchanged; never edited) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles layered on top of the foundation -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") available on every symbol. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#main-content">Skip to main content</a>
+
+  <main class="app-shell" id="main-content">
+
+    <!-- Title + Reset / About come from the shared masthead component. It renders
+         the <h1>, reads its text from foundation/contents.json by sim-id, and
+         dispatches a "sim-reset" event that simulation.js listens for. -->
+    <kl-unl-masthead sim-id="spectroparallax" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout sp-layout">
+
+      <!-- ==================== ABSORPTION LINE INTENSITIES ==================== -->
+      <section class="panel sp-panel sp-panel--lines" aria-labelledby="lines-heading">
+        <h2 class="panel__heading" id="lines-heading">Absorption Line Intensities</h2>
+
+        <div class="sp-lines">
+
+          <!-- "Spectral Type : G2     Temperature : 5840 K" (verbatim from the
+               original stOutput field). The type and the temperature are typeset
+               by MathJax; the prose labels stay in page text. -->
+          <p class="sp-lines__readout">
+            <span class="sp-readout__pair">Spectral Type :
+              <span class="sp-math" id="st-type-math"></span></span>
+            <span class="sp-readout__pair">Temperature :
+              <span class="sp-math" id="st-temp-math"></span></span>
+          </p>
+
+          <!-- lineDescription field: "(...)" verbatim from the original table -->
+          <p class="sp-lines__desc" id="line-description"></p>
+
+          <div class="sp-lines__grid">
+
+            <p class="sp-axis-title sp-axis-title--y"><span class="sp-axis-title__rot">Line Strength</span></p>
+
+            <div class="sp-lines__col">
+
+              <!-- Stage. All line art below is the ORIGINAL exported Flash vector
+                   art, reused as-is at the original stage coordinates. The stage
+                   keeps the Flash coordinate system and is scaled by CSS only. -->
+              <div class="sp-stage" id="lines-stage">
+                <svg class="sp-stage__art" viewBox="50 96 368 210"
+                     xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                  <!-- plot frame (Symbol 159) -->
+                  <image href="assets/absorption-plot-box.svg"
+                         x="57.05" y="108" width="351.95" height="182"
+                         preserveAspectRatio="none"></image>
+                  <!-- curves for the six line families (Symbol 152) -->
+                  <image href="assets/absorption-curves.svg"
+                         x="56.75" y="149.55" width="352.45" height="140.7"
+                         preserveAspectRatio="none"></image>
+                  <!-- seven identical tick-mark groups (Symbol 141), one per decade -->
+                  <g id="lines-ticks"></g>
+                  <!-- draggable spectral-type cursor (Symbol 162). The transform is
+                       the original placement matrix; only its x translation moves. -->
+                  <g id="lines-cursor" transform="matrix(0,0.7069092,-0.6000061,0,268,199.5)">
+                    <image href="assets/spectral-type-cursor.svg"
+                           x="-145" y="-10" width="290" height="20"
+                           preserveAspectRatio="none"></image>
+                  </g>
+                </svg>
+
+                <!-- Curve labels live in HTML (not painted into the artwork) so they
+                     scale with the page and stay selectable. Text is verbatim from
+                     the original; colours are darkened for contrast (see
+                     ACCESSIBILITY.md). data-x / data-y are original stage
+                     coordinates; simulation.js converts them to percentages. -->
+                <div class="sp-stage__labels" aria-hidden="true">
+                  <span class="sp-curve-label sp-curve-label--ihe" data-x="60.15"  data-y="126.85">Ionized<br>Helium</span>
+                  <span class="sp-curve-label sp-curve-label--he"  data-x="80.05"  data-y="161.40">Neutral<br>Helium</span>
+                  <span class="sp-curve-label sp-curve-label--h"   data-x="144.50" data-y="135.90">Hydrogen</span>
+                  <span class="sp-curve-label sp-curve-label--imet" data-x="220.85" data-y="126.40">Ionized<br>Metals</span>
+                  <span class="sp-curve-label sp-curve-label--met" data-x="284.25" data-y="127.40">Neutral<br>Metals</span>
+                  <span class="sp-curve-label sp-curve-label--mol" data-x="352.15" data-y="137.40">Molecules</span>
+                </div>
+
+                <!-- The keyboard/pointer handle for the cursor. It is the only tab
+                     stop in this panel; the artwork itself is not focusable. -->
+                <div class="sp-handle" id="cursor-handle"
+                     role="slider" tabindex="0"
+                     aria-labelledby="cursor-handle-label"
+                     aria-valuemin="0" aria-valuemax="69" aria-valuenow="42"
+                     aria-valuetext="Spectral type G2, temperature 5840 kelvin"></div>
+                <span class="sr-only" id="cursor-handle-label">Spectral type cursor</span>
+              </div>
+
+              <!-- Spectral-type tick labels, centred on each decade of the axis. -->
+              <div class="sp-stage__xticks" id="lines-xticks" aria-hidden="true">
+                <span class="sp-math sp-xtick" data-x="83"  data-tex="\mathrm{O}"></span>
+                <span class="sp-math sp-xtick" data-x="133" data-tex="\mathrm{B}"></span>
+                <span class="sp-math sp-xtick" data-x="183" data-tex="\mathrm{A}"></span>
+                <span class="sp-math sp-xtick" data-x="233" data-tex="\mathrm{F}"></span>
+                <span class="sp-math sp-xtick" data-x="283" data-tex="\mathrm{G}"></span>
+                <span class="sp-math sp-xtick" data-x="333" data-tex="\mathrm{K}"></span>
+                <span class="sp-math sp-xtick" data-x="383" data-tex="\mathrm{M}"></span>
+              </div>
+
+              <p class="sp-axis-title sp-axis-title--x">Spectral Type</p>
+            </div>
+          </div>
+
+          <p class="panel__help sp-help">
+            Drag the red cursor to choose a spectral type, or focus it and use the
+            arrow keys: left towards the hotter O stars, right towards the cooler M stars.
+          </p>
+
+          <p id="lines-desc" class="sr-only"></p>
+        </div>
+      </section>
+
+      <!-- ========================= SIMULATED SPECTRUM ========================= -->
+      <section class="panel sp-panel sp-panel--spectrum" aria-labelledby="spectrum-heading">
+        <h2 class="panel__heading" id="spectrum-heading">Simulated Spectrum</h2>
+
+        <div class="panel__canvas-wrap sp-spectrum__wrap">
+          <!-- The continuous spectrum and its absorption lines are drawn at run
+               time by the original ActionScript, so they are redrawn here on a
+               canvas that keeps the original 500 x 50 internal coordinates. -->
+          <canvas id="spectrum-canvas" class="sp-spectrum__canvas"
+                  width="500" height="50" role="img"
+                  aria-labelledby="spectrum-heading" aria-describedby="spectrum-desc"></canvas>
+        </div>
+        <p id="spectrum-desc" class="sr-only"></p>
+      </section>
+
+      <!-- ============================= HR DIAGRAM ============================= -->
+      <section class="panel sp-panel sp-panel--hr" aria-labelledby="hr-heading">
+        <h2 class="panel__heading" id="hr-heading">HR Diagram</h2>
+
+        <div class="sp-hr">
+          <p class="sp-axis-title sp-axis-title--y sp-hr__ylabel"><span class="sp-axis-title__rot">Luminosity <span class="sp-math" id="hr-ylabel-math"></span></span></p>
+
+          <div class="sp-hr__col">
+            <div class="sp-hr__stage" id="hr-stage">
+              <!-- Axes, tick marks, the five luminosity-class curves and the star
+                   marker are all drawn in code by the original component, so they
+                   are redrawn on canvas in the original plot coordinates. -->
+              <canvas id="hr-canvas" class="sp-hr__canvas" role="img"
+                      aria-labelledby="hr-heading" aria-describedby="hr-desc"></canvas>
+
+              <!-- The shaded luminosity-class regions are exported Flash artwork
+                   (Symbol 12), reused as-is and clipped to the plot area. -->
+              <div class="sp-hr__plot" id="hr-plot">
+                <img class="sp-hr__regions" id="hr-regions" alt=""
+                     src="assets/hr-luminosity-class-regions.svg">
+                <div class="sp-hr__labels" id="hr-labels" aria-hidden="true">
+                  <span class="sp-hr-label sp-hr-label--super" data-x="119.735" data-y="-275.223">Supergiants&nbsp;<span class="sp-math" data-tex="(\mathrm{I})"></span></span>
+                  <span class="sp-hr-label sp-hr-label--giant" data-x="221.240" data-y="-221.260">Giants&nbsp;<span class="sp-math" data-tex="(\mathrm{III})"></span></span>
+                  <span class="sp-hr-label sp-hr-label--dwarf" data-x="65.390"  data-y="-245.380">Dwarfs&nbsp;<span class="sp-math" data-tex="(\mathrm{V})"></span></span>
+                  <span class="sp-hr-label sp-hr-label--wd"    data-x="66.060"  data-y="-52.600">White Dwarfs</span>
+                  <span class="sp-hr-label sp-hr-label--note"  data-x="71.740"  data-y="-303.650">blue giants</span>
+                  <span class="sp-hr-label sp-hr-label--note"  data-x="236.700" data-y="-245.300">red giants</span>
+                  <span class="sp-hr-label sp-hr-label--note"  data-x="242.920" data-y="-90.410">red dwarfs</span>
+                </div>
+              </div>
+
+              <!-- Luminosity tick labels: 10^6 down to 10^-5 -->
+              <div class="sp-hr__yticks" id="hr-yticks" aria-hidden="true"></div>
+            </div>
+
+            <!-- Temperature tick labels -->
+            <div class="sp-hr__xticks" id="hr-xticks" aria-hidden="true"></div>
+
+            <p class="sp-axis-title sp-axis-title--x">
+              Temperature <span class="sp-math" id="hr-xlabel-math"></span>
+            </p>
+          </div>
+        </div>
+
+        <p id="hr-desc" class="sr-only"></p>
+      </section>
+
+      <!-- ==================== DISTANCE MODULUS CALCULATION ==================== -->
+      <section class="panel sp-panel sp-panel--dm" aria-labelledby="dm-heading">
+        <h2 class="panel__heading" id="dm-heading">Distance Modulus Calculation</h2>
+
+        <div class="sp-dm">
+          <!-- The whole calculation is one MathJax array so the values line up
+               under the symbols they stand for, exactly as in the original. -->
+          <div class="sp-dm__eqn" id="dm-eqn"></div>
+          <p id="dm-sr" class="sr-only"></p>
+        </div>
+      </section>
+
+      <!-- =========================== STAR ATTRIBUTES =========================== -->
+      <section class="panel sp-panel sp-panel--attrs" aria-labelledby="attrs-heading">
+        <h2 class="panel__heading" id="attrs-heading">Star Attributes</h2>
+
+        <fieldset class="control-fieldset sp-fieldset">
+          <legend class="sr-only">Star attributes</legend>
+
+          <div class="control-row sp-row sp-row--mag">
+            <label class="control-row__label sp-row__label" for="mag-field">apparent magnitude:</label>
+            <input class="control-row__input sp-row__field" id="mag-field" type="number"
+                   min="-5" max="15" step="0.1" value="1.0"
+                   inputmode="decimal" autocomplete="off"
+                   aria-describedby="mag-hint">
+            <input class="control-row__slider sp-row__slider" id="mag-slider" type="range"
+                   min="-5" max="15" step="0.1" value="1"
+                   aria-label="apparent magnitude"
+                   aria-valuetext="apparent magnitude 1.0">
+          </div>
+          <p id="mag-hint" class="sr-only">
+            Apparent magnitude, from minus 5 to 15 in steps of one tenth. Use the
+            arrow keys or the mouse wheel to step the value.
+          </p>
+        </fieldset>
+
+        <fieldset class="control-fieldset sp-fieldset sp-fieldset--class">
+          <legend class="control-fieldset__legend sp-legend">luminosity class:</legend>
+          <div class="sp-classes">
+            <span class="control-choice sp-choice">
+              <input type="radio" name="lumclass" id="class-1" value="1">
+              <label for="class-1"><span class="sp-math" data-tex="\mathrm{I}"></span><span class="sr-only">luminosity class one, supergiants</span></label>
+            </span>
+            <span class="control-choice sp-choice">
+              <input type="radio" name="lumclass" id="class-2" value="2">
+              <label for="class-2"><span class="sp-math" data-tex="\mathrm{II}"></span><span class="sr-only">luminosity class two, bright giants</span></label>
+            </span>
+            <span class="control-choice sp-choice">
+              <input type="radio" name="lumclass" id="class-3" value="3">
+              <label for="class-3"><span class="sp-math" data-tex="\mathrm{III}"></span><span class="sr-only">luminosity class three, giants</span></label>
+            </span>
+            <span class="control-choice sp-choice">
+              <input type="radio" name="lumclass" id="class-4" value="4">
+              <label for="class-4"><span class="sp-math" data-tex="\mathrm{IV}"></span><span class="sr-only">luminosity class four, subgiants</span></label>
+            </span>
+            <span class="control-choice sp-choice">
+              <input type="radio" name="lumclass" id="class-5" value="5" checked>
+              <label for="class-5"><span class="sp-math" data-tex="\mathrm{V}"></span><span class="sr-only">luminosity class five, main sequence dwarfs</span></label>
+            </span>
+          </div>
+        </fieldset>
+
+        <div class="sp-attrs__readouts">
+          <p class="sp-attrs__item">
+            <span class="sp-attrs__key">spectral type:</span>
+            <span class="sp-math sp-attrs__val" id="attrs-type-math"></span>
+          </p>
+          <p class="sp-attrs__item">
+            <span class="sp-attrs__key">temperature:</span>
+            <span class="sp-math sp-attrs__val" id="attrs-temp-math"></span>
+          </p>
+        </div>
+      </section>
+
+    </div><!-- /.app-layout -->
+
+    <!-- Screen-reader status: announces the state of the whole simulation, with
+         units, once a change has settled (not on every drag tick). -->
+    <p id="sr-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,411 @@
+/* ===========================================================================
+   Planet Formation Temperatures Plot -- sim-specific styles.
+
+   These sit ON TOP of foundation/kl-unl.css, which is never edited. Anything
+   the foundation already provides (palette variables, .panel, .control-*,
+   .button, focus rings, the 56rem column collapse) is reused as-is; only the
+   pieces this simulation adds are defined here.
+   =========================================================================== */
+
+:root {
+  /* Colours carried over from the original Flash artwork. The two text
+     colours are darkened versions of the artwork colours so that they clear
+     4.5:1 against the translucent bands they sit on (WCAG 1.4.3). */
+  --ft-solid-fill:   #009900;   /* exported solid-band.svg  */
+  --ft-gas-fill:     #47adde;   /* exported gas-band.svg    */
+  --ft-solid-text:   #006600;
+  --ft-gas-text:     #005a9c;
+  --ft-label:        #46576d;   /* substance label colour, verbatim */
+  --ft-leader:       #8894a5;
+  --ft-frame:        #c4d5e5;   /* panel / readout border, verbatim */
+
+  --ft-space-xs:     0.25rem;
+  --ft-space-sm:     0.5rem;
+  --ft-space-md:     0.75rem;
+  --ft-space-lg:     1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Type scale: comfortably large, and expressed in rem so it tracks the
+   reader's own browser font size.
+   --------------------------------------------------------------------------- */
+
+body {
+  font-size:        1.125rem;
+  line-height:      1.5;
+}
+
+.panel__heading {
+  font-size:        1.125rem;
+  padding:          var(--ft-space-sm) var(--ft-space-lg);
+}
+
+.panel__help {
+  font-size:        1rem;
+  line-height:      1.5;
+  margin:           var(--ft-space-md) var(--ft-space-lg) 0;
+  max-width:        60ch;
+}
+
+.control-fieldset__legend {
+  font-size:        1.0625rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Page layout: plot on the left, condensation panel on the right, the
+   temperature control across the bottom -- the grouping of the original.
+   --------------------------------------------------------------------------- */
+
+/* Two panels, side by side, the same height: the graph and its temperature
+   control on the left, the condensation temperatures on the right. */
+.app-layout.ft-layout {
+  grid-template-columns: minmax(0, 1fr) 17rem;
+  gap:              var(--ft-space-sm);
+  padding:          var(--ft-space-sm) 0;
+  align-items:      stretch;
+}
+
+.ft-panel {
+  padding-bottom:   var(--ft-space-sm);
+}
+
+/* Both panels are flex columns so that whichever one has spare height gives it
+   to its own diagram rather than leaving a gap underneath. */
+.ft-panel--plot,
+.ft-panel--states {
+  display:          flex;
+  flex-direction:   column;
+}
+
+.ft-plot,
+.ft-states {
+  display:          flex;
+  flex-direction:   column;
+  flex:             1 1 auto;
+  min-height:       0;
+}
+
+/* ---------------------------------------------------------------------------
+   The plot stage.
+
+   The <canvas> keeps the original Flash graph coordinate system and is scaled
+   by CSS; the label and hit layers share exactly the same box, so a position
+   in graph coordinates converts to a percentage once, in simulation.js.
+   --------------------------------------------------------------------------- */
+
+.ft-plot {
+  padding:          0 var(--ft-space-lg) var(--ft-space-sm);
+}
+
+/* The stage keeps its own aspect ratio; if this panel is the shorter of the two
+   the spare height is shared above and below it rather than left at the bottom. */
+.ft-plot {
+  justify-content:  center;
+}
+
+.ft-stage {
+  position:         relative;
+  width:            100%;
+  flex:             0 0 auto;
+  container-type:   inline-size;
+}
+
+.ft-stage__canvas {
+  display:          block;
+  width:            100%;
+  height:           auto;
+  aspect-ratio:     495 / 440;    /* must match VIEW in simulation.js */
+}
+
+.ft-stage__labels,
+.ft-stage__hits {
+  position:         absolute;
+  inset:            0;
+  pointer-events:   none;
+}
+
+.ft-tick {
+  position:         absolute;
+  font-size:        0.9375rem;
+  line-height:      1;
+  white-space:      nowrap;
+  color:            var(--foreground-color, #1a1a1a);
+}
+
+.ft-tick--y  { transform: translate(-100%, -50%); }
+.ft-tick--x  { transform: translate(-50%,  -50%); }
+
+.ft-axis-title {
+  position:         absolute;
+  font-size:        1rem;
+  font-weight:      bold;
+  line-height:      1;
+  white-space:      nowrap;
+  color:            var(--foreground-color, #1a1a1a);
+}
+
+.ft-axis-title--x { transform: translate(-50%, -50%); }
+.ft-axis-title--y { transform: translate(-50%, -50%) rotate(-90deg); }
+
+/* One transparent button per plotted object: it reproduces the original
+   roll-over readout and adds the keyboard and touch path. */
+.ft-hit {
+  position:         absolute;
+  margin:           0;
+  padding:          0;
+  border:           0;
+  border-radius:    50%;
+  background:       transparent;
+  pointer-events:   auto;
+  cursor:           pointer;
+  touch-action:     manipulation;
+}
+
+.ft-hit:hover,
+.ft-hit:focus-visible {
+  background:       rgba(0, 95, 204, 0.12);
+}
+
+/* The roll-over readout. Its frame repeats the original artwork's white fill
+   and pale blue border, but the box is sized by its content so the values stay
+   legible at any zoom level. */
+.ft-readout {
+  position:         absolute;
+  z-index:          3;
+  transform:        translateY(-100%);
+  display:          flex;
+  flex-direction:   column;
+  gap:              0.1rem;
+  padding:          0.2rem 0.45rem;
+  /* Every readout is the same size whatever it happens to be showing. */
+  min-width:        5.75rem;
+  background:       var(--background-color, #ffffff);
+  border:           3px solid var(--ft-frame);
+  font-size:        0.9375rem;
+  line-height:      1.25;
+  white-space:      nowrap;
+  pointer-events:   none;
+}
+
+.ft-readout[hidden] { display: none; }
+
+.ft-readout__line { display: block; }
+
+/* ---------------------------------------------------------------------------
+   The condensation temperature panel.
+
+   Its height is set in rem so that the labels (also in rem) and the band keep
+   the same proportions at every browser font size and zoom level -- the labels
+   can never collide with each other, whatever the reader's settings.
+   --------------------------------------------------------------------------- */
+
+.ft-states {
+  padding:          0 var(--ft-space-md) var(--ft-space-sm);
+}
+
+/* The panel's floor is set in rem, so its labels and its temperature scale
+   enlarge together and can never collide. Above that floor it grows to fill
+   whatever height the top row settles on, which is what makes the two top
+   panels the same height. simulation.js re-lays the labels out whenever this
+   box is resized. */
+.ft-band {
+  position:         relative;
+  container-type:   inline-size;
+  flex:             1 1 auto;
+  min-height:       34rem;
+  background:       var(--background-color, #ffffff);
+  border:           3px solid var(--ft-frame);
+  overflow:         hidden;
+}
+
+/* Exported band artwork, reused as-is at the original 20% opacity. */
+.ft-band__region {
+  position:         absolute;
+  left:             0;
+  width:            100%;
+  opacity:          0.2;
+}
+
+.ft-band__region--solid { top: 0; }
+
+.ft-band__divider {
+  position:         absolute;
+  left:             0;
+  width:            100%;
+  height:           3px;
+  transform:        translateY(-50%);
+}
+
+.ft-band__art {
+  position:         absolute;
+  inset:            0;
+  width:            100%;
+  height:           100%;
+}
+
+#band-leaders polyline {
+  stroke:           var(--ft-leader);
+  vector-effect:    non-scaling-stroke;
+}
+
+.ft-band__side {
+  position:         absolute;
+  left:             0.6rem;
+  transform:        translate(-50%, -50%) rotate(-90deg);
+  font-size:        0.9375rem;
+  font-weight:      bold;
+  line-height:      1;
+  white-space:      nowrap;
+}
+
+.ft-band__side--solid { color: var(--ft-solid-text); }
+.ft-band__side--gas   { color: var(--ft-gas-text);   }
+
+.ft-substance {
+  position:         absolute;
+  transform:        translateY(-50%);
+  font-size:        0.8125rem;
+  line-height:      1.2;
+  white-space:      nowrap;
+  color:            var(--ft-label);
+}
+
+/* ---------------------------------------------------------------------------
+   Temperature control.
+   --------------------------------------------------------------------------- */
+
+.ft-fieldset {
+  max-width:        46rem;
+}
+
+.ft-row {
+  grid-template-columns: auto auto minmax(8rem, 1fr);
+  gap:              var(--ft-space-sm) var(--ft-space-md);
+  align-items:      center;
+  margin-bottom:    var(--ft-space-sm);
+}
+
+.ft-row .control-row__label {
+  font-size:        1.125rem;
+}
+
+.ft-field {
+  display:          inline-flex;
+  align-items:      center;
+  gap:              0.4rem;
+}
+
+.ft-number {
+  width:            6rem;
+  min-height:       2.75rem;
+  font-size:        1.125rem;
+  text-align:       right;
+}
+
+.ft-unit {
+  font-size:        1.125rem;
+  min-width:        1.25rem;
+}
+
+.ft-slider {
+  width:            100%;
+  min-height:       2.75rem;
+  cursor:           pointer;
+  touch-action:     manipulation;
+}
+
+.ft-current {
+  display:          flex;
+  flex-wrap:        wrap;
+  align-items:      baseline;
+  gap:              0.4rem;
+  margin:           var(--ft-space-sm) 0 0;
+  font-size:        1.125rem;
+}
+
+.ft-current__label { font-weight: bold; }
+
+/* The control's own help text sits between the graph and the control it
+   describes, so it needs the panel's side padding but no top gap of its own. */
+.ft-help {
+  margin-top:       0;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive: desktop -> iPad -> phone portrait.
+
+   The foundation collapses .app-layout to one column at 56rem; this restates
+   that for the sim's own two-column rule, then tightens the plot labels and
+   stacks the control row for narrow portrait widths.
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 56rem) {
+  .app-layout.ft-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* One column: each panel takes its own natural height, so the equal-height
+     pairing stands down. */
+  .ft-band {
+    flex:           0 0 auto;
+    min-height:     30rem;
+  }
+}
+
+@media (max-width: 34rem) {
+  .ft-plot,
+  .ft-states {
+    padding-left:   var(--ft-space-sm);
+    padding-right:  var(--ft-space-sm);
+  }
+
+  .ft-tick {
+    font-size:      0.75rem;
+  }
+
+  .ft-axis-title {
+    font-size:      0.875rem;
+  }
+
+  .ft-readout {
+    font-size:      0.875rem;
+  }
+
+  .ft-row {
+    grid-template-columns: 1fr;
+    justify-items:  start;
+  }
+
+  .ft-row .control-row__slider {
+    grid-column:    1 / -1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Diagram labels: a rem size with a ceiling tied to the width of the diagram
+   that holds them.
+
+   The rem size is what a reader sees at normal settings, and page zoom scales
+   it as usual. The container-relative ceiling is what stops the tick values and
+   the substance names from running into one another when the diagram itself is
+   narrow -- on a phone, or when a reader has enlarged text without shrinking
+   the window. This block comes last so it wins over the breakpoints above; the
+   @supports guard leaves those breakpoints in charge on any engine without
+   container query units.
+   --------------------------------------------------------------------------- */
+
+@supports (font-size: 1cqi) {
+  .ft-tick       { font-size: clamp(0.6875rem, 4.0cqi, 0.9375rem); }
+  .ft-axis-title { font-size: clamp(0.75rem,   4.4cqi, 1rem);      }
+  .ft-substance  { font-size: clamp(0.6875rem, 5.6cqi, 0.8125rem); }
+}
+
+/* Nothing in this simulation animates, so there is no motion to suppress; the
+   query is kept so that any future transition inherits the right behaviour. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+  }
+}

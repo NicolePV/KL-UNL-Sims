@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gas Retention Plot</title>
+
+  <!-- KL-UNL foundation (copied UNCHANGED into foundation/) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only (never edits the foundation) -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+
+  <!-- MathJax (vendored locally in assets/ — no CDN, no external font files).
+       tex-svg produces self-contained SVG math and keeps the right-click
+       "Show Math As" contextual menu required by the pipeline. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      // Make math match the surrounding UI text: every label/number/unit is wrapped
+      // in \text{} in the LaTeX, and mtextInheritFont makes \text render in the page's
+      // own font (not a MathJax font), so math and prose share one typeface.
+      svg: { fontCache: 'local', mtextInheritFont: true },
+      options: { enableMenu: true }   /* MUST stay enabled */
+    };
+  </script>
+  <script defer src="assets/tex-svg.js"></script>
+
+  <!-- Foundation equation helper + masthead component -->
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- Simulation logic -->
+  <script defer src="simulation.js"></script>
+</head>
+
+<body>
+  <main class="app-shell">
+    <kl-unl-masthead sim-id="gasRetentionPlot" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <!-- Polite live region: announces state changes with units for screen readers -->
+    <p id="sr-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+    <div class="app-layout sim-layout">
+
+      <!-- ============================ PLOT (left, wide) ============================ -->
+      <section class="panel sim-plot-panel" aria-labelledby="plot-heading"
+               style="grid-column: 1;">
+        <h2 id="plot-heading" class="sr-only">Gas retention plot diagram</h2>
+
+        <div class="panel__canvas-wrap sim-plot-wrap">
+          <div class="plot-area" id="plot-area">
+            <canvas id="plot-canvas" width="937" height="814"
+                    role="img"
+                    aria-label="Log-log plot of molecular speed (0.5 to 100 kilometers per second) versus temperature (30 to 1000 kelvin). A red draggable dot marks the custom object. Selected gases add shaded retention regions and dashed lines; selected solar system bodies add labelled grey dots.">
+            </canvas>
+
+            <!-- HTML overlay layer: all math (axis titles, tick numbers, gas labels)
+                 lives here so MathJax can typeset it and expose its context menu.
+                 Positioned by percentage so it tracks the CSS-scaled canvas. -->
+            <div class="plot-overlay" id="plot-overlay" aria-hidden="false">
+              <div class="axis-title axis-title--y" id="axis-title-y">\(\text{Speed (km/s)}\)</div>
+              <div class="axis-title axis-title--x" id="axis-title-x">\(\text{Temperature (K)}\)</div>
+              <div class="tick-layer" id="tick-layer"></div>
+              <div class="gaslabel-layer" id="gaslabel-layer"></div>
+
+              <!-- Keyboard-operable proxy for the draggable red dot -->
+              <div class="dot-proxy" id="dot-proxy" tabindex="0" role="application"
+                   aria-label="Custom object marker. Use Left and Right arrows to change temperature, Up and Down arrows to change escape speed. Page Up and Page Down for larger steps.">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visually hidden, continuously updated description of what the plot shows -->
+        <div id="plot-description" class="sr-only" aria-live="off"></div>
+      </section>
+
+      <!-- ============================ RIGHT COLUMN ============================ -->
+      <div class="sim-right" style="grid-column: 2;">
+
+        <!-- Gases -->
+        <section class="panel" aria-labelledby="gases-heading">
+          <h2 id="gases-heading" class="panel__heading">Gases</h2>
+          <div class="control-fieldset">
+            <table class="gas-table" id="gas-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="gas-th-name">gas name (and symbol)</th>
+                  <th scope="col" class="gas-th-mass">molecular<br>mass</th>
+                  <th scope="col" class="gas-th-show">show<br>in plot</th>
+                </tr>
+              </thead>
+              <tbody id="gas-tbody"><!-- rows injected by simulation.js --></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Plot Options -->
+        <section class="panel" aria-labelledby="options-heading">
+          <h2 id="options-heading" class="panel__heading">Plot Options</h2>
+          <div class="control-fieldset" role="group" aria-labelledby="options-heading">
+            <div class="control-choice">
+              <input type="checkbox" id="chk-gasgiants">
+              <label for="chk-gasgiants">show gas giants</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" id="chk-terrestrial">
+              <label for="chk-terrestrial">show terrestial planets</label>
+            </div>
+            <div class="control-choice">
+              <input type="checkbox" id="chk-icy">
+              <label for="chk-icy">show icy bodies and moons</label>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ==================== CUSTOM OBJECT PROPERTIES (full width) ==================== -->
+      <section class="panel sim-custom-panel" aria-labelledby="custom-heading"
+               style="grid-column: 1 / -1;">
+        <h2 id="custom-heading" class="panel__heading">Custom Object Properties</h2>
+
+        <div class="control-fieldset custom-grid">
+
+          <!-- Left: temperature -->
+          <div class="custom-col">
+            <div class="slider-row">
+              <label class="slider-label" for="temperature-field">temperature:</label>
+              <input class="slider-field" id="temperature-field" type="text"
+                     inputmode="decimal" autocomplete="off" spellcheck="false"
+                     aria-label="temperature value in kelvin">
+              <span class="slider-unit" aria-hidden="true">\(\text{K}\)</span>
+              <input class="slider-range" id="temperature-range" type="range"
+                     aria-label="temperature">
+            </div>
+            <p class="info-text" id="distance-info"></p>
+          </div>
+
+          <!-- Right: radius + density -->
+          <div class="custom-col">
+            <div class="slider-row">
+              <label class="slider-label" for="radius-field">radius:</label>
+              <input class="slider-field" id="radius-field" type="text"
+                     inputmode="decimal" autocomplete="off" spellcheck="false"
+                     aria-label="radius value in kilometers">
+              <span class="slider-unit" aria-hidden="true">\(\text{km}\)</span>
+              <input class="slider-range" id="radius-range" type="range"
+                     aria-label="radius">
+            </div>
+            <div class="slider-row">
+              <label class="slider-label" for="density-field">density:</label>
+              <input class="slider-field" id="density-field" type="text"
+                     inputmode="decimal" autocomplete="off" spellcheck="false"
+                     aria-label="density value in grams per cubic centimeter">
+              <span class="slider-unit" aria-hidden="true">\(\text{g/cm}^{\text{3}}\)</span>
+              <input class="slider-range" id="density-range" type="range"
+                     aria-label="density">
+            </div>
+            <p class="info-text" id="mass-info"></p>
+          </div>
+
+        </div>
+      </section>
+
+    </div><!-- /app-layout -->
+  </main>
+</body>
+</html>

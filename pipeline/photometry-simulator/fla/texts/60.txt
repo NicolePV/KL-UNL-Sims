@@ -1,0 +1,15 @@
+m
+--- RECORDSEPARATOR ---
+1
+--- RECORDSEPARATOR ---
+ – m
+--- RECORDSEPARATOR ---
+2
+--- RECORDSEPARATOR ---
+ =  -2.5 × log
+--- RECORDSEPARATOR ---
+10
+--- RECORDSEPARATOR ---
+(    )
+--- RECORDSEPARATOR ---
+ = 

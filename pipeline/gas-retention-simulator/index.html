@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gas Retention Simulator</title>
+
+  <!-- Shared KL-UNL foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles (layered on top of the foundation, never editing it) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax renders ALL mathematics/symbols in this sim (chemical formulas,
+    axis numbers, units, percentages, the distribution equation).  It is part
+    of the shared KL-UNL foundation and is expected to live at
+    foundation/mathjax/tex-mml-chtml.js in the deployed pipeline.  We do NOT
+    load it from a CDN (self-contained requirement).  If the library is absent
+    the sim still runs and shows readable fallback text (see CONVERSION_NOTES.md).
+    The MathJax contextual menu is intentionally left enabled.
+  -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      startup: { typeset: false },
+      options: { renderActions: {} }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It reads its text from foundation/contents.json by sim-id and dispatches
+         a "sim-reset" event we listen for. Do not add a competing <h1>. -->
+    <kl-unl-masthead sim-id="gasRetentionSimulator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout" id="appLayout">
+
+      <!-- ================= LEFT COLUMN ================= -->
+      <div class="sim-col sim-col--left">
+
+        <!-- Chamber -->
+        <section class="panel sim-panel" aria-labelledby="hdgChamber">
+          <h2 class="panel__heading" id="hdgChamber">Chamber</h2>
+          <div class="panel__canvas-wrap sim-chamber-wrap">
+            <canvas id="chamberCanvas" class="sim-canvas"
+                    role="img"
+                    aria-label="Gas chamber. Particles of each selected gas move and bounce inside a square box."></canvas>
+          </div>
+          <p id="chamberDesc" class="sr-only" aria-live="polite"></p>
+        </section>
+
+        <!-- Chamber Properties -->
+        <section class="panel sim-panel" aria-labelledby="hdgProps">
+          <h2 class="panel__heading" id="hdgProps">Chamber Properties</h2>
+          <fieldset class="control-fieldset">
+            <legend class="sr-only">Chamber properties</legend>
+
+            <div class="control-row sim-slider-row">
+              <label class="control-row__label" for="tempSlider">temperature:</label>
+              <output id="tempReadout" class="sim-readout mjx" for="tempSlider" aria-hidden="true"></output>
+              <input type="range" id="tempSlider" class="control-row__slider sim-slider"
+                     min="100" max="1000" step="10" value="300"
+                     aria-describedby="tempReadout">
+            </div>
+
+            <div class="control-choice sim-choice">
+              <input type="checkbox" id="allowEscapeCheck">
+              <label for="allowEscapeCheck">allow escape from chamber</label>
+            </div>
+
+            <div class="control-row sim-slider-row">
+              <label class="control-row__label" for="escapeSlider">escape speed:</label>
+              <output id="escapeReadout" class="sim-readout mjx" for="escapeSlider" aria-hidden="true"></output>
+              <input type="range" id="escapeSlider" class="control-row__slider sim-slider"
+                     min="100" max="1900" step="10" value="1500" disabled
+                     aria-describedby="escapeReadout">
+            </div>
+
+            <div class="button-row sim-button-row">
+              <button type="button" id="startButton" class="button sim-button">start simulation</button>
+            </div>
+          </fieldset>
+        </section>
+      </div>
+
+      <!-- ================= RIGHT COLUMN ================= -->
+      <div class="sim-col sim-col--right">
+
+        <!-- Distribution Plot -->
+        <section class="panel sim-panel" aria-labelledby="hdgPlot">
+          <h2 class="panel__heading" id="hdgPlot">Distribution Plot</h2>
+
+          <div class="sim-plot">
+            <div class="sim-plot__ytitle">Relative Number Of Particles</div>
+
+            <div class="sim-plot__area" id="plotArea">
+              <canvas id="plotCanvas" class="sim-canvas"
+                      role="img"
+                      aria-label="Maxwell-Boltzmann speed distribution plot."></canvas>
+
+              <!-- escape-speed marker label (positioned by JS) -->
+              <div class="sim-plot__escape-label" id="escapeLabel" hidden>escape speed</div>
+
+              <!-- Draggable / keyboard cursor (a real focusable slider). Positioned by JS. -->
+              <div class="sim-cursor" id="plotCursor" hidden
+                   role="slider" tabindex="0"
+                   aria-label="Speed cursor"
+                   aria-valuemin="0" aria-valuemax="2000" aria-valuenow="1000"
+                   aria-valuetext="1000 meters per second">
+                <div class="sim-cursor__line" aria-hidden="true"></div>
+                <div class="sim-cursor__info sim-cursor__info--left" id="cursorInfoLeft" aria-hidden="true"></div>
+                <div class="sim-cursor__info sim-cursor__info--right" id="cursorInfoRight" aria-hidden="true"></div>
+                <div class="sim-cursor__speed mjx" id="cursorSpeed" aria-hidden="true"></div>
+              </div>
+            </div>
+
+            <div class="sim-plot__xticks" id="plotTicks" aria-hidden="true"></div>
+            <div class="sim-plot__xtitle mjx" id="plotXTitle">Molecular Speed (m/s)</div>
+          </div>
+
+          <fieldset class="control-fieldset control-fieldset--plot">
+            <legend class="sr-only">Distribution plot options</legend>
+            <div class="control-grid sim-plot-options">
+              <div class="control-choice sim-choice">
+                <input type="checkbox" id="showCursorCheck">
+                <label for="showCursorCheck">show draggable cursor</label>
+              </div>
+              <div class="control-choice sim-choice">
+                <input type="checkbox" id="showInfoCheck" checked disabled>
+                <label for="showInfoCheck">show distribution info for selected gas</label>
+              </div>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- Gases -->
+        <section class="panel sim-panel" aria-labelledby="hdgGases">
+          <h2 class="panel__heading" id="hdgGases">Gases</h2>
+
+          <div class="sim-gases">
+            <!-- Proportions adjuster: one accessible vertical bar per gas -->
+            <div class="sim-proportions" id="proportions"
+                 role="group" aria-label="Gas proportions. Drag or use arrow keys to set the amount of each gas.">
+              <div class="sim-proportions__bars" id="proportionBars"></div>
+            </div>
+
+            <div class="sim-gases__add">
+              <label class="sr-only" for="addGasSelect">Add a gas</label>
+              <select id="addGasSelect" class="sim-select"></select>
+              <button type="button" id="removeGasButton" class="button sim-button" disabled>remove selected gas</button>
+            </div>
+
+            <ul class="sim-gaslist" id="gasList" aria-label="Selected gases"></ul>
+
+            <div class="sim-gases__reset">
+              <button type="button" id="resetProportionsButton" class="button sim-button" disabled>reset proportions</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Screen-reader status: announces meaningful state changes with units. -->
+    <div class="sr-only" aria-live="polite" id="liveStatus"></div>
+    <div class="sr-only" aria-live="assertive" id="liveAlert"></div>
+  </div>
+
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <script src="foundation/kl-unl.js"></script>
+  <script type="module" src="simulation.js"></script>
+</body>
+</html>

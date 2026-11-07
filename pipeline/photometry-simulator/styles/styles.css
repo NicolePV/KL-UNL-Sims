@@ -1,0 +1,335 @@
+/* ==========================================================================
+   Photometry Simulator — sim-specific styles.
+   Layered ON TOP of the KL-UNL foundation (foundation/kl-unl.css is never
+   edited). Uses the foundation's custom properties for all chrome colors.
+   Layout mirrors the original Flash sim's panel grouping: star field +
+   magnitude calculation at left, the two aperture info panels at right.
+   ========================================================================== */
+
+/* Larger, zoomable base type (WCAG 1.4.4): rem-based so it tracks the
+   browser font setting. Floor of 1.125rem for body copy. */
+body {
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+
+.psim-panel .panel__heading {
+  font-size: 1.25rem;
+}
+
+/* ---- Layout: two columns inside the KL-UNL app shell ------------------- */
+
+.psim-layout {
+  grid-template-columns: minmax(0, 31rem) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem 1rem;
+  /* Equal-height columns so the bottom of the Magnitude Difference
+     Calculation panel lines up with the bottom of Aperture 2 Info. */
+  align-items: stretch;
+}
+
+.psim-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Bottom-align the two columns without leaving one big blank block:
+   - left: the Magnitude panel absorbs leftover height and spreads its three
+     equations evenly through it;
+   - right: BOTH aperture panels share the leftover equally, with their
+     content vertically centered, so no single panel shows a large gap. */
+.psim-col--left > .psim-panel:last-child {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.psim-col--right > .psim-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.psim-col--right .psim-apinfo {
+  flex: 1;
+  /* rows stretch: the zoom window sits high in the panel and the
+     center x/y readout drops toward the panel bottom */
+  align-content: stretch;
+  align-items: stretch;
+}
+
+.psim-col--right .psim-zoom-col {
+  justify-content: flex-start;
+}
+
+.psim-col--right .psim-center-readout {
+  margin-top: 0.5rem;
+}
+
+.psim-panel {
+  border-width: var(--border-width, 1px);
+  border-style: var(--border-style, solid);
+  border-color: var(--border-color, #767676);
+}
+
+/* ---- Star Field panel --------------------------------------------------- */
+
+.psim-field-wrap {
+  padding: 0 1rem;
+}
+
+.psim-field-stage {
+  position: relative;
+  /* Canvas keeps the original 400x300 internal coordinate system and is
+     scaled by CSS with preserved aspect ratio. */
+  line-height: 0;
+}
+
+#fieldCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+
+/* Focusable drag proxies positioned over the apertures (in % of the field).
+   The visual aperture is only ~21 CSS px, so the hit area is extended with
+   padding + negative margin to a comfortable >=44px touch target without
+   moving the visual position. */
+.psim-aperture-proxy {
+  position: absolute;
+  /* width/height/left/top set from JS in % of the 400x300 field */
+  box-sizing: content-box;
+  padding: 0.75rem;
+  margin: -0.75rem;
+  cursor: move;
+  touch-action: none;           /* dragging must not scroll/zoom the page */
+  background: transparent;
+  border-radius: 50%;
+}
+
+/* Match the original Flash focus rectangle (3px, #9090FF) over the dark
+   star field — the KL-UNL --outline-color is too low-contrast there. */
+.psim-aperture-proxy:focus-visible {
+  outline: 3px solid #9090ff;
+  outline-offset: 0;
+}
+
+/* Over the white panel background the zoom window's ring uses the KL-UNL
+   outline color (#9090FF is < 3:1 against white). */
+.psim-zoom-proxy:focus-visible {
+  outline: 3px solid var(--outline-color, #005fcc);
+  outline-offset: 3px;
+}
+
+.psim-aperture-label {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 0.75rem);  /* relative to the un-padded aperture box */
+  transform: translateX(-50%);
+  margin-bottom: 0.3125rem;
+  font-family: Verdana, Geneva, "DejaVu Sans", sans-serif;
+  font-weight: bold;
+  font-size: 1rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.psim-aperture-label--1 { color: #60c060; }  /* aperture 1 outline color */
+.psim-aperture-label--2 { color: #f0a000; }  /* aperture 2 outline color */
+
+.psim-field-controls {
+  display: flex;
+  justify-content: flex-end;    /* checkbox sits lower-right, like the original */
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+/* ---- Magnitude Difference Calculation panel ----------------------------- */
+
+.psim-equations {
+  padding: 0.25rem 1rem 0.75rem;
+  /* Compact, evenly-spaced equations centered in the panel */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.psim-eqn {
+  margin: 0;
+  min-height: 2.25rem;          /* reduce reflow jump while MathJax typesets */
+  /* Same rendered size as the body text; fits the panel width on one line */
+  font-size: 0.95rem;
+  /* Wide equations scroll inside their own container on narrow screens
+     (WCAG 1.4.10 reflow) instead of forcing page-level horizontal scroll. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+/* Tighten MathJax's default 1em vertical margin on display equations */
+.psim-eqn mjx-container[display="true"] {
+  margin: 0.375em 0;
+}
+
+/* ---- Aperture Info panels ----------------------------------------------- */
+
+.psim-apinfo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  align-items: start;
+  padding: 0.25rem 1rem 1rem;
+}
+
+.psim-zoom-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.psim-zoom-stage {
+  position: relative;
+  line-height: 0;
+}
+
+.psim-zoom-proxy {
+  display: block;
+  touch-action: none;
+  line-height: 0;
+}
+
+#zoomCanvas1,
+#zoomCanvas2 {
+  display: block;
+  width: 11.5rem;               /* 184 CSS px at default font size */
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+/* Pixel info tooltip: reuses the exported Flash balloon art (shapes/50.svg,
+   111 x 70.5 px, tail tip at (26.7, 70)). The tail tip is anchored at the
+   active pixel; left/top set from JS. */
+.psim-pixel-info {
+  position: absolute;
+  width: 111px;
+  height: 70.5px;
+  background: url("../assets/shapes/50.svg") no-repeat 0 0 / 111px 70.5px;
+  transform: translate(-26.7px, -70px);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.psim-pixel-info__body {
+  position: absolute;
+  left: 6px;
+  top: 3px;
+  width: 98px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.psim-pi-row {
+  display: flex;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.15;
+  color: #1a1a1a;               /* balloon art is always white */
+}
+
+.psim-pi-label {
+  width: 3.4em;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.psim-pi-value {
+  text-align: left;
+}
+
+/* Center x/y readout under the zoom window */
+.psim-center-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.psim-ro-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.psim-ro-label {
+  text-align: right;
+}
+
+.psim-ro-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stats block: label column right-aligned to a shared edge, values aligned
+   left on their own column, matching the original layout. */
+.psim-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.psim-stats-heading {
+  margin: 0.25rem 0 0.125rem;
+  font-size: 1.125rem;
+  font-weight: bold;
+}
+
+.psim-stats-heading + .psim-stats-heading,
+.psim-stat-row + .psim-stats-heading {
+  margin-top: 0.875rem;
+}
+
+.psim-stat-row {
+  display: grid;
+  grid-template-columns: 7.25rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.psim-stat-label {
+  text-align: right;
+}
+
+.psim-stat-value {
+  font-variant-numeric: tabular-nums;
+  min-height: 1.4em;            /* equal-height readout rows */
+}
+
+/* ---- Responsive: collapse to a single column (phone portrait) ----------- */
+/* The foundation's own 56rem rule collapses .app-layout to one column; this
+   carries the sim-specific grids down gracefully as well. */
+
+@media (max-width: 56rem) {
+  .psim-layout {
+    grid-template-columns: 1fr;
+    padding: 0.75rem 0.5rem 1rem;
+  }
+}
+
+@media (max-width: 34rem) {
+  .psim-apinfo {
+    grid-template-columns: 1fr;   /* zoom window above stats on narrow phones */
+  }
+
+  .psim-ro-row,
+  .psim-stat-row {
+    grid-template-columns: minmax(6.5rem, auto) 1fr;
+  }
+}

@@ -1,0 +1,154 @@
+================================================================================
+BIG DIPPER CLOCK -- ADDITIONAL PROMPTS / CHANGE REQUESTS (post-conversion)
+================================================================================
+These are the follow-up prompts given AFTER the initial Flash -> HTML5 conversion
+(per prompt_v7.txt), and the change made for each. Listed in the order received.
+
+--------------------------------------------------------------------------------
+1. PROMPT: "this is the original simulation result at system's clock ... I am not
+   getting something like this." (with a screenshot of the original at June 17,
+   17:28)
+   ACTION: Verified the simulation at the same date/time (June 17, 17:28). The
+   astronomy already matched the original (star orientation, daytime blue sky,
+   clock hands). The visible difference was the KL-UNL chrome/styling, which is
+   intentional and required by the conversion spec (do NOT reproduce the Flash
+   masthead/palette). Asked the user to clarify what specifically looked wrong.
+
+--------------------------------------------------------------------------------
+2. PROMPT: "this is the correct result. You can see that at 17.37 (17 June) the
+   slope of yellow dotted line is negative. But in your case, the slope of yellow
+   line is positive. It's due to the upper set of dots/lines position."
+   ACTION: Fixed the orange Big-Dipper -> North-Star pointer line. It was drawn
+   extending THROUGH the North Star (pole) and out the other side, so the "upper
+   set of dots" sat on the wrong side and flipped the apparent slope. Re-placed
+   the exported shape (271.svg) so its upper-right end lands exactly on Polaris;
+   the line now runs from the Big Dipper bowl to the North Star and stops there.
+   Changed: POINTER_LINE constant in simulation.js
+     from a:[-160.65, 70.25] b:[164.7, -73.5]
+     to   a:[-324.65, 143.25] b:[0.7, -0.5]   (offset t = (-164, 73))
+   NOTE: the local python dev server sends no cache headers, so the browser was
+   running a CACHED old simulation.js and not showing the fix. Resolution: hard-
+   refresh (Ctrl/Cmd + Shift + R). Production cloud host sets proper cache headers.
+
+--------------------------------------------------------------------------------
+3. PROMPT: "border color of this table should be black, and text inside should be
+   black as well. The background color should be white here." (day-of-year month
+   strip / slider)
+   ACTION: Restyled the day-of-year strip to match the original look.
+   Changed in styles/styles.css:
+     .doy-slider           background #1f1f1f -> #ffffff (border stays black)
+     .doy-slider__month    color #ffffff -> #000000
+     .doy-slider__divider  background translucent-white -> #000000
+
+--------------------------------------------------------------------------------
+4. PROMPT: "the inverted triangle on the slider should also be clickable. Also,
+   the triangle is connected with the vertical line that slides."
+   ACTION: Made the triangle + vertical line a single grabbable handle.
+   - styles/styles.css: .doy-slider__cursor now has a clickable hit area
+     (pointer-events: auto, cursor: grab) with the triangle (::before) joined to
+     the vertical line (::after) running down through the strip; they move as one.
+   - simulation.js: beginDoyDrag/moveDoyDrag preserve the grab offset when the
+     handle is grabbed (so it does not jump), matching the original Day Of Year
+     Cursor onPress behavior; clicking the strip body still jumps to position.
+   Keyboard operation (arrows / PageUp/Down / Home / End) is unchanged.
+
+--------------------------------------------------------------------------------
+5. PROMPT: "make the clock little bigger, the fonts inside it are not readable."
+   ACTION: Enlarged the clock and increased internal resolution for crisp text.
+   - index.html: clock canvas 300x300 -> 360x360
+   - simulation.js: CLOCK r 132 -> 160 (cx/cy 150 -> 180); hour-number font
+     17px -> 22px (bold) and 13px -> 16px (minor); cardinal labels 12px -> 15px;
+     ticks and hands thickened to match.
+   - styles/styles.css: .clock-stage width clamp(11rem,17vw,15.5rem)
+     -> clamp(13rem,22vw,19rem). Mobile rule keeps it within the viewport.
+
+--------------------------------------------------------------------------------
+6. PROMPT: "for the day of year, day box has sharp corners, while month box has
+   rounded corners. Make it sharp cornered box as well. Also, its height should be
+   equal to the rest of the boxes."
+   ACTION: Matched the month <select> to the day/time input boxes.
+   Changed in styles/styles.css .field--month:
+     border-radius 3px -> 0 (sharp corners)
+     height pinned to 2.125rem (34px) via box-sizing:border-box, equal to the
+     foundation .control-row__input boxes (day and time fields).
+
+--------------------------------------------------------------------------------
+7. PROMPT: "write additional prompts in txt file within html5 folder."
+   ACTION: This file.
+
+--------------------------------------------------------------------------------
+8. PROMPT: audio.txt -- "SCREEN-READER / AUDIO-DESCRIPTION RETROFIT" (make the sim
+   fully usable by audio alone on NVDA + VoiceOver; narration-only, no behavior
+   change).
+   ACTION: Accessibility-only pass.
+   - index.html: added a dedicated commit-time status live region
+     <p id="sim-status" role="status" aria-live="polite" class="sr-only">; added
+     aria-label to both canvases ("Northern sky diagram", "Time of day clock");
+     removed aria-live from #sky-desc (it is now a read-on-demand description, so it
+     no longer floods per drag tick).
+   - simulation.js: added announce() + currentStateSpoken() + skyPhaseWords(); fire
+     announcements ONLY on commit/release (time/date field commit, clock-hand drag
+     release, day-strip drag release, show-details toggle, set-to-system-clock,
+     reset). Time is spoken with unit words: "13 hours 17 minutes (1:17 PM)"; date as
+     "June 17"; slider aria-valuetext carries "(day 168 of 365)"; DST and sky phase
+     spoken as words. Keyboard slider relies on its own aria-valuetext (no double
+     announce). Verified no per-tick flooding (status unchanged during drag, updates
+     once on release) and no console errors.
+   - ACCESSIBILITY.md: appended an "AUDIO / SCREEN-READER PASS" section.
+   - Foundation files untouched. Final NVDA/VoiceOver confirmation still needs a
+     human listening test (not claimed as verified).
+
+--------------------------------------------------------------------------------
+9. PROMPT: "the two versions ... are dealing with system time differently. The
+   displayed positions are offset by 1 hr ... applies to all dates from March 9 to
+   Nov. 1, so something about how daylight savings is addressed."
+   ACTION: Fixed a DST parity bug. The original AS sets currentYear = now.getYear()
+   (year MINUS 1900, e.g. 126) and feeds it back into new Date(126, ...), i.e. dates
+   in year 126 AD where no DST exists -- so its daylightSavingDelta is 0 and the sky
+   is NEVER DST-shifted. An earlier version of this port had "corrected" that with
+   the real year + real DST delta, which applied a genuine -1 hour shift across the
+   DST window (~Mar-Nov) and put the stars 1 hour (~15 deg) off from the original.
+   Fix in simulation.js update(): the sky now uses
+     solDaysSinceZero = dayOfYear + timeOfDay - 78.5   (NO DST offset),
+   matching the original exactly. The "daylight saving time in effect" placard is
+   kept (informational) and still uses the real current year so it shows only on true
+   DST dates. Verified: rotation now +15.04 deg vs the buggy value (= one hour),
+   orientation matches the original's left screenshot; no console errors.
+   Doc: CONVERSION_NOTES.md deviation #3 rewritten.
+
+--------------------------------------------------------------------------------
+10. PROMPT: "1. Need keyboard interaction with the clock. 2. The number
+    display/entry (hour, minute, day) would benefit from being keyboard adjustable
+    too (tab to them, then up/down arrow to increase/decrease)."
+    ACTION: Added keyboard control.
+    - Clock: the clock canvas is now role="slider" tabindex="0" with aria-valuemin
+      0 / aria-valuemax 1439 (minutes since midnight) / aria-valuenow / aria-valuetext
+      (spoken clock time). Keys: Left/Down = -1 min, Right/Up = +1 min, PageDown/Up =
+      -/+1 hour, Home = 12:00 AM, End = 11:59 PM; time wraps within the day. Hands stay
+      pointer-draggable. aria-valuenow/valuetext updated in syncTimePanel.
+    - Number fields: hour/minute/day inputs now step on Up/Down arrows (hour +/-1 wrap
+      0-23; minute +/-1 crossing the hour; day +/-1 crossing months and updating the
+      month select). Because syncTimePanel/syncDatePanel skip the focused field, the
+      steppers call refreshTimeFields()/refreshDateFields() so the value updates live.
+    - Slider-role controls (clock, day strip) announce via aria-valuetext on keyboard
+      change; text-field steppers announce via #sim-status. No double-announce.
+    - Verified via the Browser pane (javascript_tool): clock focusable, all keys work
+      and wrap correctly, fields live-update, sky rotates on clock keypress, day step
+      crosses months; no console errors. simulation.js node --check passes.
+    Files: index.html (clock canvas role/aria), simulation.js (clockKey, stepHour/
+    stepMinute/stepDay, refresh helpers, wiring, syncTimePanel aria). ACCESSIBILITY.md
+    keyboard section updated.
+
+================================================================================
+RECURRING NOTE -- LOCAL DEV CACHING
+================================================================================
+The local "python -m http.server" sends no cache-control headers, so browsers may
+keep serving a cached simulation.js / styles.css after edits. If a change does not
+appear, HARD-REFRESH: Ctrl + Shift + R (Windows/Linux) or Cmd + Shift + R (macOS),
+or open DevTools -> Network -> "Disable cache". This is a local-dev artifact only;
+the production cloud host serves proper cache headers.
+
+All changes above are confined to index.html, styles/styles.css, and simulation.js.
+The KL-UNL foundation files remain unchanged except for the one documented JSON
+syntax repair to contents.json (see CONVERSION_NOTES.md).
+================================================================================

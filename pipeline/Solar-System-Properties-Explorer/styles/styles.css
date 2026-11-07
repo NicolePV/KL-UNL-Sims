@@ -1,0 +1,230 @@
+/* ===========================================================================
+   Solar System Properties Explorer -- sim-specific styles ONLY.
+   Everything shared (palette, .app-shell, .app-layout, .panel, .control-*,
+   focus handling, the 56rem collapse) comes from foundation/kl-unl.css, which
+   is copied in byte-for-byte unchanged.  Nothing here edits or forks it: the
+   rules below layer sim-specific geometry and sizing on top.
+   =========================================================================== */
+
+/* --- Typography -----------------------------------------------------------
+   The foundation sets a 0.9rem body; this sim raises its own copy to a
+   comfortable reading size in rem, so it tracks the browser font setting and
+   reflows (rather than clipping) at 200% zoom.                              */
+
+.sim-main {
+  font-size:      1.125rem;
+  line-height:    1.45;
+  padding-bottom: 1rem;
+}
+
+.sim-panel .panel__heading {
+  font-size:      1.25rem;
+  padding:        0.6rem 1rem 0.5rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--border-color, #767676);
+}
+
+.sim-panel {
+  margin-bottom:  0.75rem;
+}
+
+/* The property name doubles as the chart's title, centred over the plot the
+   way the original Flash chart title was. */
+.sim-chart-title {
+  text-align:     center;
+  border-bottom:  0;
+  padding-bottom: 0.25rem;
+}
+
+.sim-chart-title__math {
+  display:        inline-block;
+  line-height:    1.2;
+}
+
+/* --- Chart stage ----------------------------------------------------------
+   .sim-plot holds the canvas plus the axis value labels; .sim-bar-labels sits
+   directly beneath it holding the planet names.  Both are positioned in
+   percentages of the ORIGINAL Flash stage box, so the drawing math never has
+   to know the on-screen size.                                               */
+
+.sim-canvas-wrap {
+  padding:        0.5rem 1rem 0.75rem;
+  line-height:    normal;
+}
+
+.sim-stage {
+  /* --stage-scale (rendered CSS px per Flash stage unit) is set from JS. */
+  --stage-scale:  1;
+  --label-size:   max(0.6875rem, calc(var(--stage-scale) * 12px));
+  position:       relative;
+  width:          100%;
+}
+
+.sim-plot {
+  position:       relative;
+  width:          100%;
+}
+
+#chart-canvas {
+  display:        block;
+  width:          100%;
+  height:         auto;
+  aspect-ratio:   680 / 372;
+}
+
+/* Axis value labels: a right-aligned column ending where the original
+   `left_label` text box ended, 12 units left of each tick mark. */
+.sim-tick-labels {
+  position:       absolute;
+  left:           0;
+  top:            0;
+  width:          8.5294%;          /* stage x 0 .. 58 of 680 */
+  height:         100%;
+  pointer-events: none;
+}
+
+.sim-tick-label {
+  position:       absolute;
+  right:          0;
+  transform:      translateY(-50%);
+  white-space:    nowrap;
+  font-size:      var(--label-size);
+  line-height:    1;
+  color:          var(--foreground-color, #1a1a1a);
+}
+
+/* MathJax output is display-only: never a tab stop, never a hover target. */
+.sim-tick-label mjx-container,
+.sim-chart-title__math mjx-container {
+  margin:         0 !important;
+}
+
+/* Planet names under the bars.  Each is anchored on a zero-width marker at the
+   centre of its bar, so it can be centred normally or pivoted about its
+   top-right corner when the bars get too narrow to sit side by side. */
+.sim-bar-labels {
+  position:       relative;
+  width:          100%;
+  min-height:     calc(var(--label-size) * 1.5);
+  margin-top:     0.15rem;
+}
+
+.sim-bar-label {
+  position:       absolute;
+  top:            0;
+  width:          0;
+}
+
+.sim-bar-label__text {
+  position:       absolute;
+  top:            0;
+  left:           0;
+  transform:      translateX(-50%);
+  white-space:    nowrap;
+  font-family:    Verdana, "DejaVu Sans", Geneva, Tahoma, sans-serif;
+  font-weight:    bold;
+  font-size:      var(--label-size);
+  line-height:    1.25;
+  color:          var(--foreground-color, #1a1a1a);
+}
+
+.sim-bar-labels--rotated {
+  min-height:     calc(var(--label-size) * 5);
+}
+
+.sim-bar-labels--rotated .sim-bar-label__text {
+  left:           auto;
+  right:          0;
+  transform:      rotate(-60deg);
+  transform-origin: 100% 0;
+}
+
+/* --- Controls -------------------------------------------------------------
+   The foundation supplies .control-fieldset / .control-choice / .control-grid;
+   these rules only widen the touch targets to the 44px floor and line the rows
+   up on a shared grid.                                                       */
+
+.sim-control-body {
+  padding:        0.75rem 1rem 1rem;
+}
+
+.sim-choice {
+  min-height:     2.75rem;
+  gap:            0.6rem;
+}
+
+.sim-choice input[type="checkbox"],
+.sim-choice input[type="radio"] {
+  width:          1.375rem;
+  height:         1.375rem;
+}
+
+/* Stretch the label across the row so the whole row is a 44px tap target. */
+.sim-choice label {
+  display:        flex;
+  align-items:    center;
+  gap:            0.5rem;
+  flex:           1 1 auto;
+  min-height:     2.75rem;
+  padding:        0.25rem 0;
+  font-size:      1.125rem;
+}
+
+.sim-property-grid {
+  gap:            0 1.5rem;
+  align-items:    start;
+}
+
+/* Legend swatches echo the bar colours.  Decorative only -- the adjacent text
+   label carries the meaning -- but outlined so they stay distinguishable
+   against white for low-vision users. */
+.sim-swatch {
+  display:        inline-block;
+  flex:           0 0 auto;
+  width:          0.85em;
+  height:         0.85em;
+  border-radius:  50%;
+  border:         1px solid #333333;
+}
+
+.sim-swatch--terrestrial { background-color: #F58181; }
+.sim-swatch--jovian      { background-color: #80A9E6; }
+.sim-swatch--pluto       { background-color: #74CF7C; }
+
+/* --- Layout ---------------------------------------------------------------
+   The two control panels use the foundation .app-layout grid, which already
+   collapses to one column at its own 56rem breakpoint.  Only the gutter is
+   sim-specific.                                                              */
+
+.sim-controls-row {
+  column-gap:     0.75rem;
+}
+
+/* --- Phone portrait -------------------------------------------------------
+   Below the foundation's 56rem collapse, tighten the gutters and let the
+   property radios stack into a single column so nothing is cramped.          */
+
+@media (max-width: 34rem) {
+  .sim-canvas-wrap {
+    padding:      0.5rem 0.5rem 0.75rem;
+  }
+
+  .sim-property-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-main {
+    font-size:    1.0625rem;
+  }
+}
+
+/* Nothing in this sim animates, but honour the preference explicitly so any
+   future transition cannot slip past it. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:       0.01ms !important;
+  }
+}

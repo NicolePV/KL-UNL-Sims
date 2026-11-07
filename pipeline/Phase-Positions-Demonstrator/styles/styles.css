@@ -1,0 +1,221 @@
+/* ----------------------------------------------------------------------------
+   Phase Positions Demonstrator -- sim-specific styles only.
+
+   Shared palette, layout, controls, and focus handling come from
+   foundation/kl-unl.css, which is copied in unchanged and never edited.
+   Everything here uses relative units (rem / % / clamp) so the layout flexes
+   from desktop through iPad down to phone portrait and stays usable at 200%
+   zoom. Standard properties only -- no prefix-only declarations -- so Safari,
+   Firefox, Chrome and Edge all get the same result.
+---------------------------------------------------------------------------- */
+
+/* Body copy noticeably larger than the browser default, in rem so it tracks the
+   user's font setting (WCAG 1.4.4). Matches the sibling sims in this pipeline. */
+body { font-size: 1.125rem; }
+
+/* Panel headings line up with the masthead title (it pads content by 1.25rem). */
+.panel__heading { font-size: 1.25rem; padding-left: 1.25rem; }
+
+/* ---------------------------------------------------------------------------
+   Layout
+
+   The Flash stage is a wide square "orbital view" on the left and a narrow
+   right column ("Disc Appearances") stacking two phase discs. .app-layout
+   supplies the grid, but its default columns are 25rem / 1fr -- narrow left --
+   so this sim flips the proportions. The foundation's own 56rem collapse is
+   re-declared here at equal specificity, because `.app-layout.sim-layout`
+   (0,2,0) would otherwise outrank the foundation's `.app-layout` (0,1,0)
+   inside its media query.
+--------------------------------------------------------------------------- */
+.sim-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.app-layout.sim-layout {
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 0.5rem;
+  padding-top: 0;
+}
+
+.sim-panel { min-width: 0; }
+
+/* Foundation breakpoint: two columns -> one. Re-declared at matching
+   specificity so the sim's wider left column doesn't defeat the collapse. */
+@media (max-width: 56rem) {
+  .app-layout.sim-layout { grid-template-columns: 1fr; }
+}
+
+/* Phone portrait: tighten padding so the panels breathe on a narrow screen. */
+@media (max-width: 30rem) {
+  .sim-main              { gap: 0.4rem; }
+  .app-layout.sim-layout { gap: 0.4rem; }
+  .sim-canvas-wrap       { padding: 0.4rem 0.6rem 0.75rem; }
+  .disc-canvas-wrap      { padding: 0.4rem 0.6rem 0.5rem; }
+  .panel__heading        { padding-left: 0.75rem; }
+  .disc-intro,
+  .phase-formula,
+  .disc-panel__title,
+  .disc-readout,
+  .disc-button-row       { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .sim-orbit-toggle      { padding-left: 0.75rem; }
+}
+
+/* ---------------------------------------------------------------------------
+   The overhead orbital view (canvas stage)
+
+   The canvas keeps its ORIGINAL Flash stage coordinates internally (506 x 506,
+   origin at the star); CSS scales the element to fit its panel. The width/height
+   attributes give the element an intrinsic aspect ratio, so `width:100%;
+   height:auto` preserves the square even on engines without aspect-ratio.
+--------------------------------------------------------------------------- */
+.sim-canvas-wrap { line-height: 0; padding: 0.5rem 1.25rem 0.75rem; }
+
+.sim-stage {
+  position: relative;      /* anchors the planet handles and identity labels */
+  width: 100%;
+  max-width: 34rem;        /* keep the square from dominating huge screens */
+  margin: 0 auto;
+}
+
+.sim-stage canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #000000;     /* the original active area is black space */
+  /* Dragging a planet must not scroll or zoom the page on touch devices. */
+  touch-action: none;
+  /* And must not select page text or raise the iOS callout menu. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#orbit-canvas { cursor: default; }
+
+/* Keyboard / assistive-tech proxy for a draggable planet. Transparent: the
+   planet disc itself is painted on the canvas, and this only needs to be a focus
+   target sitting on top of it. pointer-events:none keeps all hit-testing in one
+   place (the canvas handler), which focuses the matching handle on pointerdown so
+   click-to-focus and Tab-to-focus land identically. Sized to the 44px minimum. */
+.sim-planet-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -1.375rem 0 0 -1.375rem;   /* centre on the disc */
+  border-radius: 50%;
+  pointer-events: none;
+  background: transparent;
+}
+
+.sim-planet-handle:focus-visible {
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--button-outline-color, #ffbc00);
+  outline-offset: 0.125rem;
+}
+
+/* The "1" / "2" identity labels, HTML so they scale with the user's font size.
+   Positioned by JS as percentages of the stage box so they track the canvas as
+   it scales. A subtle shadow keeps them legible over the pink/blue discs. */
+.sim-planet-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  font-size: 1rem;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  color: #ffffff;
+  text-shadow: 0 0 0.2rem #000, 0 0 0.2rem #000;
+}
+
+.sim-orbit-toggle {
+  padding: 0 1.25rem 1rem;
+}
+/* The whole row is given a 44px height so the activatable target clears the
+   minimum touch size, matching the sibling sims. */
+.sim-orbit-toggle .control-choice { min-height: 2.75rem; }
+.sim-orbit-toggle label {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Illuminated-fraction formula (MathJax)
+--------------------------------------------------------------------------- */
+.disc-intro {
+  margin: 0;
+  padding: 0 1.25rem 0.5rem;
+  font-style: italic;
+}
+
+.phase-formula {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.25rem 0.75rem;
+}
+.phase-formula__label { font-weight: bold; }
+.phase-formula__math  { font-size: 1.15rem; line-height: 1; }
+
+/* ---------------------------------------------------------------------------
+   Phase disc panels
+
+   Each disc keeps the original Flash phase-panel look: a black field with the
+   light/dark disc centred. The disc canvas keeps original coordinates and scales
+   with CSS, capped near its own size so it stays crisp.
+--------------------------------------------------------------------------- */
+.disc-panel { margin-top: 0.25rem; }
+
+.disc-panel__title {
+  margin: 0;
+  padding: 0.5rem 1.25rem 0.25rem;
+  font-size: 1.05rem;
+  font-weight: bold;
+}
+
+.disc-canvas-wrap { line-height: 0; padding: 0.25rem 1.25rem 0.5rem; }
+
+.disc-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  max-width: 12rem;
+  height: auto;
+  margin: 0 auto;
+  background: #000000;    /* the original phase panel background is black */
+}
+
+.disc-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0 1.25rem 0.35rem;
+}
+.disc-readout__label { font-weight: bold; }
+/* Typeset math is display-only: it must never become a tab stop. JS also sets
+   tabindex="-1" on the MathJax output as a belt-and-braces measure. */
+.disc-readout__math {
+  font-size: 1.1rem;
+  line-height: 1;
+  min-width: 4ch;         /* keeps the row from twitching as digits change */
+}
+.disc-readout__math mjx-container,
+.phase-formula__math mjx-container { outline: none; }
+
+/* The foundation .button-row is width:100%; the shared stylesheet uses the
+   default content-box model, so this row's own padding would otherwise add to
+   100% and overflow a narrow viewport. border-box keeps it within the column. */
+.disc-button-row { box-sizing: border-box; padding: 0 1.25rem 1rem; align-items: center; }
+
+/* The Hide/Show label swaps between two lengths; a shared min-width stops the
+   button resizing as it toggles. */
+.disc-button { min-width: 5rem; }

@@ -1,0 +1,4 @@
+# The fla/ folder is an archival copy of the decompiled Flash source
+# (JPEXS/FFDec export). Treat it as binary so Git stores every file exactly
+# as decompiled, with no line-ending normalization.
+fla/** -text

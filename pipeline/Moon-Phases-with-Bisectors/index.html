@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Determining Moon Phases Using Bisectors</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <div class="app-shell">
+    <kl-unl-masthead sim-id="moonbisector" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="mbd-layout" aria-label="Determining Moon Phases Using Bisectors simulation">
+
+      <!-- ===================== DIAGRAM (3D scene) ===================== -->
+      <section class="panel mbd-panel-diagram" aria-labelledby="diagram-heading">
+        <h2 id="diagram-heading" class="sr-only">Earth, Moon, and Sun diagram</h2>
+        <div class="panel__canvas-wrap mbd-canvas-wrap">
+          <canvas id="scene-canvas" class="mbd-canvas" width="600" height="600"
+                  role="application"
+                  tabindex="0"
+                  aria-describedby="scene-desc scene-help"></canvas>
+        </div>
+        <p id="scene-help" class="sr-only">
+          Interactive three-dimensional view. Drag with the mouse or touch, or focus the view and
+          use the arrow keys, to rotate. Left and right arrows change the left/right viewing angle;
+          up and down arrows change the up/down viewing angle. The same angles can be set with the
+          left/right and up/down sliders in the Perspective panel.
+        </p>
+        <p id="scene-desc" class="sr-only" aria-live="polite"></p>
+        <p id="live-status" class="sr-only" aria-live="polite"></p>
+      </section>
+
+      <!-- ===================== CONTROLS ===================== -->
+      <div class="mbd-controls">
+
+        <!-- Phase Determination Steps -->
+        <section class="panel" aria-labelledby="steps-heading">
+          <h2 id="steps-heading" class="panel__heading">Phase Determination Steps</h2>
+
+          <div class="control-fieldset">
+            <div class="button-row mbd-button-row">
+              <button type="button" id="hide-all-btn" class="button">hide all</button>
+              <button type="button" id="show-all-btn" class="button">show all</button>
+            </div>
+          </div>
+
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend">Shadow Creation</legend>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cb-sun-lines">
+              <label for="cb-sun-lines">Step 1 - show Sun direction</label>
+            </div>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cb-sun-bisectors">
+              <label for="cb-sun-bisectors">Step 2 - show Sun bisectors</label>
+            </div>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cb-shadows">
+              <label for="cb-shadows">Step 3 - show shadows</label>
+            </div>
+
+            <div class="control-row mbd-contrast-row">
+              <label for="contrast-slider" id="contrast-label" class="control-row__label mbd-contrast-label">contrast</label>
+              <input type="range" id="contrast-slider" class="control-row__slider mbd-slider"
+                     min="0.5" max="0.85" step="0.001" value="0.65"
+                     aria-describedby="contrast-label">
+            </div>
+          </fieldset>
+
+          <fieldset class="control-fieldset">
+            <legend class="control-fieldset__legend">Phase Determination</legend>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cb-earth-moon-line">
+              <label for="cb-earth-moon-line">Step 4 - show Earth-Moon line</label>
+            </div>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cb-earth-moon-bisectors">
+              <label for="cb-earth-moon-bisectors">Step 5 - show Earth-Moon bisectors</label>
+            </div>
+
+            <div class="control-choice">
+              <input type="checkbox" id="cb-moon-disc">
+              <label for="cb-moon-disc">Step 6 - determine Moon's phase</label>
+            </div>
+
+            <div class="mbd-phase-readout" id="phase-readout" hidden>
+              <canvas id="disc-canvas" width="60" height="60" class="mbd-disc" aria-hidden="true"></canvas>
+              <span id="phase-name" class="mbd-phase-name"></span>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- Positions -->
+        <section class="panel" aria-labelledby="positions-heading">
+          <h2 id="positions-heading" class="panel__heading">Positions</h2>
+          <div class="control-fieldset">
+            <div class="control-row mbd-row">
+              <label for="sun-angle-slider" class="control-row__label">Sun Direction:</label>
+              <input type="range" id="sun-angle-slider" class="control-row__slider mbd-slider"
+                     min="0" max="360" step="0.1" value="270">
+            </div>
+            <div class="control-row mbd-row">
+              <label for="moon-angle-slider" class="control-row__label">Moon Position:</label>
+              <input type="range" id="moon-angle-slider" class="control-row__slider mbd-slider"
+                     min="0" max="360" step="0.1" value="180">
+            </div>
+          </div>
+        </section>
+
+        <!-- Perspective -->
+        <section class="panel" aria-labelledby="perspective-heading">
+          <h2 id="perspective-heading" class="panel__heading">Perspective</h2>
+          <div class="control-fieldset">
+            <div class="button-row mbd-button-row">
+              <button type="button" id="earth-view-btn" class="button">earth</button>
+              <button type="button" id="overhead-view-btn" class="button">overhead</button>
+            </div>
+            <div class="control-row mbd-row">
+              <label for="theta-slider" class="control-row__label">left/right:</label>
+              <input type="range" id="theta-slider" class="control-row__slider mbd-slider"
+                     min="0" max="360" step="0.1" value="0">
+            </div>
+            <div class="control-row mbd-row">
+              <label for="phi-slider" class="control-row__label">up/down:</label>
+              <input type="range" id="phi-slider" class="control-row__slider mbd-slider"
+                     min="-90" max="90" step="0.1" value="90">
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="foundation/kl-unl.js"></script>
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <script type="module" src="simulation.js"></script>
+</body>
+</html>

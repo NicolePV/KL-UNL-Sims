@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Radial Velocity Simulator</title>
+
+  <!-- Shared KL-UNL foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles (layered on top of the foundation, never editing it) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax renders ALL mathematics/symbols in this sim (subscripted units
+    like M_jup/M_sun, degree signs, axis labels). It is part of the shared
+    KL-UNL foundation and is expected to live at
+    foundation/mathjax/tex-mml-chtml.js in the deployed pipeline. We do NOT
+    load it from a CDN (self-contained requirement). If the library is absent
+    the sim still runs and shows readable fallback text. The MathJax
+    contextual menu is intentionally left enabled (not overridden).
+  -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      // Every LaTeX string in this sim is plain unit text (not equations),
+      // wrapped in \text{...} -- mtextInheritFont makes that text render in
+      // the surrounding CSS font-family (the sim's sans-serif stack) instead
+      // of MathJax's own serif math font, so it looks identical to the rest
+      // of the UI while still being real MathJax (right-click menu, etc.).
+      chtml: { mtextInheritFont: true, merrorInheritFont: true },
+      startup: { typeset: false },
+      options: { renderActions: {} }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It reads its text from foundation/contents.json by sim-id and
+         dispatches a "sim-reset" event we listen for. Do not add a
+         competing <h1> or build a separate Reset/Help/About UI. -->
+    <kl-unl-masthead sim-id="radialvelocitysimulator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout rvs-layout" id="appLayout">
+
+      <!-- ================= TOP ROW ================= -->
+      <div class="rvs-top">
+
+        <!-- Visualization (3D free-space view, splits into 3 sub-views) -->
+        <section class="panel rvs-panel rvs-panel--viz" aria-labelledby="hdgViz">
+          <h2 class="panel__heading sr-only" id="hdgViz">Visualization</h2>
+          <div class="panel__canvas-wrap rvs-viz-wrap">
+            <div class="rvs-viz-stage" id="vizStage">
+              <canvas id="vizCanvas" class="rvs-canvas" width="400" height="400"
+                      role="img" aria-describedby="vizDesc"></canvas>
+              <!-- Keyboard/pointer-focusable proxy for dragging the free-space orientation -->
+              <div id="vizDragProxy" class="rvs-drag-proxy" tabindex="0"
+                   role="slider" aria-orientation="horizontal"
+                   aria-label="System orientation, drag or use arrow keys to rotate the view"
+                   aria-valuemin="-360" aria-valuemax="360" aria-valuenow="80"
+                   aria-valuetext="View rotated to azimuth 80 degrees, altitude 45 degrees"></div>
+            </div>
+          </div>
+          <p id="vizDesc" class="sr-only" aria-live="polite"></p>
+        </section>
+
+        <!-- Radial Velocity Plot -->
+        <section class="panel rvs-panel rvs-panel--plot" aria-labelledby="hdgPlot">
+          <h2 class="panel__heading sr-only" id="hdgPlot">Radial Velocity Plot</h2>
+          <div class="panel__canvas-wrap rvs-plot-wrap">
+            <div class="rvs-plot-grid">
+              <div class="rvs-plot-ytitle" aria-hidden="true">Radial Velocity (m/s)</div>
+              <div class="rvs-plot-stage" id="plotStage">
+                <canvas id="plotCanvas" class="rvs-canvas" width="700" height="380"
+                        role="img" aria-describedby="plotDesc"></canvas>
+                <!-- Keyboard/pointer-focusable proxy for the draggable "current phase" cursor -->
+                <div id="phaseCursorProxy" class="rvs-drag-proxy rvs-phase-cursor-proxy" tabindex="0"
+                     role="slider" aria-orientation="horizontal"
+                     aria-label="Current orbital phase cursor"
+                     aria-valuemin="0" aria-valuemax="1" aria-valuenow="0"
+                     aria-valuetext="Current phase 0.000"></div>
+                <div id="plotCrosshairReadout" class="rvs-crosshair-readout" hidden aria-hidden="true"></div>
+              </div>
+              <div class="rvs-plot-xtitle" aria-hidden="true">Phase</div>
+            </div>
+          </div>
+          <p id="plotDesc" class="sr-only" aria-live="polite"></p>
+
+          <fieldset class="control-fieldset rvs-plot-controls">
+            <legend class="sr-only">Radial velocity plot options</legend>
+            <div class="rvs-plot-controls-grid">
+              <div class="rvs-plot-controls-left rvs-align">
+                <div class="control-choice rvs-choice">
+                  <input type="checkbox" id="showCurveCheck" checked>
+                  <label for="showCurveCheck">show theoretical curve</label>
+                </div>
+                <div class="control-choice rvs-choice">
+                  <input type="checkbox" id="showMeasurementsCheck">
+                  <label for="showMeasurementsCheck">show simulated measurements</label>
+                </div>
+                <div class="control-row rvs-slider-row">
+                  <label class="control-row__label" for="noiseField">noise:</label>
+                  <span class="rvs-field-group">
+                    <input type="text" inputmode="decimal" id="noiseField" class="rvs-value-field" disabled>
+                    <span id="noiseUnits" class="rvs-units mjx" aria-hidden="true"></span>
+                  </span>
+                  <input type="range" id="noiseSlider" class="control-row__slider rvs-slider"
+                         min="0" max="1000" value="500" disabled>
+                </div>
+                <div class="control-row rvs-slider-row">
+                  <label class="control-row__label" for="numberField">number:</label>
+                  <span class="rvs-field-group">
+                    <input type="text" inputmode="decimal" id="numberField" class="rvs-value-field" disabled>
+                    <span id="numberUnits" class="rvs-units mjx" aria-hidden="true"></span>
+                  </span>
+                  <input type="range" id="numberSlider" class="control-row__slider rvs-slider"
+                         min="0" max="1000" value="500" disabled>
+                </div>
+              </div>
+              <div class="rvs-plot-controls-right">
+                <div class="rvs-period-label">system period:</div>
+                <div id="periodReadout" class="rvs-period-value mjx"></div>
+              </div>
+            </div>
+          </fieldset>
+        </section>
+      </div>
+
+      <!-- ================= BOTTOM ROW (3 columns x 2 panels) ================= -->
+      <div class="rvs-bottom">
+
+        <!-- Column 1 -->
+        <div class="rvs-col">
+          <section class="panel rvs-panel" aria-labelledby="hdgVizCtl">
+            <h2 class="panel__heading" id="hdgVizCtl">Visualization Controls</h2>
+            <fieldset class="control-fieldset">
+              <legend class="sr-only">Visualization controls</legend>
+              <div class="control-choice rvs-choice">
+                <input type="checkbox" id="showPanelsCheck">
+                <label for="showPanelsCheck">show multiple views</label>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="panel rvs-panel" aria-labelledby="hdgAnim">
+            <h2 class="panel__heading" id="hdgAnim">Animation Controls</h2>
+            <fieldset class="control-fieldset rvs-align">
+              <legend class="sr-only">Animation controls</legend>
+              <div class="button-row rvs-button-row">
+                <button type="button" id="animateButton" class="button rvs-button">start animation</button>
+              </div>
+              <div class="control-row rvs-slider-row rvs-slider-row--nofield">
+                <label class="control-row__label" for="animRateSlider">animation speed:</label>
+                <input type="range" id="animRateSlider" class="control-row__slider rvs-slider"
+                       min="0" max="1000" value="500">
+              </div>
+              <div class="control-row rvs-slider-row">
+                <label class="control-row__label" for="phaseField">phase:</label>
+                <span class="rvs-field-group">
+                  <input type="text" inputmode="decimal" id="phaseField" class="rvs-value-field">
+                </span>
+                <input type="range" id="phaseSlider" class="control-row__slider rvs-slider"
+                       min="0" max="1" step="0.001" value="0">
+              </div>
+            </fieldset>
+          </section>
+        </div>
+
+        <!-- Column 2 -->
+        <div class="rvs-col">
+          <section class="panel rvs-panel" aria-labelledby="hdgOrient">
+            <h2 class="panel__heading" id="hdgOrient">System Orientation</h2>
+            <fieldset class="control-fieldset rvs-align">
+              <legend class="sr-only">System orientation</legend>
+              <div class="control-row rvs-slider-row">
+                <label class="control-row__label" for="inclinationField">inclination:</label>
+                <span class="rvs-field-group">
+                  <input type="text" inputmode="decimal" id="inclinationField" class="rvs-value-field">
+                  <span id="inclinationUnits" class="rvs-units mjx" aria-hidden="true"></span>
+                </span>
+                <input type="range" id="inclinationSlider" class="control-row__slider rvs-slider"
+                       min="0" max="1000" value="500">
+              </div>
+              <div class="control-row rvs-slider-row">
+                <label class="control-row__label" for="longitudeField">longitude:</label>
+                <span class="rvs-field-group">
+                  <input type="text" inputmode="decimal" id="longitudeField" class="rvs-value-field">
+                  <span id="longitudeUnits" class="rvs-units mjx" aria-hidden="true"></span>
+                </span>
+                <input type="range" id="longitudeSlider" class="control-row__slider rvs-slider"
+                       min="0" max="1000" value="500">
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="panel rvs-panel" aria-labelledby="hdgStar">
+            <h2 class="panel__heading" id="hdgStar">Star Properties</h2>
+            <fieldset class="control-fieldset rvs-align">
+              <legend class="sr-only">Star properties</legend>
+              <div class="control-row rvs-slider-row">
+                <label class="control-row__label" for="starMassField">mass:</label>
+                <span class="rvs-field-group">
+                  <input type="text" inputmode="decimal" id="starMassField" class="rvs-value-field">
+                  <span id="starMassUnits" class="rvs-units mjx" aria-hidden="true"></span>
+                </span>
+                <input type="range" id="starMassSlider" class="control-row__slider rvs-slider"
+                       min="0" max="1000" value="500">
+              </div>
+              <p id="starInfoField" class="rvs-star-info" aria-live="polite"></p>
+            </fieldset>
+          </section>
+        </div>
+
+        <!-- Column 3 -->
+        <div class="rvs-col">
+          <section class="panel rvs-panel" aria-labelledby="hdgPresets">
+            <h2 class="panel__heading" id="hdgPresets">Presets</h2>
+            <fieldset class="control-fieldset">
+              <legend class="sr-only">Presets</legend>
+              <div class="rvs-preset-row">
+                <label class="sr-only" for="presetsSelect">Preset</label>
+                <select id="presetsSelect" class="rvs-select"></select>
+                <button type="button" id="setPresetButton" class="button rvs-button">set</button>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="panel rvs-panel" aria-labelledby="hdgPlanet">
+            <h2 class="panel__heading" id="hdgPlanet">Planet Properties</h2>
+            <fieldset class="control-fieldset rvs-align">
+              <legend class="sr-only">Planet properties</legend>
+              <div class="control-row rvs-slider-row">
+                <label class="control-row__label" for="planetMassField">mass:</label>
+                <span class="rvs-field-group">
+                  <input type="text" inputmode="decimal" id="planetMassField" class="rvs-value-field">
+                  <span id="planetMassUnits" class="rvs-units mjx" aria-hidden="true"></span>
+                </span>
+                <input type="range" id="planetMassSlider" class="control-row__slider rvs-slider"
+                       min="0" max="1000" value="500">
+              </div>
+              <div class="control-row rvs-slider-row">
+                <label class="control-row__label" for="separationField">semimajor axis:</label>
+                <span class="rvs-field-group">
+                  <input type="text" inputmode="decimal" id="separationField" class="rvs-value-field">
+                  <span id="separationUnits" class="rvs-units mjx" aria-hidden="true"></span>
+                </span>
+                <input type="range" id="separationSlider" class="control-row__slider rvs-slider"
+                       min="0" max="1000" value="500">
+              </div>
+              <div class="control-row rvs-slider-row">
+                <label class="control-row__label" for="eccentricityField">eccentricity:</label>
+                <span class="rvs-field-group">
+                  <input type="text" inputmode="decimal" id="eccentricityField" class="rvs-value-field">
+                </span>
+                <input type="range" id="eccentricitySlider" class="control-row__slider rvs-slider"
+                       min="0" max="0.8" step="0.01" value="0.2">
+              </div>
+            </fieldset>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- Screen-reader status: announces meaningful state changes with units. -->
+    <div class="sr-only" aria-live="polite" id="liveStatus"></div>
+  </div>
+
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <script src="foundation/kl-unl.js"></script>
+  <script type="module" src="simulation.js"></script>
+</body>
+</html>

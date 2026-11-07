@@ -1,0 +1,31 @@
+on(initialize){
+   initRegionShown = "eclipse of body 1";
+   initDataType = "visual flux";
+   initShowMeasurements = true;
+   numberOfMeasurements = 50;
+   measurementDotSize = 4;
+   measurementDotColor = 10066329;
+   noise = 0.1;
+   initShowCurve = true;
+   curveColor = 6724095;
+   curveThickness = 1;
+   axesColor = 0;
+   backgroundColor = 16777215;
+   initShowPhaseCursor = true;
+   initCursorPhase = 0.5;
+   phaseChangeHandler = "onPhaseChangedViaLightcurve";
+   initAllowDragging = true;
+   initPhaseOffset = -0.25;
+   phaseOffsetChangeHandler = "";
+   _ignore_ = "";
+   initSeparation = "";
+   initEccentricity = "";
+   initInclination = "";
+   initLongitude = "";
+   initMass1 = "";
+   initMass2 = "";
+   initRadius1 = "";
+   initRadius2 = "";
+   initTemperature1 = "";
+   initTemperature2 = "";
+}

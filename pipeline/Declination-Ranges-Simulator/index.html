@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Declination Ranges Simulator</title>
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles layered on top of the foundation (foundation never edited) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!-- MathJax: bundled locally (no CDN at runtime). tex-svg output keeps the
+       MathJax contextual menu ("Show Math As...") working on every symbol. -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' },
+      options: { menuOptions: { settings: { assistiveMml: true } } }
+    };
+  </script>
+  <script defer src="assets/mathjax/tex-svg.js"></script>
+
+  <script defer src="foundation/kl-unl-masthead.js"></script>
+  <script defer src="foundation/kl-unl.js"></script>
+  <script defer src="simulation.js"></script>
+</head>
+<body>
+  <!-- aria-live status region: announces state changes (on commit) with units/context -->
+  <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  <main class="app-shell">
+    <!-- Title + Reset / Help / About come from the shared masthead component.
+         It renders the <h1>, reads text from foundation/contents.json by sim-id,
+         and dispatches a "sim-reset" event we listen for. -->
+    <kl-unl-masthead sim-id="latsim" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <div class="app-layout sim-layout">
+
+      <!-- ============ CELESTIAL SPHERE PANEL (left) ============ -->
+      <section class="panel sim-sphere-panel" aria-labelledby="sphere-heading">
+        <h2 id="sphere-heading" class="panel__heading">Celestial Sphere</h2>
+        <div class="panel__canvas-wrap">
+          <div class="sphere-holder" id="sphere-holder">
+            <!-- Canvas is the visual layer only. It keeps the original Flash stage
+                 coordinates (450 x 450, dial centred on 225,225) and is scaled by
+                 CSS. Every degree label is real HTML typeset by MathJax so the
+                 symbols are spoken, zoomable, and expose the MathJax menu. -->
+            <canvas id="sky-canvas" width="450" height="450" aria-hidden="true"></canvas>
+
+            <!-- Declination tick labels, positioned around the rim (MathJax). -->
+            <div id="dec-labels" class="dec-labels" aria-hidden="true"></div>
+
+            <!-- Fixed point-of-reference labels drawn inside the dial. -->
+            <div class="sky-marks" aria-hidden="true">
+              <span class="sky-mark" id="mark-ncp">NCP</span>
+              <span class="sky-mark" id="mark-scp">SCP</span>
+              <span class="sky-mark" id="mark-ce-left">CE</span>
+              <span class="sky-mark" id="mark-ce-right">CE</span>
+              <span class="sky-mark" id="mark-np">NP</span>
+              <span class="sky-mark" id="mark-sp">SP</span>
+            </div>
+
+            <!-- Focusable proxy for the draggable observer / horizon line. Clicking
+                 or tapping the line focuses it (see simulation.js) so the arrow keys
+                 tilt it straight away, and it is also reachable by Tab. -->
+            <div id="observer-handle" class="observer-handle"
+                 tabindex="0" role="slider"
+                 aria-label="Observer horizon line"
+                 aria-valuemin="-90" aria-valuemax="90" aria-valuenow="41"
+                 aria-valuetext="Latitude 41 degrees north"
+                 aria-describedby="observer-help"></div>
+          </div>
+
+          <p id="sky-desc" class="sr-only"></p>
+          <p id="observer-help" class="sr-only">
+            Drag the observer's horizon line in the diagram to change the latitude,
+            or use the arrow keys once it is focused. Left and Down arrow decrease
+            the latitude by one degree and Right and Up arrow increase it by one
+            degree. Page Down and Page Up change it by ten degrees. Home and End
+            jump to 90 degrees south and 90 degrees north.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ OBSERVER'S LATITUDE (right, top) ============ -->
+      <section class="panel sim-latitude-panel" aria-labelledby="latitude-heading">
+        <h2 id="latitude-heading" class="panel__heading">Observer's Latitude</h2>
+        <div class="panel-body">
+
+          <div class="control-row lat-row">
+            <label class="control-row__label" for="lat-number">Latitude</label>
+
+            <!-- Editable value, and the only on-screen readout: type a signed
+                 latitude, or step it with the arrow keys / mouse wheel while it is
+                 focused (see simulation.js). Negative is south; the slider's end
+                 labels carry that convention. -->
+            <span class="lat-field">
+              <input class="control-row__input lat-number" type="number" id="lat-number"
+                     min="-90" max="90" step="0.1" value="41"
+                     aria-label="Observer's latitude in degrees, positive north"
+                     aria-describedby="lat-number-help">
+              <span class="lat-unit" aria-hidden="true"></span>
+            </span>
+
+            <input class="lat-slider" type="range" id="lat-slider"
+                   min="-90" max="90" step="0.1" value="41"
+                   aria-label="Observer's latitude"
+                   aria-valuetext="41 degrees north">
+            <span class="lat-limit lat-limit--min" id="lat-min" aria-hidden="true"></span>
+            <span class="lat-limit lat-limit--max" id="lat-max" aria-hidden="true"></span>
+          </div>
+          <p id="lat-number-help" class="sr-only">
+            Type a latitude in degrees, from minus 90 for the south pole to 90 for
+            the north pole. Negative values are south of the equator. Use the up and
+            down arrow keys, or the mouse wheel while the field is focused, to change
+            the value by a tenth of a degree; Page Up and Page Down change it by ten
+            degrees.
+          </p>
+
+          <div class="control-choice enlarge-row">
+            <input type="checkbox" id="enlarge-check">
+            <label for="enlarge-check">Enlarge Earth</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ DECLINATION RANGES (right, bottom) ============ -->
+      <section class="panel sim-ranges-panel" aria-labelledby="ranges-heading">
+        <h2 id="ranges-heading" class="panel__heading">Declination Ranges</h2>
+        <div class="panel-body">
+          <dl class="range-list">
+
+            <div class="range-item">
+              <dt class="range-term">
+                <span class="range-swatch range-swatch--cir" aria-hidden="true"></span>
+                <span>Circumpolar:</span>
+              </dt>
+              <dd class="range-value">
+                <span id="cir-range" aria-hidden="true"></span>
+                <span class="sr-only" id="cir-range-sr"></span>
+              </dd>
+            </div>
+
+            <div class="range-item">
+              <dt class="range-term">
+                <span class="range-swatch range-swatch--rise" aria-hidden="true"></span>
+                <span>Rise and Set:</span>
+              </dt>
+              <dd class="range-value">
+                <span id="rise-range" aria-hidden="true"></span>
+                <span class="sr-only" id="rise-range-sr"></span>
+              </dd>
+            </div>
+
+            <div class="range-item">
+              <dt class="range-term">
+                <span class="range-swatch range-swatch--nev" aria-hidden="true"></span>
+                <span>Never Rise</span>
+              </dt>
+              <dd class="range-value">
+                <span id="nev-range" aria-hidden="true"></span>
+                <span class="sr-only" id="nev-range-sr"></span>
+              </dd>
+            </div>
+
+          </dl>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>

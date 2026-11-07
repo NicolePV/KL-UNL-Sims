@@ -1,0 +1,123 @@
+/* ============================================================================
+   Tidal Bulge Simulator - sim-specific styles.
+   Layered ON TOP of foundation/kl-unl.css. The foundation files are never
+   edited; everything here is additive.
+   ============================================================================ */
+
+/* Comfortable, zoomable base type (>= 1.125rem floor for body copy). */
+body {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+/* Give the app some breathing room from the window edges. */
+.app-shell {
+  padding: 0 1rem 1.5rem;
+}
+
+/* A little vertical gap between the two panels once they stack, and between
+   the masthead and the layout. */
+.app-layout {
+  gap: 1rem;
+  margin-top: 1rem;
+  /* Diagram on the LEFT (wide), controls on the RIGHT (narrow). */
+  grid-template-columns: 1fr 25rem;
+  /* Both boxes stretch to the same (tallest) height. */
+  align-items: stretch;
+}
+
+/* Let each column's panel fill the full row height so the two boxes match. */
+.app-layout__left,
+.app-layout__right {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.app-layout__left > .panel,
+.app-layout__right > .panel {
+  flex: 1 1 auto;
+}
+
+/* Panels: rounded, padded, consistent rhythm. */
+.panel {
+  border-radius: 0.5rem;
+  padding-bottom: 1rem;
+}
+
+.panel__heading {
+  font-size: 1.15rem;
+  border-bottom: 1px solid #d9d9d9;
+  margin-bottom: 0.75rem;
+}
+
+/* --- Controls ------------------------------------------------------------- */
+
+.control-fieldset {
+  padding: 0 1rem;
+}
+
+.control-choice {
+  /* Comfortable, evenly spaced, touch-friendly rows. */
+  min-height: 2.75rem;
+  gap: 0.6rem;
+  font-size: 1.05rem;
+}
+
+.control-choice input[type="checkbox"] {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.panel__help {
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: #333;
+}
+
+/* --- Diagram stage -------------------------------------------------------- */
+
+.panel--size {
+  /* Let the canvas panel size to its content rather than a fixed min-height. */
+  min-height: 0;
+}
+
+.panel__canvas-wrap {
+  padding: 0 1rem;
+  /* Center the canvas within its (possibly wider) column. */
+  display: flex;
+  justify-content: center;
+}
+
+#stage {
+  display: block;
+  width: 100%;
+  max-width: 600px;
+  height: auto;            /* preserve aspect ratio while scaling */
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  border-radius: 0.375rem;
+  touch-action: manipulation;
+}
+
+/* ----------------------------------------------------------------------------
+   Responsive: below the foundation's 56rem breakpoint the layout is already a
+   single column. Keep the canvas comfortably full-width down to phone portrait.
+   ---------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  /* Collapse to a single column (our base rule above would otherwise keep the
+     two columns on narrow screens). Diagram is first in the DOM, so it stacks
+     on top, then the controls. */
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 30rem) {
+  body {
+    font-size: 1.0625rem;
+  }
+  .app-shell {
+    padding: 0 0.5rem 1rem;
+  }
+}

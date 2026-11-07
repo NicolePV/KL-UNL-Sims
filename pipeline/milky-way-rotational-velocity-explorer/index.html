@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Milky Way Rotational Velocity Explorer</title>
+
+  <!-- Shared KL-UNL foundation (copied in unchanged) -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles, layered on top of the foundation (never editing it) -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax typesets ALL mathematics in this sim: the mass equation, every axis
+    tick number, and the axis titles (which carry the units kpc and km/s).
+    It is self-hosted at foundation/mathjax/tex-mml-chtml.js -- no CDN, so the
+    page stays fully self-contained.
+
+    The MathJax contextual menu is deliberately left enabled (never overridden):
+    right-clicking any typeset symbol opens "Show Math As -> TeX / MathML".
+  -->
+  <script>
+    window.MathJax = {
+      tex:   { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      chtml: { mtextInheritFont: true, merrorInheritFont: true },
+      startup: {
+        pageReady: function () {
+          return MathJax.startup.defaultPageReady().then(function () {
+            // Typeset math is display-only: keep it out of the Tab order.
+            // (The MathJax right-click menu still works with tabindex="-1".)
+            document.querySelectorAll('mjx-container').forEach(function (el) {
+              el.setAttribute('tabindex', '-1');
+            });
+            if (window.klunlInitEqn) { window.klunlInitEqn(); }
+          });
+        }
+      }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+
+  <script src="foundation/kl-unl-masthead.js" defer></script>
+  <script src="foundation/kl-unl.js" defer></script>
+  <script src="simulation.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About all come from the shared masthead component.
+         It reads its text from foundation/contents.json by sim-id and dispatches
+         a bubbling "sim-reset" event that simulation.js listens for. -->
+    <kl-unl-masthead sim-id="milkywayrotationalvelocity"
+                     json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="app-layout mwrv-layout">
+
+      <!-- =============== LEFT COLUMN: face-on view of the galaxy =============== -->
+      <section class="panel mwrv-panel mwrv-panel--galaxy" aria-labelledby="hdgGalaxy">
+        <h2 class="panel__heading" id="hdgGalaxy">Milky Way Disc</h2>
+
+        <div class="panel__canvas-wrap mwrv-galaxy-wrap">
+          <div class="mwrv-galaxy-stage" id="galaxyStage">
+
+            <!-- Exported bitmap (images/38.jpg), reused as-is -->
+            <img class="mwrv-galaxy-img" draggable="false"
+                 src="assets/milkyway-nasa-jpl-caltech.jpg"
+                 alt="Artist's face-on illustration of the Milky Way: a barred spiral galaxy
+                      with a bright yellow central bar and pale blue spiral arms on a black sky.">
+
+            <!-- Code-drawn overlay: the shaded circle of radius R about the galactic
+                 centre. Described for screen readers by #srGalaxyDesc. -->
+            <canvas class="mwrv-galaxy-canvas" id="galaxyCanvas"
+                    width="350" height="350"
+                    role="img" aria-labelledby="srGalaxyDesc"></canvas>
+
+            <!-- Sun marker: exported shape (shapes/42.svg) reused as inline SVG -->
+            <div class="mwrv-sun" aria-hidden="true">
+              <svg class="mwrv-sun__dot" viewBox="0 0 4 4" width="4" height="4"
+                   xmlns="http://www.w3.org/2000/svg" focusable="false">
+                <g transform="matrix(1.0, 0.0, 0.0, 1.0, 0.4, -64.7)">
+                  <path d="M3.0 68.05 Q2.45 68.7 1.6 68.7 0.8 68.7 0.1 68.05 -0.4 67.5 -0.4 66.7 -0.4 65.85 0.1 65.25 0.8 64.7 1.6 64.7 2.45 64.7 3.0 65.25 3.6 65.85 3.6 66.7 3.6 67.5 3.0 68.05"
+                        fill="#ffffff" fill-rule="evenodd" stroke="none"/>
+                </g>
+              </svg>
+              <span class="mwrv-sun__label">Sun</span>
+            </div>
+
+            <!-- Grip on the red radius ring. Dragging it (or the ring itself)
+                 resizes the measured region; it is the same underlying value
+                 the plot cursor controls, so the two always agree. -->
+            <div class="mwrv-radius-handle" id="radiusHandle"
+                 role="slider" tabindex="0"
+                 aria-label="Radius of the measured region"
+                 aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"
+                 aria-valuetext="">
+              <span class="mwrv-radius-handle__dot" aria-hidden="true">
+                <!-- Exported shape shapes/12.svg, reused as inline SVG -->
+                <svg class="mwrv-radius-handle__svg" viewBox="0 0 10 10"
+                     xmlns="http://www.w3.org/2000/svg" focusable="false">
+                  <g transform="matrix(1.0, 0.0, 0.0, 1.0, 5.0, 5.0)">
+                    <path d="M2.85 -2.8 Q4.0 -1.65 4.0 0.0 4.0 1.65 2.85 2.85 1.65 4.0 0.0 4.0 -1.65 4.0 -2.8 2.85 -4.0 1.65 -4.0 0.0 -4.0 -1.65 -2.8 -2.8 -1.65 -4.0 0.0 -4.0 1.65 -4.0 2.85 -2.8"
+                          fill="#ffffff" fill-rule="evenodd" stroke="none"/>
+                    <path d="M2.85 -2.8 Q4.0 -1.65 4.0 0.0 4.0 1.65 2.85 2.85 1.65 4.0 0.0 4.0 -1.65 4.0 -2.8 2.85 -4.0 1.65 -4.0 0.0 -4.0 -1.65 -2.8 -2.8 -1.65 -4.0 0.0 -4.0 1.65 -4.0 2.85 -2.8 Z"
+                          fill="none" stroke="#666666" stroke-linecap="round"
+                          stroke-linejoin="round" stroke-width="2.0"/>
+                  </g>
+                </svg>
+              </span>
+            </div>
+
+            <p class="mwrv-credit" aria-hidden="true">NASA/JPL-Caltech</p>
+          </div>
+
+          <p class="mwrv-caption" id="galaxyCaption"></p>
+          <p class="sr-only" id="srGalaxyDesc"></p>
+        </div>
+      </section>
+
+      <!-- =============== RIGHT COLUMN: the rotation curve plot =============== -->
+      <section class="panel mwrv-panel mwrv-panel--plot" aria-labelledby="hdgPlot">
+        <h2 class="panel__heading" id="hdgPlot">Rotational Velocity Plot</h2>
+
+        <div class="panel__canvas-wrap mwrv-plot-wrap" id="plotWrap">
+          <div class="mwrv-plot-grid">
+
+            <!-- y-axis title (MathJax: carries the km/s unit) -->
+            <div class="mwrv-axis-title mwrv-axis-title--y">
+              <span class="mwrv-axis-title__text" id="eqnYTitle"></span>
+            </div>
+
+            <!-- y-axis tick labels, built and typeset by simulation.js -->
+            <div class="mwrv-ticks mwrv-ticks--y" id="yTicks" aria-hidden="true"></div>
+
+            <div class="mwrv-plot-stage" id="plotStage">
+              <!-- Code-drawn stage: axes, ticks, rotation curve, dashed guide lines.
+                   No text or math is painted here (rule: math lives in HTML). -->
+              <canvas class="mwrv-plot-canvas" id="plotCanvas"
+                      width="540" height="318"
+                      role="img" aria-labelledby="srPlotDesc"></canvas>
+
+              <!-- The draggable plot cursor. It is a real focusable control:
+                   click/tap focuses it, Tab reaches it, arrow keys move it. -->
+              <div class="mwrv-point" id="pointHandle"
+                   role="slider" tabindex="0"
+                   aria-label="Plot cursor: distance from the galactic center"
+                   aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"
+                   aria-valuetext="">
+                <span class="mwrv-point__dot" aria-hidden="true">
+                  <!-- Exported shape shapes/12.svg (idle) reused as inline SVG -->
+                  <svg class="mwrv-point__svg mwrv-point__svg--idle"
+                       viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                    <g transform="matrix(1.0, 0.0, 0.0, 1.0, 5.0, 5.0)">
+                      <path d="M2.85 -2.8 Q4.0 -1.65 4.0 0.0 4.0 1.65 2.85 2.85 1.65 4.0 0.0 4.0 -1.65 4.0 -2.8 2.85 -4.0 1.65 -4.0 0.0 -4.0 -1.65 -2.8 -2.8 -1.65 -4.0 0.0 -4.0 1.65 -4.0 2.85 -2.8"
+                            fill="#ffffff" fill-rule="evenodd" stroke="none"/>
+                      <path d="M2.85 -2.8 Q4.0 -1.65 4.0 0.0 4.0 1.65 2.85 2.85 1.65 4.0 0.0 4.0 -1.65 4.0 -2.8 2.85 -4.0 1.65 -4.0 0.0 -4.0 -1.65 -2.8 -2.8 -1.65 -4.0 0.0 -4.0 1.65 -4.0 2.85 -2.8 Z"
+                            fill="none" stroke="#666666" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2.0"/>
+                    </g>
+                  </svg>
+                  <!-- Exported shape shapes/13.svg (hover / active) reused as inline SVG -->
+                  <svg class="mwrv-point__svg mwrv-point__svg--active"
+                       viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                    <g transform="matrix(1.0, 0.0, 0.0, 1.0, 7.0, 7.0)">
+                      <path d="M4.25 -4.2 Q6.0 -2.45 6.0 0.0 6.0 2.45 4.25 4.25 2.45 6.0 0.0 6.0 -2.45 6.0 -4.2 4.25 -6.0 2.45 -6.0 0.0 -6.0 -2.45 -4.2 -4.2 -2.45 -6.0 0.0 -6.0 2.45 -6.0 4.25 -4.2"
+                            fill="#ffffff" fill-rule="evenodd" stroke="none"/>
+                      <path d="M4.25 -4.2 Q6.0 -2.45 6.0 0.0 6.0 2.45 4.25 4.25 2.45 6.0 0.0 6.0 -2.45 6.0 -4.2 4.25 -6.0 2.45 -6.0 0.0 -6.0 -2.45 -4.2 -4.2 -2.45 -6.0 0.0 -6.0 2.45 -6.0 4.25 -4.2 Z"
+                            fill="none" stroke="#333333" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="2.0"/>
+                    </g>
+                  </svg>
+                </span>
+              </div>
+            </div>
+
+            <!-- x-axis tick labels, built and typeset by simulation.js -->
+            <div class="mwrv-ticks mwrv-ticks--x" id="xTicks" aria-hidden="true"></div>
+
+            <!-- x-axis title (MathJax: carries the kpc unit) -->
+            <div class="mwrv-axis-title mwrv-axis-title--x">
+              <span class="mwrv-axis-title__text" id="eqnXTitle"></span>
+            </div>
+          </div>
+
+          <!-- Enclosed-mass equation box. simulation.js parks this inside the plot
+               stage (as a lower-right overlay, matching the original) on wide
+               viewports, and moves it below the plot when the layout goes to a
+               single column so nothing is ever clipped or overlapped. -->
+          <div class="mwrv-eqbox" id="eqBox">
+            <div class="mwrv-eqbox__eqn" id="massEquation"></div>
+          </div>
+
+          <p class="sr-only" id="srEqnDesc"></p>
+          <p class="sr-only" id="srPlotDesc"></p>
+
+          <p class="panel__help mwrv-help">
+            Drag the cursor along the rotation curve — or drag the red circle on
+            the galaxy to resize the measured region. Either control can also be
+            selected and moved with the arrow keys; Home and End jump to the ends
+            of the curve, and Page&nbsp;Up and Page&nbsp;Down take larger steps.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Single polite live region: announces committed changes, with units. -->
+    <p class="sr-only" id="srStatus" aria-live="polite" aria-atomic="true"></p>
+  </div>
+</body>
+</html>

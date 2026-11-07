@@ -1,0 +1,5 @@
+This interactive plot is part of the Atmospheric Retention Module of 
+--- RECORDSEPARATOR ---
+the Nebraska Astronomy Applet Project. Supporting materials and 
+--- RECORDSEPARATOR ---
+additional astronomy education resources can be found at

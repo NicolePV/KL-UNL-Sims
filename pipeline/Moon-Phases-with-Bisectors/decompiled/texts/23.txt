@@ -1,0 +1,29 @@
+This simulator demonstrates how the relative movement 
+--- RECORDSEPARATOR ---
+between a wave source and an observer affects how those 
+--- RECORDSEPARATOR ---
+waves are perceived by the observer, a phenomenon known 
+--- RECORDSEPARATOR ---
+as Doppler shift.
+--- RECORDSEPARATOR ---
+Click 
+--- RECORDSEPARATOR ---
+start emission
+--- RECORDSEPARATOR ---
+ to start the simulation. Waves will begin 
+--- RECORDSEPARATOR ---
+emanating from the source (marked "S"). When the waves 
+--- RECORDSEPARATOR ---
+reach the observer (marked "O") their intensity is recorded in 
+--- RECORDSEPARATOR ---
+the timeline above.
+--- RECORDSEPARATOR ---
+Click and drag either the source or observer to have them 
+--- RECORDSEPARATOR ---
+follow the mouse (they will move at two-thirds the speed of 
+--- RECORDSEPARATOR ---
+the waves). Shift-drag to set them in straight-line motion. 
+--- RECORDSEPARATOR ---
+Control-drag (command-drag on Mac) to rapidly reposition 
+--- RECORDSEPARATOR ---
+them (this will clear the timeline plots, however).

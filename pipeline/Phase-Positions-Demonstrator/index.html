@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phase Positions Demonstrator</title>
+
+  <link rel="icon" type="image/png" sizes="32x32" href="foundation/klunl_favicon_32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="foundation/klunl_favicon_180.png">
+
+  <!-- KL-UNL shared foundation (copied in unchanged) -->
+  <link href="foundation/kl-unl.css" type="text/css" rel="stylesheet" media="all">
+  <!-- Sim-specific styles only -->
+  <link href="styles/styles.css" type="text/css" rel="stylesheet" media="all">
+</head>
+<body>
+  <a class="sr-only sr-only-focusable" href="#disc-heading">Skip to the disc appearances</a>
+
+  <div class="app-shell">
+
+    <!-- Title bar + Reset / Help / About all come from the shared masthead
+         component, which reads its text from foundation/contents.json by sim-id. -->
+    <kl-unl-masthead sim-id="phaseDemonstrator" json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <main class="sim-main">
+
+      <!-- The original Flash stage is a wide left "orbital view" with a narrow
+           right column ("Disc Appearances") stacking two phase discs. .app-layout
+           gives that two-column grid; styles.css widens the left column and keeps
+           the foundation's 56rem collapse to a single column. -->
+      <div class="app-layout sim-layout">
+
+        <!-- ============ Left: the overhead orbital view ============ -->
+        <div class="app-layout__left sim-layout__wide">
+          <section class="panel sim-panel" aria-labelledby="orbit-heading">
+            <h2 id="orbit-heading" class="panel__heading">Orbital View</h2>
+
+            <div class="panel__canvas-wrap sim-canvas-wrap">
+              <div class="sim-stage" id="orbit-stage">
+                <canvas id="orbit-canvas" role="img"
+                        aria-labelledby="orbit-heading"
+                        aria-describedby="orbit-desc"></canvas>
+
+                <!-- Keyboard / assistive-tech proxies for the two draggable
+                     planets. Each tracks its planet's on-screen position so that
+                     click-to-focus and Tab-to-focus land in the same place, and the
+                     arrow keys move the planet. role="application" makes NVDA/JAWS
+                     forward the arrow keys to the handler. -->
+                <div class="sim-planet-handle" id="planet1-handle"
+                     role="application" tabindex="0"
+                     aria-describedby="planet-help"
+                     aria-label="Planet 1. Use the arrow keys to move it around the star."></div>
+                <div class="sim-planet-handle" id="planet2-handle"
+                     role="application" tabindex="0"
+                     aria-describedby="planet-help"
+                     aria-label="Planet 2. Use the arrow keys to move it around the star."></div>
+
+                <!-- The "1" / "2" identity labels, real HTML so they scale with the
+                     user's font size and at 200% zoom. Positioned by JS. -->
+                <span class="sim-planet-label" id="planet1-label" aria-hidden="true">1</span>
+                <span class="sim-planet-label" id="planet2-label" aria-hidden="true">2</span>
+              </div>
+            </div>
+
+            <p class="sr-only" id="planet-help">
+              Arrow keys move the planet. Hold Shift while moving to keep it in its
+              current orbit. Bring the two planets close together to make one a moon
+              of the other; move a moon away to free it.
+            </p>
+
+            <div class="sim-orbit-toggle">
+              <div class="control-choice">
+                <input type="checkbox" id="show-orbits" checked>
+                <label for="show-orbits">show orbits</label>
+              </div>
+            </div>
+
+            <p class="sr-only" id="orbit-desc"></p>
+          </section>
+        </div><!-- /app-layout__left -->
+
+        <!-- ============ Right: Disc Appearances ============ -->
+        <div class="app-layout__right sim-layout__narrow">
+          <section class="panel sim-panel" aria-labelledby="disc-heading">
+            <h2 id="disc-heading" class="panel__heading">Disc Appearances</h2>
+
+            <p class="disc-intro">drag objects around to see how the observed phases change</p>
+
+            <!-- Illuminated-fraction relationship, typeset by MathJax. -->
+            <div class="phase-formula">
+              <span class="phase-formula__label">Illuminated fraction:</span>
+              <span class="phase-formula__math" id="frac-eqn" aria-hidden="true"></span>
+            </div>
+            <p class="sr-only" id="frac-eqn-sr"></p>
+
+            <!-- ---- Disc 1 ---- -->
+            <div class="disc-panel">
+              <h3 id="disc1-title" class="disc-panel__title">planet 1 as seen from planet 2</h3>
+              <div class="panel__canvas-wrap disc-canvas-wrap">
+                <canvas id="disc1-canvas" role="img"
+                        aria-labelledby="disc1-title"
+                        aria-describedby="disc1-desc"></canvas>
+              </div>
+              <div class="disc-readout">
+                <span class="disc-readout__label">Illuminated:</span>
+                <span class="disc-readout__math" id="disc1-eqn" aria-hidden="true"></span>
+              </div>
+              <p class="sr-only" id="disc1-desc"></p>
+              <p class="sr-only" id="disc1-eqn-sr"></p>
+              <div class="button-row disc-button-row">
+                <span aria-hidden="true"></span>
+                <button type="button" class="button disc-button" id="disc1-hide">hide</button>
+              </div>
+            </div>
+
+            <!-- ---- Disc 2 ---- -->
+            <div class="disc-panel">
+              <h3 id="disc2-title" class="disc-panel__title">planet 2 as seen from planet 1</h3>
+              <div class="panel__canvas-wrap disc-canvas-wrap">
+                <canvas id="disc2-canvas" role="img"
+                        aria-labelledby="disc2-title"
+                        aria-describedby="disc2-desc"></canvas>
+              </div>
+              <div class="disc-readout">
+                <span class="disc-readout__label">Illuminated:</span>
+                <span class="disc-readout__math" id="disc2-eqn" aria-hidden="true"></span>
+              </div>
+              <p class="sr-only" id="disc2-desc"></p>
+              <p class="sr-only" id="disc2-eqn-sr"></p>
+              <div class="button-row disc-button-row">
+                <span aria-hidden="true"></span>
+                <button type="button" class="button disc-button" id="disc2-hide">hide</button>
+              </div>
+            </div>
+
+          </section>
+        </div><!-- /app-layout__right -->
+
+      </div><!-- /app-layout -->
+    </main>
+  </div>
+
+  <!-- Single polite status region: announces committed state changes. -->
+  <p class="sr-only" id="sim-status" role="status" aria-live="polite"></p>
+
+  <!-- Foundation equation helper (copied in unchanged) -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Shared masthead custom element (copied in unchanged) -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+
+  <!-- MathJax (vendored locally; SVG output is self-contained, no CDN).
+       enableMenu stays true so right-clicking any typeset math opens the
+       MathJax menu, per the pipeline's verification test. -->
+  <script>
+    window.MathJax = {
+      loader: { failed: function (err) { console.warn('[MathJax] optional component not vendored:', err.message); } },
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']] },
+      svg: { fontCache: 'local' },
+      options: { enableMenu: true, menuOptions: { settings: { assistiveMml: false } } }
+    };
+  </script>
+  <script src="assets/mathjax/tex-mml-svg.js"></script>
+
+  <!-- Sim logic -->
+  <script src="simulation.js"></script>
+</body>
+</html>

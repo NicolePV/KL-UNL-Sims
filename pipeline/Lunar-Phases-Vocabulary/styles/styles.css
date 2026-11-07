@@ -1,0 +1,239 @@
+/* ---------------------------------------------------------------------------
+   Lunar Phase Vocabulary -- sim-specific styles only.
+
+   Everything shared (palette custom properties, .app-shell, .app-layout,
+   .panel, .control-grid, .button, .sr-only, focus handling, the 56rem column
+   collapse) comes from foundation/kl-unl.css, which is copied in unchanged.
+   Nothing here edits or forks the foundation; it layers sizing, spacing and
+   sim-specific components on top of it.
+   --------------------------------------------------------------------------- */
+
+/* Border-box for this sim's own components, so a min-height/width means the
+   same thing on a <div> readout as it does on a <button> (form controls are
+   already border-box in the UA sheet). Scoped to sim classes so the foundation
+   components keep their own box model. */
+.sim-panel,
+.sim-phase,
+.sim-anim-button,
+.sim-anim-row,
+.sim-readout,
+.sim-canvas-wrap,
+.sim-phase-fieldset,
+#moon-canvas {
+  box-sizing: border-box;
+}
+
+/* --- Spacing scale, so panels/rows/boxes all breathe on the same rhythm --- */
+:root {
+  --sim-gap:         0.75rem;   /* between panels                        */
+  --sim-pad:         1rem;      /* internal panel padding                */
+  --sim-control-gap: 0.6rem;    /* between controls inside a group       */
+  --sim-field-w:     10.5rem;   /* shared width for the animation-row boxes,
+                                   wide enough for "Stop Animation" unwrapped */
+  --sim-field-h:     2.75rem;   /* shared height, also the 44px target   */
+}
+
+/* --- Type: comfortably large and in rem so it tracks the browser setting.
+       The foundation sets 0.9rem for the general pipeline; this sim raises the
+       floor to 1.125rem per the accessibility brief. ------------------------- */
+body {
+  font-size:      1.125rem;
+  line-height:    1.5;
+}
+
+.panel__heading {
+  font-size:      1.25rem;
+  padding:        0.6rem var(--sim-pad);
+}
+
+/* --- Masthead containment -------------------------------------------------
+   The foundation masthead lays its title and its Reset / Help / About buttons
+   out with `justify-content: space-between` and no wrapping, so below roughly
+   360px its button group runs past the viewport and drags the whole PAGE into
+   horizontal scrolling (WCAG 1.4.10). kl-unl-masthead.js is copied in unchanged
+   and its internals are in a shadow root, so the fix is applied here on the
+   host: the masthead scrolls within itself instead of widening the document.
+   See CONVERSION_NOTES.md -- the real fix belongs upstream in the foundation. */
+kl-unl-masthead {
+  display:        block;
+  max-width:      100%;
+  overflow-x:     auto;
+}
+
+/* --- Layout ------------------------------------------------------------- */
+.sim-layout {
+  gap:            var(--sim-gap);
+  padding:        var(--sim-gap);
+  align-items:    start;
+}
+
+.app-layout__left,
+.app-layout__right {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sim-gap);
+  min-width:      0;            /* let the columns shrink instead of overflow */
+}
+
+.sim-panel {
+  padding-bottom: var(--sim-pad);
+}
+
+/* --- Moon canvas --------------------------------------------------------
+   The backing store keeps the original symbol's 220x220 coordinate system
+   (simulation.js never recomputes geometry from the on-screen size); CSS just
+   scales the element, so the ported drawing math is untouched at any width. */
+.sim-canvas-wrap {
+  display:        flex;
+  justify-content: center;
+  padding:        0 var(--sim-pad);
+}
+
+#moon-canvas {
+  display:        block;
+  width:          min(100%, 20rem);
+  height:         auto;
+  aspect-ratio:   1 / 1;
+  background:     #000;         /* matches the bitmap's own black surround */
+}
+
+/* Safari < 15 has no aspect-ratio; the intrinsic canvas size keeps it square,
+   so this is a progressive enhancement rather than a dependency. */
+
+/* --- Buttons -------------------------------------------------------------
+   The foundation sizes .button but leaves the skin to the sim, so these use
+   its palette custom properties rather than hardcoded colours.
+   #ffffff on #005a9c is 7.1:1. ------------------------------------------- */
+.button {
+  font-family:    inherit;
+  font-size:      1.0625rem;
+  font-weight:    600;
+  line-height:    1.2;
+  color:          var(--button-foreground-color, #ffffff);
+  background:     var(--button-background-color, #005a9c);
+  border-width:   var(--border-width,  1px);
+  border-style:   var(--border-style,  solid);
+  border-color:   var(--border-color,  #767676);
+  border-radius:  4px;
+}
+
+.button:hover {
+  filter:         brightness(var(--button-hover-darken, 0.9));
+}
+
+/* --- Phase-name grid -----------------------------------------------------
+   Two columns in the original's arrangement: waxing names down the left,
+   their waning counterparts down the right. Equal-purpose buttons share one
+   width and one height so the block reads as a tidy grid. ----------------- */
+.sim-phase-fieldset {
+  padding:        0 var(--sim-pad);
+}
+
+.sim-phase-grid {
+  gap:            var(--sim-control-gap);
+  /* Every row the same height, so a label that wraps at a narrow width cannot
+     leave the grid ragged. */
+  grid-auto-rows: 1fr;
+}
+
+.sim-phase {
+  width:          100%;
+  min-height:     var(--sim-field-h);
+  padding:        0.4rem 0.5rem;
+  text-align:     center;
+}
+
+/* --- Animation row ------------------------------------------------------- */
+.sim-anim-row {
+  display:        flex;
+  flex-wrap:      wrap;
+  align-items:    center;         /* button and readout centred to each other */
+  gap:            var(--sim-control-gap);
+  padding:        0 var(--sim-pad);
+}
+
+/* The button and the readout are the two boxes on this row, so they share one
+   width and one height and sit on the same baseline. */
+.sim-anim-button {
+  width:          var(--sim-field-w);
+  height:         var(--sim-field-h);
+  padding:        0.4rem 0.5rem;
+  white-space:    nowrap;   /* the label must not wrap inside a fixed height */
+}
+
+/* Fixed width so the box does not resize as the digits change. */
+.sim-readout {
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  width:          var(--sim-field-w);
+  height:         var(--sim-field-h);
+  padding:        0.25rem 0.5rem;
+  color:          var(--foreground-color, #1a1a1a);
+  background:     var(--background-color, #ffffff);
+  border-width:   var(--border-width, 1px);
+  border-style:   var(--border-style, solid);
+  border-color:   var(--border-color, #767676);
+  border-radius:  4px;
+}
+
+/* Typeset math is display-only: never a tab stop, never a control. The
+   MathJax context menu still works with tabindex -1. */
+.sim-readout__math,
+.sim-readout__math * {
+  outline:        none;
+}
+
+.sim-readout__math mjx-container {
+  margin:         0;
+}
+
+/* --- Phone portrait -------------------------------------------------------
+   The foundation collapses .app-layout to one column at 56rem, which already
+   yields the original's stacked portrait order (moon, phase names, animation).
+   These rules carry that down to narrow phone widths without editing the
+   foundation. ------------------------------------------------------------ */
+@media (max-width: 30rem) {
+  :root {
+    --sim-gap:  0.5rem;
+    --sim-pad:  0.75rem;
+  }
+
+  /* Keep the original's two-column pairing on phones by shrinking the label
+     just enough that "Waxing Crescent" still fits on one line. */
+  .sim-phase {
+    font-size:  0.9375rem;
+    padding:    0.4rem 0.25rem;
+  }
+
+  .sim-anim-row {
+    /* Stack rather than overflow, and let both boxes span the width so their
+       edges still line up. */
+    flex-direction: column;
+    align-items:    stretch;
+  }
+
+  .sim-anim-button,
+  .sim-readout {
+    width:      100%;
+    min-width:  0;
+  }
+}
+
+/* Very narrow: two phase columns would clip the longer names. */
+@media (max-width: 22rem) {
+  .sim-phase-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Reduced motion -------------------------------------------------------
+   The moon's motion is user-initiated and stoppable at any time, and it is the
+   sim's subject matter, so it is not suppressed here (see ACCESSIBILITY.md).
+   Incidental transitions are. ------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration:  0.01ms !important;
+  }
+}

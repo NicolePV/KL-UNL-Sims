@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Circumstellar Habitable Zone Simulator</title>
+
+  <!-- Shared KL-UNL foundation, copied in unchanged (code never edited). -->
+  <link rel="stylesheet" href="foundation/kl-unl.css" type="text/css" media="all">
+  <!-- Sim-specific styles, layered on top of the foundation (never editing it). -->
+  <link rel="stylesheet" href="styles/styles.css" type="text/css" media="all">
+
+  <!--
+    MathJax typesets every mathematical symbol shown in this sim: the solar
+    units on the star readouts (M_sun, L_sun, R_sun), the temperature in K,
+    the AU orbit distances, the AU scale bar and the My / Gy time scale.
+    It is part of the shared KL-UNL foundation and lives at
+    foundation/mathjax/tex-mml-chtml.js in the deployed pipeline (self-
+    contained; never loaded from a CDN). If the library is missing the sim
+    still runs and shows readable plain-text fallbacks. The MathJax
+    contextual menu is deliberately left enabled and un-overridden, so
+    right-clicking any symbol opens "Show Math As -> TeX / MathML".
+  -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      // Most LaTeX here is a number plus a unit wrapped in \text{...};
+      // mtextInheritFont makes that text adopt the surrounding CSS font stack
+      // instead of MathJax's serif math font, so readouts match the UI while
+      // still being real MathJax output.
+      chtml: { mtextInheritFont: true, merrorInheritFont: true },
+      startup: { typeset: false },
+      options: { renderActions: {} }
+    };
+  </script>
+  <script src="foundation/mathjax/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+  <div class="app-shell shz-shell">
+    <div class="app-shell__backdrop" aria-hidden="true"></div>
+
+    <!-- Title + Reset / Help / About all come from the shared masthead
+         component. It reads its text from foundation/contents.json by sim-id
+         and dispatches a bubbling "sim-reset" event that simulation.js listens
+         for. Do not add a competing <h1>, Reset, Help or About. -->
+    <kl-unl-masthead sim-id="stellarHabitableZone"
+                     json-url="foundation/contents.json"></kl-unl-masthead>
+
+    <!-- Single polite live region: announces committed state changes only
+         (slider/drag release, run tick summary, button presses), never per
+         animation frame. -->
+    <p id="liveRegion" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+
+    <main class="app-layout shz-layout">
+
+      <!-- ==================== DIAGRAM (spans both columns) ==================== -->
+      <section class="panel shz-panel shz-panel--diagram" aria-labelledby="hdgDiagram">
+        <h2 class="panel__heading" id="hdgDiagram">Star System Diagram</h2>
+
+        <div class="panel__canvas-wrap shz-canvas-wrap">
+          <div class="shz-stage shz-stage--diagram" id="diagramStage">
+            <!-- Code-drawn art from the ActionScript (orbit ellipses, the
+                 habitable-zone annulus, the temperature-coloured star with its
+                 halo, the dynamic AU scale bar and the optional scale grid),
+                 with the reused exported planet bitmap composited on top in the
+                 original 966x250 stage coordinates. -->
+            <canvas id="diagramCanvas" width="966" height="250"
+                    role="img" aria-label="Top-down view of the star system"
+                    aria-describedby="diagramDesc"></canvas>
+
+            <!-- Habitable-zone label: real HTML text (not painted on the
+                 canvas) so it stays crisp; positioned by JS over the band. -->
+            <span class="shz-zone-label" id="zoneLabel" aria-hidden="true">Habitable Zone</span>
+
+            <!-- Reused exported arrow art (sprites/DefineSprite_54_
+                 SHZDiagramZoneArrow). Shown only when the zone is off the right
+                 edge of the diagram (points right, toward it) or is so small it
+                 is hidden behind the star (rotated to point back at the star),
+                 matching SHZDiagramZone.update(). -->
+            <img class="shz-zone-arrow" id="zoneArrow" src="assets/zone-arrow.png"
+                 alt="" aria-hidden="true" hidden>
+
+            <!-- Full-canvas zoom control. Dragging left/right zooms the diagram
+                 in and out (matching the AS "zoomer"); once focused, the arrow
+                 keys zoom too. It sits BELOW the planet handle so clicks on the
+                 planet drag the planet instead. -->
+            <div id="zoomProxy" class="shz-drag-proxy shz-drag-proxy--zoom"
+                 tabindex="0" role="slider"
+                 aria-valuemin="0" aria-valuemax="1000" aria-valuenow="500"
+                 aria-label="Diagram zoom"></div>
+
+            <!-- Draggable planet. A real focusable ARIA slider: reachable by
+                 Tab, focused by click/tap, moved with the arrow keys; pointer
+                 and keyboard drive the same state. Positioned from render(). -->
+            <div id="planetHandle" class="shz-planet-handle" tabindex="0"
+                 role="slider" aria-valuemin="0.01" aria-valuemax="500" aria-valuenow="1"
+                 aria-label="Planet distance from star"></div>
+          </div>
+        </div>
+
+        <!-- Text equivalent of the diagram for screen-reader users. -->
+        <p id="diagramDesc" class="sr-only" aria-live="off"></p>
+      </section>
+
+      <!-- ==================== GENERAL SETTINGS (left column) ==================== -->
+      <section class="panel shz-panel shz-panel--general" aria-labelledby="hdgGeneral">
+        <h2 class="panel__heading" id="hdgGeneral">General Settings</h2>
+
+        <fieldset class="control-fieldset shz-fieldset">
+          <legend class="control-fieldset__legend">diagram options:</legend>
+          <div class="control-choice">
+            <input type="checkbox" id="showGrid" autocomplete="off">
+            <label for="showGrid">show scale grid</label>
+          </div>
+          <div class="control-choice">
+            <input type="checkbox" id="showRefOrbits" autocomplete="off" checked>
+            <label for="showRefOrbits">show solar system orbits</label>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- ============ STAR AND PLANET SETTINGS AND PROPERTIES (right column) ============ -->
+      <section class="panel shz-panel shz-panel--star" aria-labelledby="hdgStar">
+        <h2 class="panel__heading" id="hdgStar">Star and Planet Settings and Properties</h2>
+
+        <div class="shz-star-grid">
+
+          <!-- system selector + explanatory note -->
+          <div class="shz-star-select">
+            <label class="shz-inline-label" for="systemSelect">star system:</label>
+            <select id="systemSelect" class="shz-select" autocomplete="off"
+                    aria-label="Star system">
+              <option value="0" selected>(none selected)</option>
+              <option value="1">Gliese 581</option>
+              <option value="2">55 Cancri A</option>
+              <option value="3">51 Pegasi</option>
+              <option value="4">HD 40307</option>
+              <option value="5">HD 189733</option>
+              <option value="6">HD 93083</option>
+            </select>
+            <p class="shz-note">select a star system above to investigate its planets, or
+              choose "none" to experiment with the full range of star masses and planet
+              distances</p>
+          </div>
+
+          <!-- sliders + numeric readouts. A 2-column grid: right-aligned labels
+               on the left, the matching control / value block on the right, so
+               the four labels share a clean right edge and "star properties now:"
+               sits centred against its four values (as in the original). -->
+          <div class="shz-star-controls">
+
+            <label class="shz-sc-label" for="massField">initial star mass:</label>
+            <div class="shz-sc-inline">
+              <input class="control-row__input shz-num" id="massField" type="text"
+                     inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="7"
+                     aria-label="Initial star mass in solar masses">
+              <input class="control-row__slider shz-slider" id="massSlider" type="range"
+                     min="0" max="16" step="1" value="7" autocomplete="off"
+                     aria-label="Initial star mass">
+            </div>
+
+            <span class="shz-sc-label" id="propsLabel">star properties now:</span>
+            <div class="shz-sc-props" role="group" aria-labelledby="propsLabel">
+              <span class="shz-sc-key">mass:</span><span class="shz-sc-val" id="roMass"></span>
+              <span class="shz-sc-key">luminosity:</span><span class="shz-sc-val" id="roLum"></span>
+              <span class="shz-sc-key">temperature:</span><span class="shz-sc-val" id="roTemp"></span>
+              <span class="shz-sc-key">radius:</span><span class="shz-sc-val" id="roRadius"></span>
+            </div>
+
+            <label class="shz-sc-label" for="distField">initial planet distance:</label>
+            <div class="shz-sc-inline">
+              <input class="control-row__input shz-num" id="distField" type="text"
+                     inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="7"
+                     aria-label="Initial planet distance in astronomical units">
+              <input class="control-row__slider shz-slider" id="distSlider" type="range"
+                     min="0" max="1000" step="1" value="500" autocomplete="off"
+                     aria-label="Initial planet distance">
+            </div>
+
+            <span class="shz-sc-label">planet distance now:</span>
+            <span class="shz-sc-val" id="roDistance"></span>
+          </div>
+
+          <!-- H-R diagram -->
+          <div class="shz-hr">
+            <span class="shz-hr-ylabel" aria-hidden="true"><span class="shz-hr-arrow">&#9650;</span><span class="shz-hr-ytext">Luminosity</span></span>
+            <div class="shz-hr-box">
+              <!-- Reused exported density bitmap (images/43.jpg) plus the
+                   code-drawn main-sequence reference curve, the star's own
+                   evolutionary track and the red "now" marker. -->
+              <canvas id="hrCanvas" width="130" height="140"
+                      role="img" aria-label="Hertzsprung-Russell diagram"
+                      aria-describedby="hrDesc"></canvas>
+            </div>
+            <span class="shz-hr-xlabel" aria-hidden="true"><span class="shz-hr-arrow">&#9664;</span> Temperature</span>
+            <p id="hrDesc" class="sr-only" aria-live="off"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ TIMELINE AND SIMULATION CONTROLS (spans both columns) ============ -->
+      <section class="panel shz-panel shz-panel--timeline" aria-labelledby="hdgTimeline">
+        <h2 class="panel__heading" id="hdgTimeline">Timeline and Simulation Controls</h2>
+
+        <div class="shz-timeline-top">
+          <p class="shz-time-line">
+            <span class="shz-time-label">time since star system formation:</span>
+            <span class="shz-time-value" id="roTime"></span>
+          </p>
+          <div class="shz-run-controls">
+            <button type="button" class="button shz-button" id="runButton">run</button>
+            <label class="shz-rate-label" for="rateSlider">rate:</label>
+            <input class="control-row__slider shz-slider shz-slider--rate" id="rateSlider"
+                   type="range" min="0.1" max="20" step="0.1" value="12" autocomplete="off"
+                   aria-label="Animation rate">
+          </div>
+        </div>
+
+        <div class="panel__canvas-wrap shz-canvas-wrap shz-timeline-wrap">
+          <div class="shz-stage shz-stage--timeline" id="timelineStage">
+            <!-- Timeline tick marks + bar are painted on the canvas; the year
+                 scale labels are real MathJax HTML over it. The red cursor
+                 triangle is the draggable, focusable handle below. -->
+            <canvas id="timelineCanvas" width="870" height="26"
+                    role="img" aria-label="Timeline tick marks"
+                    aria-describedby="timelineDesc"></canvas>
+            <div class="shz-tl-labels" id="timelineLabels" aria-hidden="true"></div>
+
+            <!-- Draggable + focusable time cursor: click/tap or Tab to focus,
+                 then arrow keys step through time (snapping to data points as
+                 the AS does). Pointer and keyboard drive the same state. -->
+            <div id="timeCursor" class="shz-time-cursor" tabindex="0" role="slider"
+                 aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"
+                 aria-label="Time since star system formation" aria-orientation="horizontal"></div>
+          </div>
+          <p id="timelineDesc" class="sr-only" aria-live="off"></p>
+
+          <!-- habitability-over-time strip (too hot / too cold shading + curve) -->
+          <div class="shz-stage shz-stage--plot" id="plotStage">
+            <canvas id="plotCanvas" width="870" height="50"
+                    role="img" aria-label="Planet temperature relative to the habitable zone over time"
+                    aria-describedby="plotDesc"></canvas>
+            <span class="shz-plot-label shz-plot-label--hot" aria-hidden="true">too hot</span>
+            <span class="shz-plot-label shz-plot-label--cold" aria-hidden="true">too cold</span>
+          </div>
+          <p id="plotDesc" class="sr-only" aria-live="off"></p>
+
+          <!-- system-history bar with epoch / planet-fate tags -->
+          <div class="shz-stage shz-stage--history" id="historyStage">
+            <canvas id="historyCanvas" width="870" height="5"
+                    role="img" aria-label="System history bar"
+                    aria-describedby="historyDesc"></canvas>
+            <div class="shz-history-tags" id="historyTags" aria-hidden="true"></div>
+          </div>
+          <p id="historyDesc" class="sr-only" aria-live="off"></p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Foundation equation helper (klunlShowEquation / klunlInitEqn). -->
+  <script src="foundation/kl-unl.js"></script>
+  <!-- Foundation masthead custom element. -->
+  <script src="foundation/kl-unl-masthead.js"></script>
+  <!-- All simulation logic. -->
+  <script src="simulation.js"></script>
+</body>
+</html>

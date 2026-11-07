@@ -1,0 +1,158 @@
+/* =============================================================================
+ * Three Views Simulator - sim-specific styles ONLY.
+ * The shared palette, .panel, .control-* and responsive grid come from the
+ * KL-UNL foundation (foundation/kl-unl.css); nothing here overrides its look.
+ * ========================================================================== */
+
+/* Comfortable, zoomable base type (rem so it tracks browser font size). */
+.app-shell {
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+/* ---- Layout: big orbit view on the left, controls stacked on the right --- */
+.tv-layout {
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.5rem;
+}
+.tv-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.tv-panel {
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.panel__heading {
+  font-size: 1.15rem;
+  border-bottom: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  background: #f4f6f8;
+}
+
+/* ---- Canvases: keep original internal coordinates, scale via CSS --------- */
+.tv-canvas-wrap {
+  position: relative;
+  padding: 0.75rem;
+  line-height: 0;
+}
+.tv-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  background: #fbfbfc;
+  border-radius: 4px;
+}
+.tv-panel--orbit .tv-canvas {
+  border: var(--border-width, 1px) var(--border-style, solid) #d7dde3;
+}
+/* While the observer is draggable (From Space), don't let touch-drag scroll */
+.tv-canvas--grab { touch-action: none; cursor: grab; }
+
+/* View-of-Moon: black stage, disk centred, kept squarish */
+.tv-canvas-wrap--moon {
+  display: flex;
+  justify-content: center;
+}
+.tv-canvas--moon {
+  width: auto;
+  max-width: 100%;
+  max-height: 15rem;
+  background: #000;
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+}
+
+.tv-help {
+  padding: 0 0.75rem 0.75rem;
+  font-size: 0.95rem;
+  color: #33383d;
+}
+
+/* ---- Space-observer keyboard/pointer proxy (draggable arrow) ------------- */
+.tv-observer-proxy {
+  position: absolute;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-left: -1.375rem;
+  margin-top: -1.375rem;
+  border-radius: 50%;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;   /* dragging must not scroll the page */
+  z-index: 2;
+}
+.tv-observer-proxy:focus-visible {
+  outline: 0.18rem solid var(--outline-color, #005fcc);
+  outline-offset: 2px;
+  background: rgba(0, 95, 204, 0.12);
+}
+
+/* ---- Controls ----------------------------------------------------------- */
+.tv-fieldset { padding: 0.75rem 1rem; }
+.tv-fieldset .control-choice { min-height: 2.25rem; }
+.tv-fieldset .control-choice label { font-size: 1.05rem; }
+
+.tv-fieldset--speed { border-top: var(--border-width, 1px) var(--border-style, solid) #e2e6ea; }
+.control-fieldset__legend { font-size: 1.05rem; }
+
+/* Slider row: Slow --- [range] --- Fast, all aligned on one baseline */
+.tv-slider-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+.tv-slider-end {
+  font-size: 0.95rem;
+  color: #33383d;
+}
+/* Custom-styled range built on top of the native control (still fully
+ * keyboard-operable); this is a separate component, not a foundation edit. */
+.tv-slider {
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: var(--button-background-color, #005a9c);
+  cursor: pointer;
+}
+
+/* Button rows */
+.tv-button-row {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  flex-wrap: wrap;
+}
+.tv-button-row--run { border-top: var(--border-width, 1px) var(--border-style, solid) #e2e6ea; }
+.tv-button {
+  flex: 1 1 auto;
+  color: var(--button-foreground-color, #fff);
+  background: var(--button-background-color, #005a9c);
+  border: var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 5px;
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+.tv-button:hover, .tv-button:focus-visible {
+  filter: brightness(var(--button-hover-darken, 0.9));
+}
+.tv-panel--moon .tv-button-row { justify-content: center; }
+.tv-panel--moon .tv-button { flex: 0 1 14rem; }
+
+/* ---- Responsive: iPad down to phone portrait ---------------------------- */
+@media (max-width: 56rem) {
+  .tv-layout {
+    grid-template-columns: 1fr;   /* stack: orbit, then view-of-moon, then controls */
+  }
+  .tv-right { flex-direction: column; }
+  .tv-canvas--moon { max-height: 18rem; }
+}
+@media (max-width: 30rem) {
+  .app-shell { font-size: 1.06rem; }
+  .tv-button-row { flex-direction: column; }
+  .tv-button { width: 100%; }
+}

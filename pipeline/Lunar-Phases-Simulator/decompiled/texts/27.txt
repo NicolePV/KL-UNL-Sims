@@ -1,0 +1,5 @@
+This simulator is part of the Lunar Phase Module of the Nebraska 
+--- RECORDSEPARATOR ---
+Astronomy Applet Project. Supporting materials and additional astronomy 
+--- RECORDSEPARATOR ---
+education resources can be found at

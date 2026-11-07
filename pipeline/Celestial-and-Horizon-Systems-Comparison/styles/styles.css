@@ -1,0 +1,354 @@
+/* ==========================================================================
+   Celestial and Horizon Systems Comparison -- sim-specific styles only.
+   The KL-UNL foundation (foundation/kl-unl.css) is loaded first and is never
+   edited; everything here is layered on top of it.
+   All sizing is in rem/em/% so the layout tracks the browser font size and
+   reflows (rather than clips) at 200% zoom.
+   ========================================================================== */
+
+:root {
+  /* Spacing scale -- one set of steps reused everywhere, so panels, fieldsets
+     and rows breathe equally (no cramped row next to a loose one).           */
+  --sim-space-1: 0.35rem;
+  --sim-space-2: 0.75rem;
+  --sim-space-3: 1.15rem;
+  --sim-space-4: 1.6rem;
+
+  /* Shared control metrics: every equal-purpose field gets the same box.     */
+  --sim-field-width:  6.5rem;
+  --sim-field-height: 2.75rem;
+
+  /* Transition-arrow endpoints. The Flash original faded between #e0e0e0 and
+     #000000; #e0e0e0 on white is about 1.3:1 and fails WCAG 1.4.3, so the
+     "inactive" end is remapped to a 4.5:1-compliant grey. See ACCESSIBILITY.md. */
+  --sim-mode-active:   #1a1a1a;
+  --sim-mode-inactive: #767676;
+
+  --sim-stage-max: 30rem;
+}
+
+/* --------------------------------------------------------------------------
+   Typography -- body copy noticeably larger than the browser default and
+   sized in rem so it scales with the user's font setting (WCAG 1.4.4).
+   -------------------------------------------------------------------------- */
+body {
+  font-size:   1.125rem;
+  line-height: 1.5;
+}
+
+.panel__heading {
+  font-size:     1.25rem;
+  padding:       var(--sim-space-2) var(--sim-space-3);
+}
+
+.control-fieldset {
+  padding: 0 var(--sim-space-3) var(--sim-space-2);
+}
+
+.control-fieldset__legend {
+  font-size: 1.125rem;
+  padding:   0 0 var(--sim-space-2);
+}
+
+.panel__help {
+  font-size:   1rem;
+  line-height: 1.5;
+  margin:      var(--sim-space-2) var(--sim-space-3) var(--sim-space-3);
+}
+
+kbd {
+  font-family: inherit;
+  font-size:   0.95em;
+  padding:     0 0.25em;
+  border:      var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 0.2em;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Layout. On desktop and tablet the diagram sits on the left with the control
+   box beside it on the right; below the foundation's 56rem breakpoint the two
+   stack into one column, diagram first, in the same reading order as the DOM.
+   The foundation's kl-unl.css is untouched -- these are sim-scoped classes.
+   -------------------------------------------------------------------------- */
+/* The masthead's own shadow-DOM bar (title + Reset/Help/About) is a
+   non-wrapping flex row and needs about 361px; below that it would push the
+   whole page into horizontal scrolling. Its code must not be edited, so the
+   overflow is confined to the bar itself and the page body stays scroll-free.
+   The proper fix belongs upstream (flex-wrap on .masthead-container) --
+   see ACCESSIBILITY.md. */
+kl-unl-masthead {
+  display:    block;
+  max-width:  100%;
+  overflow-x: auto;
+}
+
+.sim-layout {
+  grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+  gap:           var(--sim-space-3);
+  padding:       var(--sim-space-2) var(--sim-space-2) var(--sim-space-4);
+  align-items:   start;
+  justify-items: stretch;
+}
+
+.sim-panel {
+  width:       100%;
+  /* Grid and flex items default to min-width:auto, which lets wide content
+     push a track past the viewport. Explicit 0 lets everything shrink and
+     wrap instead, which is what keeps 200% text scaling from clipping. */
+  min-width:   0;
+}
+
+.sim-panel--diagram {
+  grid-column: 1;
+  max-width:   28rem;
+}
+
+.sim-panel--controls {
+  grid-column: 2;
+  /* Lets the switch row respond to the width of this panel rather than the
+     width of the window, which differ once the two sit side by side.
+     Where container queries are unsupported the arrows simply shrink
+     instead of being hidden -- the layout stays correct either way. */
+  container-type: inline-size;
+  container-name: controls;
+}
+
+/* --------------------------------------------------------------------------
+   Stage. The canvas keeps the original Flash stage coordinates (380 x 380,
+   sphere radius 150 about the centre); CSS only scales the element, so all
+   ported drawing and hit-testing maths stays in original coordinates.
+   -------------------------------------------------------------------------- */
+.sim-stage-wrap {
+  padding:         0 clamp(0.25rem, 3vw, var(--sim-space-3)) var(--sim-space-2);
+  display:         flex;
+  justify-content: center;
+  min-width:       0;
+}
+
+.sim-stage {
+  display:      block;
+  width:        100%;
+  max-width:    var(--sim-stage-max);
+  height:       auto;
+  aspect-ratio: 1 / 1;
+  background:   #000000;          /* the original 380 x 380 black backdrop */
+  touch-action: none;             /* dragging must not scroll or zoom the page */
+  cursor:       grab;
+}
+
+.sim-stage:active {
+  cursor: grabbing;
+}
+
+/* --------------------------------------------------------------------------
+   Switch row: label - arrow - button - arrow - label, mirroring the original.
+   A five-column grid keeps the button centred and the two labels on a shared
+   baseline at every width, with no absolute positioning to clip under zoom.
+   -------------------------------------------------------------------------- */
+/* Two equal 1fr side cells with the button between them: the button lands on
+   the exact centre of the panel whatever the two label texts measure, while
+   each label keeps its natural width and the arrow soaks up the slack. */
+.sim-switch-row {
+  display:               grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items:           center;
+  gap:                   var(--sim-space-1) var(--sim-space-2);
+}
+
+.sim-switch-side {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sim-space-1);
+  min-width:   0;
+}
+
+.sim-switch-side--left  { justify-content: flex-end;   }
+.sim-switch-side--right { justify-content: flex-start; }
+
+.sim-mode-label {
+  font-size:     1.0625rem;
+  line-height:   1.3;
+  color:         var(--sim-mode-inactive);
+  min-width:     0;
+  overflow-wrap: break-word;
+}
+
+.sim-switch-side--left  .sim-mode-label { text-align: right; }
+.sim-switch-side--right .sim-mode-label { text-align: left;  }
+
+/* Non-colour cue for the dominant view, so state is never colour-only. */
+.sim-mode-label.is-active {
+  font-weight: 700;
+  color:       var(--sim-mode-active);
+}
+
+/* flex-basis 0 means the arrow only ever occupies leftover space: it gives way
+   to the label rather than forcing the label to wrap. */
+.sim-arrow {
+  display:     flex;
+  align-items: center;
+  flex:        1 1 0;
+  min-width:   0;
+}
+
+.sim-arrow__bar {
+  flex:       1 1 auto;
+  height:     0.125rem;
+  min-width:  0;
+  background: var(--sim-mode-inactive);
+}
+
+.sim-arrow__head {
+  flex:   0 0 auto;
+  width:  1.05rem;
+  height: 0.56rem;
+  fill:   var(--sim-mode-inactive);
+}
+
+/* The left-hand head is the same exported arrow-head geometry, mirrored,
+   exactly as the original attached it with _rotation: 180. */
+.sim-arrow--left .sim-arrow__head {
+  transform: scaleX(-1);
+}
+
+.sim-switch {
+  font-size:  1.0625rem;
+  min-height: var(--sim-field-height);
+  color:      var(--button-foreground-color, #ffffff);
+  background: var(--button-background-color, #005a9c);
+  border:     var(--border-width, 1px) var(--border-style, solid) var(--border-color, #767676);
+  border-radius: 0.25rem;
+  font-weight: 600;
+}
+
+.sim-switch:hover {
+  filter: brightness(var(--button-hover-darken, 0.9));
+}
+
+/* --------------------------------------------------------------------------
+   Latitude row. Label column, value column and slider all align on a shared
+   grid; the number field uses the shared field metrics.
+   -------------------------------------------------------------------------- */
+.sim-control-row {
+  grid-template-columns: minmax(0, auto) minmax(0, var(--sim-field-width))
+                         minmax(0, 1fr);
+  gap:                   var(--sim-space-1) var(--sim-space-2);
+  align-items:           center;
+  margin-bottom:         var(--sim-space-2);
+}
+
+.sim-number {
+  width:      100%;
+  max-width:  var(--sim-field-width);
+  min-width:  0;
+  min-height: var(--sim-field-height);
+  font-size:  1.0625rem;
+  text-align: right;              /* decimal-aligned readout */
+  box-sizing: border-box;
+}
+
+.sim-slider {
+  width:      100%;
+  min-width:  0;
+  min-height: var(--sim-field-height);
+  box-sizing: border-box;
+}
+
+.sim-eqn-row {
+  min-height: 2rem;
+  display:    flex;
+  align-items: center;
+}
+
+.sim-eqn {
+  font-size: 1.125rem;
+}
+
+/* Too little room beside the button for a legible arrow: drop the arrows
+   rather than show a stub, and let the labels flank the button directly. */
+@container controls (max-width: 26rem) {
+  .sim-arrow {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tablet and below: collapse to one column at the same 56rem breakpoint the
+   foundation uses, so the control box moves below the diagram rather than
+   beside it. Panels are centred and capped so they do not stretch oddly wide
+   on a tablet in landscape.
+   -------------------------------------------------------------------------- */
+@media (max-width: 56rem) {
+  .sim-layout {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items:         center;
+  }
+
+  .sim-panel--diagram,
+  .sim-panel--controls {
+    grid-column: 1 / -1;
+    max-width:   34rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Narrow / phone-portrait widths: one column, everything full width, wrapping
+   instead of overflowing. No horizontal scrolling at any supported width.
+   -------------------------------------------------------------------------- */
+@media (max-width: 34rem) {
+  .sim-layout {
+    padding: var(--sim-space-1) var(--sim-space-1) var(--sim-space-3);
+    gap:     var(--sim-space-2);
+  }
+
+  .sim-control-row {
+    grid-template-columns: minmax(0, auto) minmax(0, var(--sim-field-width));
+  }
+
+  .sim-slider {
+    grid-column: 1 / -1;
+  }
+
+  /* Drop the connecting arrows so the two labels and the button keep
+     comfortable touch-target spacing. */
+  .sim-switch-row {
+    gap: var(--sim-space-1);
+  }
+
+  .sim-arrow {
+    display: none;
+  }
+
+  .sim-mode-label {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 22rem) {
+  .sim-switch-row {
+    grid-template-columns: 1fr;
+    justify-items:         center;
+  }
+
+  .sim-switch-side--left,
+  .sim-switch-side--right {
+    justify-content: center;
+  }
+
+  .sim-switch-side .sim-mode-label {
+    text-align: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion: the 3-second view transition is replaced by an immediate
+   jump to the equivalent end state (handled in simulation.js); this only
+   removes any residual CSS easing.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration:  0.01ms !important;
+  }
+}

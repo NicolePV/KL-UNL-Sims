@@ -1,0 +1,3 @@
+use lower quality graphics when 
+--- RECORDSEPARATOR ---
+animating to improve performance
