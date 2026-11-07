@@ -1,0 +1,33 @@
+This simulator demonstrates heliacal rising, which occurs on the day when 
+--- RECORDSEPARATOR ---
+a star first becomes visible in the morning twilight. 
+--- RECORDSEPARATOR ---
+Specify a star and observer to begin the demonstration. Sweep the cursor 
+--- RECORDSEPARATOR ---
+in the 
+--- RECORDSEPARATOR ---
+Daylight Hours
+--- RECORDSEPARATOR ---
+ panel and observe the daily motion of the sun and 
+--- RECORDSEPARATOR ---
+star in the horizon diagram. Note that a bar appears above the time of 
+--- RECORDSEPARATOR ---
+day strip indicating when the star is above the horizon.
+--- RECORDSEPARATOR ---
+Next, sweep the cursor in the 
+--- RECORDSEPARATOR ---
+Day of Year
+--- RECORDSEPARATOR ---
+ panel and note that the 
+--- RECORDSEPARATOR ---
+visibility strip moves to the left, that is, the star rises a little bit earlier 
+--- RECORDSEPARATOR ---
+each day. The heliacal rising is observed when the star's rising time (the 
+--- RECORDSEPARATOR ---
+left edge of the strip) occurs just before sunrise. Locking the time of day 
+--- RECORDSEPARATOR ---
+to 
+--- RECORDSEPARATOR ---
+the start of twilight
+--- RECORDSEPARATOR ---
+ may help when demonstrating this event.
