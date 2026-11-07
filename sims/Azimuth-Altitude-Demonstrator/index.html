@@ -14,13 +14,12 @@
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
   <link rel="apple-touch-icon"      href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
-  <script defer src="../foundation/js/kl-unl-masthead.js"></script>
+  <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
   <!-- <script defer src="../foundation/js/kl-unl-mathjax.js"></script> -->
   <script type="module" src="simulation.js"></script>
-  <script src="clipboard.js"></script>
 </head>
 <body id="body">
-  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
   <main id="main-content">
     <div class="app-shell">
       <!-- Title bar + Reset / Help / About / Feedback supplied by shared masthead component -->
@@ -31,8 +30,8 @@
         <!-- LEFT: the horizon diagram (canvas stage) -->
         <section class="panel sim-panel" aria-labelledby="diagramHeading">
           <h2 class="panel__heading" id="diagramHeading">The Horizon Diagram
-            <p id="sr-description-kn1" class="sr-only">Show description of keyboard navigation options.</p>
-            <button id="canvas-more-keys"aria-describedby="sr-description-kn1"><img src="../foundation/images/klunl_gear.svg"
+            <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
+            <img src="../foundation/images/klunl_gear.svg"
             alt="Additional Keyboard Navigation" width="30" height="30"></button>
           </h2>
           <div class="panel__canvas-wrap">
@@ -90,7 +89,7 @@
               <div class="control-row sim-slider-row">
                 <label class="control-row__label" for="azNumber">azimuth:</label>
                 <input class="control-row__input sim-num" id="azNumber" type="number"
-                       min="0" max="360" step="1" value="140" autocomplete="off"
+                       step="1" value="140" autocomplete="off"
                        inputmode="decimal" aria-label="Azimuth" aria-describedby="azUnit">
                 <span class="sim-unit" id="azUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="azSlider" type="range"
@@ -105,7 +104,7 @@
               <div class="control-row sim-slider-row">
                 <label class="control-row__label" for="altNumber">altitude:</label>
                 <input class="control-row__input sim-num" id="altNumber" type="number"
-                       min="-90" max="90" step="1" value="45.0" autocomplete="off"
+                       step="1" value="45.0" autocomplete="off"
                        inputmode="decimal" aria-label="Altitude" aria-describedby="altUnit">
                 <span class="sim-unit" id="altUnit" aria-label="degrees">&nbsp;&#176;</span>
                 <input class="control-row__slider sim-range" id="altSlider" type="range"
@@ -149,13 +148,16 @@
           </section>
         </div>
       </div>
-      <section class="panel sim-panel" id="url-clean-panel" aria-labelledby="urlHeading" style="display:none">
+      <section class="panel sim-panel" id="url-clean-panel" role="dialog"
+        aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
+        style="display:none">
         <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
-        Drag and use the arrow keys (or A, D, W, and S) to rotate the
-        view, amplifying the effect with the Shift or Caps Lock keys. Click on the star
-        and use the same keys to move it in azimuth and altitude. Toggle
-        label visibility with the 1 (zenith), 2 (nadir), 3 (horizon), and 4
-        (meridian) keys. Reset the simulation with R.
+        <p id="urlDesc">  
+          Drag and use the arrow keys (or A, D, W, and S) to rotate the
+          view, amplifying the effect with the Shift or Caps Lock keys. Click on the star
+          and use the same keys to move it in azimuth and altitude. Toggle
+          label visibility with the 1 (zenith), 2 (nadir), 3 (horizon), and 4
+          (meridian) keys. Reset the simulation with R.</p>
         <p id="sr-description-kn2" class="sr-only">Close description of keyboard
         navigation options.</p>
         <div class="div-closeKeyNavBtn">

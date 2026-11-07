@@ -17,12 +17,16 @@ import {
 
 import {
   pMod, speak, keyAccel, noEinNumber, hexToRGBA,
-  updateSliderProgress, announceLive, logAct
+  updateSliderProgress, announceLive, logAct,
+  descMoreKeys, hideMoreKeys, buildURL
 } from '../foundation/js/kl-unl-utils.js';
 
 import { CONSTELLATION_DATA } from '../foundation/js/kl-unl-zodiacal-constellations.js';
 
 logAct('INIT_Zodiac');
+
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
 
 /* ---------------------------------------------------------------------------
    1. Constants
@@ -33,16 +37,16 @@ const CSC = CELESTIAL_SPHERE_COLORS;
 const INIT_EARTH_DISK_SIZE   =  35;
 const INIT_EARTH_ORBIT_SIZE  = 250;
 const INIT_ZODIAC_SIZE       = 600;
-
-//const INIT_THETA           = 206;  // update to match current date if used
-const INIT_PHI               =  30;
+const tOFFS                  = 130;    // offset between initial day and initial theta
+let   INIT_THETA             = tOFFS;  // update to match current date if used
+let   INIT_PHI               =  30;
 const MAX_VIEWER_ALTITUDE    =  50;
 //const MIN_VIEWER_ALTITUDE  = -90;
-const MIN_VIEWER_ALTITUDE    = -50;  // restrict over-tilting for +/- phi
-const SIDEREAL_TIME          =  18;
-const LATITUDE               =  66.5;
+const MIN_VIEWER_ALTITUDE    = -50;    // restrict over-tilting for +/- phi
+const SIDEREAL_TIME          =  18;    // because NEP lies at (18h, +66.5d), this keeps ecliptic plane (and Sun) 
+const LATITUDE               =  66.5;  // on local horizon, so constellations and Sun move around horizontal plane
 const ZODIAC_BAND_HALF_ANGLE =  24;
-const OPHIUCHUS_HALF_ANGLE   =  40;  // (for Ophiuchus to fit in band, +2deg for Earth)
+const OPHIUCHUS_HALF_ANGLE   =  40;    // (for Ophiuchus to fit in band, +2deg for Earth)
 
 const CONSTELLATIONS_COLOR   = CSC.CNSTLN_1;
 const ECLIPTIC_COLOR         = CSC.CEL_EQUTR;
@@ -86,9 +90,14 @@ if ( BEGIN_NOW )  {
   if ( (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 )  {
     if ( day_0 > 59 ) day_0 = day_0 - 1;
   }
-  day_0 = Math.min( Math.max( day_0, 0 ), 364 );
+  day_0 = Math.min( Math.max( day_0, 0 ), 365 );
+  document.getElementById('day-range').value = day_0;
 }
-const INIT_THETA  = pMod( 206 + day_0, 364 );
+INIT_THETA = pMod( tOFFS + day_0 * 360/365, 360 );
+
+let announceTimer;
+let announceSphereTimer;
+let announceResetTimer;
 
 /* ---------------------------------------------------------------------------
    2. ZodiacViewer -- the simulation itself
@@ -124,7 +133,7 @@ class ZodiacViewer {
     // ZodiacViewerClass() constructor order
     sphere.setMaxPhi(MAX_VIEWER_ALTITUDE);
     sphere.setMinPhi(MIN_VIEWER_ALTITUDE);
-    sphere.setTheta(INIT_THETA);
+    sphere.setTheta(-INIT_THETA);
 
     this.sunDisk = new CSObject(sphere, 'sunDisk');
     this.sunDisk.setPosition({ ra: 0, dec: 0 });
@@ -571,6 +580,7 @@ class ZodiacViewer {
     addHemisphereZone(back, false);
     return { front, back };
   }
+
 }
 
 /* ---------------------------------------------------------------------------
@@ -870,7 +880,7 @@ function formatDate(day) {
 function dayAriaText(day) {
   const s    = snapDay(day);
 //const prec = (Math.round(s * 100) % 100 === 0) ? 0 : 2;
-  const prec = (Math.round(s *   1) %   1 === 0) ? 0 : 2;
+  const prec = 0;
   return `Day ${speak(s, prec)} of the year, ${formatDate(s)}`;
 }
 
@@ -927,9 +937,16 @@ function syncControls() {
   // setFieldValue leaves a field alone while the user is typing in it, so the
   // caret is never yanked around mid-edit.
   setFieldValue(el['day-range'], dayFieldString(day));
-  el['day-range'].setAttribute('aria-valuetext', dayAriaText(day));
 
-  el['stage-desc'].textContent = describeScene();
+  // Update date slider aria-valuetext if slider is visible
+  if (!urlClean)  { 
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => {
+      el['day-range'].setAttribute('aria-valuetext', describeScene());
+    }, 600);
+  }
+
+//el['stage-desc'].textContent = describeScene();
   positionTimelineMarker();
 }
 
@@ -961,8 +978,7 @@ function describeScene() {
 
   return [
     `${dayAriaText(viewer.dayInput)}.`,
-    `Earth sits at the center of the zodiac band of constellations; the Sun is at`,
-    `right ascension ${raWords(sun.ra)}, declination ${speak(sun.dec, 0, 'degree')},`,
+    `The Sun is at right ascension ${raWords(sun.ra)}, declination ${speak(sun.dec, 0, 'degree')},`,
     `close to ${near.text}.`,
     front.length
       ? `The constellations on the near side of the band are ${cnames}.`
@@ -971,7 +987,18 @@ function describeScene() {
 }
 
 function announce(message) {
-  announceLive(el['sr-status'], message, 150);
+  const liveRegion = el['sr-status'];
+  
+  if (!liveRegion) return;
+
+  // Force hard flush so Chrome cannot diff-ignore a small change to the text
+  liveRegion.textContent = '';
+
+  // Debounce announcement so repeated calls don't overlap each other
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => {
+    liveRegion.textContent = message;
+  }, 600);
 }
 
 function requestRender() {
@@ -981,6 +1008,7 @@ function requestRender() {
     state.needsRender = false;
     render(state.ctx, state.viewer);
   });
+  updateURL();
 }
 
 function update({ announceText } = {}) {
@@ -989,6 +1017,7 @@ function update({ announceText } = {}) {
   state.viewer.sortedObjects();
   syncControls();
   requestRender();
+  
   if (announceText) announce(announceText);
 }
 
@@ -1020,6 +1049,100 @@ function addWheelStepping(field, setter) {
   }, { passive: false });
 }
 
+function applyURL()  {
+  // Check loaded URL for initial setup parameters, allowing user to specify
+  // theta and phi on zodiacal constellation band, and/or date, as well as 
+  // visibility of masthead and control panels.
+
+  if ( (!urlClean) && (document.getElementById('canvas-more-keys').style.display != 'none'))  { 
+    document.getElementById('canvas-more-keys').style.display = 'none';
+  }
+    
+  const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+  if ( Object.keys(urlParams).length === 0 )  return;
+
+  let URL_THT, URL_PHI, URL_DAY, URL_CLN;
+
+  // Define theta and phi of zodiacal constellation band, and date
+  // (use simulation defaults for any unspecified values)
+  if ( (urlParams.day   !== undefined) && (!Number.isNaN(Number(urlParams.day  ))) )  {
+    URL_DAY = pMod( Number(urlParams.day), 365 );
+    day_0   = URL_DAY;
+  } else  { URL_DAY = day_0; }
+  if ( (urlParams.theta !== undefined) && (!Number.isNaN(Number(urlParams.theta))) )  {
+    URL_THT = Math.round( pMod( Number(urlParams.theta), 360 ) );
+  } else  { URL_THT = pMod( tOFFS + day_0 * 360/365, 360 ); }
+  if ( (urlParams.phi   !== undefined) && (!Number.isNaN(Number(urlParams.phi  ))) )  {
+    URL_PHI = Math.round( Math.max( Math.min( Number(urlParams.phi), 50 ), -50 ) );
+  } else  { URL_PHI =  30; }
+
+  document.getElementById('day-range').value = URL_DAY;
+  INIT_THETA = URL_THT;
+  INIT_PHI   = URL_PHI;
+  
+  state.viewer.sphere.setThetaAndPhi(-INIT_THETA, INIT_PHI);
+  state.viewer.setDayOfYear( day_0 );
+
+  // Hide masthead and control panels (everything except canvas)
+  // (hide if clean=true or clean=1)
+  if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+    if (!urlClean)  { 
+      urlClean = true;
+      document.getElementById('canvas-more-keys').style.display = 'block';
+      document.getElementById('timeline').style.display         = 'none';
+      document.querySelectorAll('.app-layout').forEach((el) => {
+        el.style.display        = 'flex';
+        el.style.justifyContent = 'center';
+      });
+
+      // Update screen reader help for keyboard control over canvas
+      if ( urlClean )  { 
+        document.getElementById('stage').ariaLabel =
+          'The Earth sits at the center of a wide zodiacal band of constellations. ' + 
+          'Drag with the pointer, or use the left and ' + 
+          'right arrow keys to rotate the view and the up and down arrow keys to '   + 
+          'change the viewing angle. Users may also use the A and D keys to rotate ' + 
+          'the view left and right, and the W and S keys to rotate the viewing '     + 
+          'angle up and down. The plus and minus keys operate similarly to adjust '  +
+          'the date. Reset the simulation with R.';
+      }
+
+      // Re-direct skip link to new help (gear button) and strip masthead event listener
+      const oldSkipLink = document.querySelector('.sr-only-focusable');
+      if (oldSkipLink) {
+        const newSkipLink       = oldSkipLink.cloneNode(true);
+        newSkipLink.textContent = 'Skip to Keyboard Navigation';
+        newSkipLink.setAttribute('href', '#canvas-more-keys');
+
+        newSkipLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const gearBtn = document.getElementById('canvas-more-keys');
+          if (gearBtn) gearBtn.focus();
+        });
+
+        oldSkipLink.parentNode.replaceChild(newSkipLink, oldSkipLink);
+      }
+    }
+  }
+}
+
+function updateURL()  {
+  // Log current state parameters for possible URL-building
+
+  // URL parameters are theta and phi for zodiacal constellation band,
+  // and date
+  const theta = pMod( state.viewer.sphere.getViewerAzimuth(), 360 );
+  const phi   = pMod( Math.round( state.viewer.sphere.getPhi() ) + 90, 180 ) - 90;
+  const day   = Number( document.getElementById('day-range').value ).toFixed(2);
+
+  let s0 = 'Ecliptic-Zodiac-Simulator/index.html';    
+  s0    += '?theta=' + theta + '&phi=' + phi;
+  s0    += '&day='   + day;
+
+  window.stateURL = s0;
+}
+  
 /* --- pointer drag on the sphere (p.startSimpleDragging / p.updateSimpleDragging) --- */
 
 let drag = null;
@@ -1092,7 +1215,7 @@ function onPointerUp(event) {
   if (!drag || event.pointerId !== drag.id) return;
   el.stage.releasePointerCapture(drag.id);
   drag = null;
-  announce(describeScene());
+  announceCSphere();
 }
 
 /* --- keyboard on the sphere (the equivalent of dragging) ----------------- */
@@ -1100,47 +1223,60 @@ function onPointerUp(event) {
 function onStageKeyDown(event) {
   const sphere = state.viewer.sphere;
   const step   = keyAccel(event, VIEW_STEP);
+  const min    = Number(document.getElementById('day-range').min);
+  const max    = Number(document.getElementById('day-range').max);
+  let   day    = snapDay(Number(document.getElementById('day-range').value) || 0);
+  const dstp   = keyAccel(event, 1);
   let handled  = true;
 
   switch (event.key) {
-    case 'ArrowLeft':
-    case 'A':
-    case 'a':
-      sphere.setViewerAzimuth(pMod(sphere.getViewerAzimuth() - step, 360));
-      break;
-    case 'ArrowRight':
-    case 'D':
-    case 'd':
-      sphere.setViewerAzimuth(pMod(sphere.getViewerAzimuth() + step, 360));
-      break;
-    case 'ArrowUp':
-    case 'W':
-    case 'w':
-      sphere.setPhi(sphere.getPhi() - step);
-      break;
-    case 'ArrowDown':
-    case 'S':
-    case 's':
-      sphere.setPhi(sphere.getPhi() + step);
-      break;
-    case 'PageUp':
-      sphere.setPhi(sphere.getPhi() - keyAccel(event, 15));
-      break;
-    case 'PageDown':
-      sphere.setPhi(sphere.getPhi() + keyAccel(event, 15));
-      break;
-    case 'Home':
-      sphere.setPhi(MIN_VIEWER_ALTITUDE);
-      break;
-    case 'End':
-      sphere.setPhi(MAX_VIEWER_ALTITUDE);
-      break;
-    default:
-      handled = false;
+    // MacOS+Voiceover users need an alternative to arrow keys
+    case 'ArrowLeft':  case 'A': case 'a': sphere.setViewerAzimuth(pMod(sphere.getViewerAzimuth() - step, 360)); break;
+    case 'ArrowRight': case 'D': case 'd': sphere.setViewerAzimuth(pMod(sphere.getViewerAzimuth() + step, 360)); break;
+    case 'ArrowUp':    case 'W': case 'w': sphere.setPhi(sphere.getPhi() - step); break;
+    case 'ArrowDown':  case 'S': case 's': sphere.setPhi(sphere.getPhi() + step); break;
+    case 'PageUp':                         sphere.setPhi(sphere.getPhi() - keyAccel(event, 15)); break;
+    case 'PageDown':                       sphere.setPhi(sphere.getPhi() + keyAccel(event, 15)); break;
+    case 'Home':                           sphere.setPhi(MIN_VIEWER_ALTITUDE);                   break;
+    case 'End':                            sphere.setPhi(MAX_VIEWER_ALTITUDE);                   break;
+    // If control panels are hidden, enable keyboard controls to reset simulation or change date
+    case 'r':  case 'R': if (urlClean)  { resetSim();  break; }
+    case '-':  case '_': if (urlClean)  { day -= dstp; break; }
+    case '=':  case '+': if (urlClean)  { day += dstp; break; }
+    default: handled = false;
   }
   if (!handled) return;
+  
+  // If control panels are hidden, change date
+  if ( (urlClean) && ( (event.key == '-') || (event.key == '_') ||
+                       (event.key == '=') || (event.key == '+') ) )  {
+    cancelDayTween();
+    day = pMod( day, 365 );
+    state.viewer.setDayOfYear(snapDay(day));
+    update({ announceText: describeScene() });
+    
+  } else if ( (event.key !== 'r') && (event.key !== 'R') )  {
+    
+    update();
+    announceCSphere();
+    
+  }
   event.preventDefault();
-  update({ announceText: describeScene() });
+}
+
+function announceCSphere()  {
+  // Announce new orientation of celestial sphere (aka wide zodiacal band) after
+  // rotation
+
+  clearTimeout(announceSphereTimer);
+  announceSphereTimer = setTimeout(() => {
+    let   r0 = pMod( INIT_THETA - state.viewer.sphere.getViewerAzimuth(), 360 );
+    if ( r0 > 180 ) r0 -= 360;
+    const s0 = 'Zodiacal band rotated by ' + speak ( r0, 0, 'degree' ) +
+      ' and tilted by ' + speak ( -state.viewer.sphere.getPhi(), 0, 'degree' ) + '. ';
+    document.getElementById('celestial-sphere').textContent = s0;
+  }, 600);
+
 }
 
 /* --- the timeline (Modified Year Slider) --------------------------------- */
@@ -1175,10 +1311,26 @@ function positionTimelineMarker() {
 
 function resetSim() {
   cancelDayTween();
+  applyURL();
   const viewer = state.viewer;
   viewer.sphere.setThetaAndPhi(INIT_THETA, INIT_PHI);
   viewer.setDayOfYear( day_0 );
-  update({ announceText: `Simulation reset. ${describeScene()}` });
+
+  // Let visual updates and coordinate updates finish first
+  update();
+  
+  // Force hard flush of live region so Chrome cannot diff-ignore update
+  const liveRegion = el['sr-status'];
+  if (liveRegion) { liveRegion.textContent = ''; }
+
+  // Debounce reset announcement to dodge Chrome's native button chatter,
+  // bypassing announceLive wrapper so Chrome registers the reset announcement
+  // text insertion as a new, isolated DOM mutation
+  clearTimeout(announceResetTimer);
+  announceResetTimer = setTimeout(() => {
+    if (liveRegion) { liveRegion.textContent = `Simulation reset. ${describeScene()}`; }
+  }, 600);
+  
 }
 
 /* --- equation (via foundation kl-unl-mathjax.js) ------------------------- */
@@ -1245,8 +1397,8 @@ function wireControls() {
   // everything from it, so typed values, sliders and the drag stay in step.
   const apply = {
     day:       (v) => state.viewer.setDayOfYear(snapDay(v)),
-    azimuth:   (v) => sphere.setViewerAzimuth(v),
-    elevation: (v) => sphere.setPhi(v)
+    azimuth:   (v) => sphere.setViewerAzimuth(v),  // is this ever used?
+    elevation: (v) => sphere.setPhi(v)             // is this ever used?
   };
 
   // Track click jumps the native range in one step, which would skip the
@@ -1356,41 +1508,19 @@ function wireControls() {
     cancelDayTween();
     const min  = Number(range.min);
     const max  = Number(range.max);
-    let day    = snapDay(Number(range.value) || 0);
+    let   day  = snapDay(Number(range.value) || 0);
     const step = keyAccel(event, 1);
     switch (event.key) {
-      case 'ArrowLeft':
-      case 'ArrowUp':
-      case 'A':
-      case 'a':
-      case 'W':
-      case 'w':
-        day -= step;
-        break;
-      case 'ArrowRight':
-      case 'ArrowDown':
-      case 'D':
-      case 'd':
-      case 'S':
-      case 's':
-        day += step;
-        break;
-      case 'PageUp':
-        day -= keyAccel(event, 10);
-        break;
-      case 'PageDown':
-        day += keyAccel(event, 10);
-        break;
-      case 'Home':
-        day = min;
-        break;
-      case 'End':
-        day = max;
-        break;
+      case 'ArrowLeft':  case 'ArrowUp':   case 'A': case 'a': case 'W': case 'w': day -= step; break;
+      case 'ArrowRight': case 'ArrowDown': case 'D': case 'd': case 'S': case 's': day += step; break;
+      case 'PageUp':   day -= keyAccel(event, 10); break;
+      case 'PageDown': day += keyAccel(event, 10); break;
+      case 'Home':     day = min;                  break;
+      case 'End':      day = max;                  break;
     }
-    day = snapDay(Math.min(max, Math.max(min, day)));
+    day = pMod( day, 365 );
     apply.day(day);
-    update({ announceText: describeScene() });
+    update();
   });
 
   const stage = el.stage;
@@ -1404,6 +1534,11 @@ function wireControls() {
   document.addEventListener('sim-reset', resetSim);
 
   window.addEventListener(  'resize', resizeCanvas);
+
+  // Setting gear when only figure is shown
+  document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
+  document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
+
 }
 
 function init() {
@@ -1415,6 +1550,7 @@ function init() {
   buildTimeline();
   wireControls();
   resizeCanvas();
+  applyURL();
   update();
   setUpEquation();
 

@@ -2,7 +2,7 @@
    Big Dipper in Three Dimensions
    HTML5 port of the Flash celestial-sphere frame scripts.
    ---------------------------------------------------------------------------
-   The shared celestial-sphere library owns projection, circles, sight lines,
+   The shared celestial-sphere library owns projection, circles, sightlines,
    and absolute symbol orientation. This file keeps the Dipper scene: the
    shaded sky patch, the seven stars at their true distances, the grid labels,
    and the view clamps from the original frame script.
@@ -19,10 +19,14 @@ import {
 
 import {
   legToFixed, stepToPrec, speak, pMod, findMinMaxMid, clamp, noEinNumber, 
-  keyAccel, updateSliderProgress, hexToRGBA, announceLive, logAct
+  keyAccel, updateSliderProgress, hexToRGBA, announceLive, logAct,
+  descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
 logAct('INIT_BigDipper');
+
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
 
 /* --- stage and sphere (frame_1/DoAction_2.as) --------------------------- */
 const STAGE_W            =  650;
@@ -37,6 +41,8 @@ let   INIT_THETA         =  221;  // legacy values: 221.2, -8.6
 let   INIT_PHI           =  -21;
 let xPhi                 = INIT_PHI;
 let xTheta               = INIT_THETA - THETA_OFFSET;
+let   THETA_URL          =   '';
+let   PHI_URL            =   '';
 
 let   THETA_MIN          =  122;
 let   THETA_MAX          =  247;
@@ -51,7 +57,7 @@ let   PIN_Y              =  240;
 
 /* ActionScript colors. Patch and grid are used only by this diagram. */
 //const PATCH_FILL       = hexToRGBA('#6d89bc', 0.6);  // (grey  blue)
-const PATCH_FILL         = hexToRGBA('#253674', 0.6);  // (dark  blue, shifted for WCAG AA w/cone sight lines)
+const PATCH_FILL         = hexToRGBA('#253674', 0.6);  // (dark  blue, shifted for WCAG AA w/cone sightlines)
 const GRID_COLOR         = '#e0e0e0';                  // (light grey)
 const LINE_COLOR         = '#000000';                  // (black)
 const LINE_LIGHT         = '#ffffff';                  // (white)
@@ -60,7 +66,7 @@ const LABEL_COLOR        = CELESTIAL_SPHERE_COLORS.LABEL_FILL;
 
 /* Developer flags:
 /* Method for connecting Earth to stars on celestial sphere; 
-   Draw shaded cones rather than thin sight lines (legacy style) */
+   Draw shaded cones rather than thin sightlines (legacy style) */
 const showCones          = true;
 /* Shift celestial sphere patch labels away from asterism */
 const flipLabels         = true;
@@ -73,7 +79,7 @@ const ARC_INSET          = 0;  // tried 0.10, but then pattern varies over aster
 const ARC_COLOR          = '#ffff00';     // (yellow)
 const DIPPER_ID          = 'big-dipper';
 
-/* Sight lines can be either thin black lines or cones */
+/* Sightlines can be either thin black lines or cones */
 const CONE_COLOR         = '#ffa500';  // (orange)
 const CONE_SHADOW        = '#ff0000';  // (red)
 const CONE_HLIGHT        = '#ffffff';  // (white)
@@ -239,9 +245,10 @@ class App {
     this.populateTable();
     this.bindEvents();
     this.loadImages();
-    this.syncControls();
+  //this.syncControls();
     this.resizeCanvas();
-    this.announce();
+    this.announceState();
+    this.applyURL();
   }
 
   /* =======================================================================
@@ -261,7 +268,7 @@ class App {
       csStar.setPosition({ ra: d.ra, dec: d.dec });
       csStar.setAbsoluteOrientation();
 
-      // Create guides (either cones or sight lines from Earth to each star)
+      // Create guides (either cones or sightlines from Earth to each star)
       // (cones drawn using orange, red, and white)
       const cone = new Cone(S,
         { x: 0, y: 0, z: 0, system: 'celestial' },
@@ -445,6 +452,7 @@ class App {
     this.phiSlider      = document.getElementById('phiSlider');
     this.sightlinesCBox = document.getElementById('sightlines');
     this.diagramHeading = document.getElementById('diagramHeading');
+    this.asterismName   = document.getElementById('asterism-name');
     this.tableCaption   = document.querySelector('.sim-table caption');
   }
 
@@ -462,7 +470,8 @@ class App {
       original: document.title,
       set: (value) => { document.title = value; }
     });
-    addText(this.diagramHeading);
+  //addText(this.diagramHeading);
+    addText(this.asterismName);
     addText(this.tableCaption);
     if (this.canvas) {
       const canvas = this.canvas;
@@ -531,6 +540,7 @@ class App {
         if (iauFigures[i].id === id) { figure = iauFigures[i]; break; }
       }
     }
+    let newInit = ( figureId == '' ) ? true : false;
     if (!figure || figure.id === figureId) return;
     applyFigure(figure);
     this.rewriteCopy();
@@ -547,9 +557,19 @@ class App {
     this.sortDir         = 'asc';
     this.populateTable();
     this.setView(INIT_THETA, INIT_PHI);
-    this.syncControls();
+    if ( newInit )  {
+      this.setView(THETA_URL, PHI_URL);
+      newInit = false;
+    }
     this.render();
-    this.announce('Showing ' + figureSpoken + '. ');
+    // Update figure announcement for Canis Major asterism 
+    // (note Chrome+Voiceover ignores update)
+    if ( id !== 'CMa' )  { this.announceState('Showing ' + figureSpoken + '. '); }
+    else                 { this.announceState('Showing ' + figureSpoken + ' (woof! woof!). '); }
+
+    // Update control panel heading for Orion asterism
+    if ( id !== 'Ori' )  { document.getElementById('controlsHeading').textContent = 'View Orientation'; }
+    else                 { document.getElementById('controlsHeading').textContent = 'View Oriontation'; }
   }
 
   rebuildScene() {
@@ -594,6 +614,7 @@ class App {
     }
     body.innerHTML = html;
     this.updateSortHeaders();
+    this.updateURL();
 
     // Announce table sort
     let   s0  = '';
@@ -603,10 +624,18 @@ class App {
     else if (this.sortKey == 'ra'   )  { s2 = 'right ascension';     }
     else if (this.sortKey == 'dec'  )  { s2 = 'declination';         }
     else if (this.sortKey == 'dist' )  { s2 = 'distance from Earth'; }
-    if (this.sortKey != null)  {
-      s0 = 'The table of stars is sorted in ' + s1 + ' order by ' + s2 + '.';
-    }
-    announceLive(this.desc, s0);
+    
+    // Announce table sorts under Safari+Voiceover
+    // (note Chrome will ignore this because it ignores the structural aria-sort
+    // update that occurs for the parent <th> element, assuming that the button
+    // state change is the only relevant change to occur)
+    clearTimeout(this.announceTimer);
+    this.announceTimer = setTimeout(() => { 
+      if (this.sortKey != null)  {
+        s0 = 'The table of stars is sorted in ' + s1 + ' order by ' + s2 + '.';
+        announceLive(this.desc, s0);
+      }
+    }, 150);
   }
 
   updateSortHeaders() {
@@ -615,12 +644,33 @@ class App {
       const th  = heads[i];
       const btn = th.querySelector('.sim-sort');
       if (!btn) continue;
+      
       const active = this.sortKey === btn.dataset.sort;
       th.setAttribute('aria-sort', active
         ? (this.sortDir === 'asc' ? 'ascending' : 'descending')
-        : 'none');
+                      : 'none');
+      
       const mark = btn.querySelector('.sim-sort__mark');
       if (mark) mark.textContent = active ? (this.sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : '';
+
+      // Expand abbreviations into full words for screen reader
+      let baseText = '';
+      if      (btn.dataset.sort === 'name') baseText = 'Stellar name';
+      else if (btn.dataset.sort === 'ra')   baseText = 'Right ascension (hours)';
+      else if (btn.dataset.sort === 'dec')  baseText = 'Declination (degrees)';
+      else if (btn.dataset.sort === 'dist') baseText = 'Distance (light years)';
+
+      // Announce table sorts under Chrome+Voiceover
+      // Dynamically update button aria-label so Chrome+Voiceover announces the
+      // change on focus (note Safari+Voiceover will ignore this while Chrome
+      // will pounce on it, so this restores parity for announcing table sorting)
+      if (active) {
+        btn.setAttribute('aria-label', baseText +
+                         (this.sortDir === 'asc' ? ', sorted in ascending order' :
+                                                   ', sorted in descending order'));
+      } else {
+        btn.setAttribute('aria-label', baseText);
+      }      
     }
   }
 
@@ -757,7 +807,7 @@ class App {
   }
 
   /* The arrow graphic points up, with its tip at the top of the image.
-     Anchor that tip on the origin, where the sight lines meet.
+     Anchor that tip on the origin, where the sightlines meet.
      Below the horizon (phi < 0) the arrow points down and the caption
      sits above it; the tip stays on Earth. */
   drawEarth(o) {
@@ -864,7 +914,7 @@ class App {
       drawCircleBucket(ctx, this.stickArcs,   'back', { dim: 1 });
       this.drawObjects(bS);
 
-      /* This block draws cone sight lines and star points in technically 
+      /* This block draws cone sightlines and star points in technically 
          correct order */
       /*
       if (this.phi < 0) {
@@ -880,7 +930,7 @@ class App {
       }
       */
 
-      /* This block always draws star points after cone sight lines 
+      /* This block always draws star points after cone sightlines 
          (technically incorrect order) 
          so that stars appear as points rather than as beads on cone-strings */
       if (this.phi < 0) {
@@ -923,6 +973,7 @@ class App {
       this.drawObjects(fS);
       if (this.sightlinesCBox.checked)  { drawLineLayer(ctx, this.sightLines, 'fE'); }
     }
+    this.updateURL();
   }
 
   resizeCanvas() {
@@ -935,6 +986,123 @@ class App {
     this.render();
   }
 
+  applyURL()  {
+    // Check loaded URL for initial setup parameters, allowing user to specify
+    // theta and phi on celestial sphere, visibility of sightlines, and/or 
+    // which asterism to examine, as well as visibility of masthead and control
+    // panels.
+
+    document.getElementById('canvas-more-keys').style.display = 'none';
+
+    const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+    if ( Object.keys(urlParams).length === 0 )  return;
+
+    let URL_THT, URL_PHI, URL_SLN, URL_AST, URL_KEY, URL_DIR, URL_CLN;
+
+    // Define theta and phi of celestial sphere, and azimuth and altitude of star
+    // (use simulation defaults for any unspecified values)
+    if ( (urlParams.theta !== undefined) && (!Number.isNaN(Number(urlParams.theta))) )  {
+      URL_THT = Math.round( pMod( Number(urlParams.theta), 360 ) );
+    } else  { URL_THT =  20; }
+    if ( (urlParams.phi   !== undefined) && (!Number.isNaN(Number(urlParams.phi  ))) )  {
+      URL_PHI = Math.round( Math.max( Math.min( Number(urlParams.phi), 90 ), -90 ) );
+    } else  { URL_PHI =  20; }
+    if ( urlParams.sln   !== undefined )  {
+      URL_SLN = JSON.parse(urlParams.sln);
+    } else  { URL_SLN =   1; }
+    if ( urlParams.ast   !== undefined )  {
+      URL_AST = urlParams.ast;
+    } else  { URL_AST = DIPPER_ID; }
+    if ( urlParams.key   !== undefined )  {
+      URL_KEY = urlParams.key;
+    } else  { URL_KEY = null; }
+    if ( urlParams.dir   !== undefined )  {
+      URL_DIR = urlParams.dir;
+    } else  { URL_DIR = 'asc'; }
+    
+    this.S.setThetaAndPhi( URL_THT, URL_PHI );
+    INIT_THETA = URL_THT;
+    INIT_PHI   = URL_PHI;
+    THETA_URL  = URL_THT;
+    PHI_URL    = URL_PHI;
+
+    // Show/hide sightlines
+    // (ignore any values but 1 or 0)
+    if      ( URL_SLN == 1 )  { document.getElementById('sightlines').checked = true;  }
+    else if ( URL_SLN == 0 )  { document.getElementById('sightlines').checked = false; }
+
+    if ( ( document.getElementById('dataHeading') ) &&
+         ( document.getElementById('dataHeading').tagName === 'SELECT' ) )  { 
+      document.getElementById('dataHeading').value = URL_AST;
+    }
+    figureId = '';
+    this.selectFigure( URL_AST );
+    this.sortKey = URL_KEY;
+    this.sortDir = URL_DIR;
+    this.populateTable();
+
+    // Hide masthead and control panels (everything except canvas)
+    // (hide if clean=true or clean=1)
+    if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+      urlClean = true;
+      document.getElementById('canvas-more-keys').style.display = 'block';
+      document.getElementById('controls-panel').style.display   = 'none';
+      document.getElementById('stars-panel').style.display      = 'none';
+      document.querySelectorAll('.app-layout').forEach((el) => {
+        el.style.display        = 'flex';
+        el.style.justifyContent = 'center';
+      });
+      
+      // Update screen reader help for keyboard control over canvas
+      document.getElementById('skyHelp').innerHTML =
+        'Drag the constellation, or use arrow keys, to rotate the view. '         +
+        'Users may also use the A and D keys to rotate the view left and right, ' + 
+        'and the W and S keys to rotate the viewing angle up and down. '          + 
+        'Toggle sightline visibility with L, and reset the simulation with R.';
+
+      // Re-direct skip link to new help (gear button) and strip masthead event listener
+      const oldSkipLink = document.querySelector('.sr-only-focusable');
+      if (oldSkipLink) {
+        const newSkipLink       = oldSkipLink.cloneNode(true);
+        newSkipLink.textContent = 'Skip to Keyboard Navigation';
+        newSkipLink.setAttribute('href', '#canvas-more-keys');
+        
+        newSkipLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const gearBtn = document.getElementById('canvas-more-keys');
+          if (gearBtn) gearBtn.focus();
+        });
+        
+        oldSkipLink.parentNode.replaceChild(newSkipLink, oldSkipLink);
+      }
+    }
+  }
+
+  updateURL()  {
+    // Log current state parameters for possible URL-building
+
+    // URL parameters are theta and phi for celestial sphere, azimuth and altitude
+    // for star, and visibility of four labels.
+    const theta = Math.round( R2D*this.S.theta );
+    const phi   = Math.round( R2D*this.S.phi   );
+    const sln   = +document.getElementById('sightlines').checked;
+    const key   = this.sortKey;
+    const dir   = this.sortDir;
+    let   ast   = DIPPER_ID;
+    if ( ( document.getElementById('dataHeading') ) &&
+         ( document.getElementById('dataHeading').tagName === 'SELECT' ) )  { 
+      ast = document.getElementById('dataHeading').value;
+    }
+
+    let s0 = 'Big-Dipper-3D/index.html';    
+    s0    += '?theta=' + theta + '&phi=' + phi;
+    s0    += '&sln='   + sln   + '&ast=' + ast;
+    s0    += '&key='   + key   + '&dir=' + dir;
+
+    window.stateURL = s0;
+  }
+  
   /* =======================================================================
      Controls
      ======================================================================= */
@@ -947,21 +1115,37 @@ class App {
     this.phiNumber.value   = legToFixed(p, pPrec);
     this.thetaSlider.value = t;
     this.phiSlider.value   = p;
-    this.thetaSlider.setAttribute('aria-valuetext',
-      'Horizontal angle ' + speak(t, 0, 'degree'));
-    this.phiSlider.setAttribute('aria-valuetext',
-      'Vertical tilt '    + speak(p, 0, 'degree'));
     updateSliderProgress(this.thetaSlider);
     updateSliderProgress(this.phiSlider);
+
+    clearTimeout(this.announceTimer);
+    this.announceTimer = setTimeout(() => {
+      this.thetaSlider.setAttribute('aria-valuetext', 'Horizontal angle ' + speak(t, 0, 'degree'));
+      this.phiSlider.setAttribute(  'aria-valuetext', 'Vertical tilt '    + speak(p, 0, 'degree'));
+    }, 600);
   }
 
-  readNumber(input, slider) {
+  readNumber(input, slider, label) {
     let v               = Number(input.value);
     if (!isFinite(v)) v = Number(slider.value);
     v                   = clamp(v, Number(slider.min), Number(slider.max));
     input.value         = legToFixed(v, stepToPrec(input.step));
     slider.value        = v;
     updateSliderProgress(slider);
+    /*
+    // Abandoned aria-valuetext announcement because Chrome+Voiceover read  
+    // every change and produced a strong stutter due to the overlapping values
+    // (so we defaulted to the native HTML behavior, though we removed the  
+    // min/max limits in the elements to prevent Chrome from reporting values 
+    // as percentages)
+    clearTimeout(this.announceAngleTimer);
+    this.announceAngleTimer = setTimeout(() => {
+      if (document.activeElement !== input) {
+        input.setAttribute('aria-valuetext', label + ' ' + speak(v, 0, 'degree'));
+      }
+    }, 600);
+    */
+    
     return v;
   }
 
@@ -970,17 +1154,38 @@ class App {
     this.render();
   }
 
-  announce(prefix) {
+  announceState(prefix) {
+    // Announce state (excluding celestial sphere orientation) when significant
+    // shift occurs (e.g., new asterism selected, sim loaded or reset)
+    this.syncControls();
     const count = (figureId === DIPPER_ID && ASTERISM_STARS.length === 7)
       ? 'seven' : String(ASTERISM_STARS.length);
     const slines = (this.sightlinesCBox.checked) ? 'shown' : 'hidden';
     const msg =
       (prefix || '') +
       'The ' + count + ' ' + figureName + ' stars are shown at their true distances from Earth. ' +
-      'Yellow stars mark where each projects onto the celestial sphere to form the asterism. '    + 
-      'View orientation: horizontal angle ' + speak(Math.round(this.theta), 0, 'degree') +
-      ', vertical tilt ' + speak(Math.round(this.phi), 0, 'degree') + '. Sightlines: '   + slines + '.';
-    announceLive(this.desc, msg);
+          'Yellow stars mark where each projects onto the celestial sphere to form the asterism. ';
+    //    'Sightlines: ' + slines + '.';
+    
+    clearTimeout(this.announceTimer);
+    this.announceTimer = setTimeout(() => { announceLive(this.desc, msg); }, 600);
+  }
+
+  announceOrientation() {
+    // Announce orientation (theta,phi) for celestial sphere
+    const msg =
+      'Celestial sphere rotated by ' + speak(Math.round(this.theta - THETA_OFFSET), 0, 'degree') +
+                 ', and tilted by  ' + speak(Math.round(this.phi), 0, 'degree') + '.';
+
+    clearTimeout(this.announceOrientationTimer);
+    this.announceOrientationTimer = setTimeout(() => { announceLive(this.desc, msg); }, 600);
+  }
+
+  announceSightlines()  {
+    const slines = (this.sightlinesCBox.checked) ? 'shown' : 'hidden';
+    
+    clearTimeout(this.announceTimer);
+    this.announceTimer = setTimeout(() => { announceLive(this.desc, 'Sightlines: ' + slines); }, 600);
   }
 
   reset() {
@@ -990,11 +1195,11 @@ class App {
     }
     this.sortKey = null;
     this.sortDir = 'asc';
-    this.populateTable();
     this.setView(INIT_THETA, INIT_PHI);
-    this.syncControls();
+    this.applyURL();
+    this.populateTable();
     this.render();
-    this.announce();
+    this.announceState('Simulation reset. ');
   }
 
   bindEvents() {
@@ -1022,9 +1227,9 @@ class App {
     };
     thetaSlider.addEventListener(    'input',  () => onSliderInput(thetaSlider, thetaNumber));
     phiSlider.addEventListener(      'input',  () => onSliderInput(phiSlider,   phiNumber));
-    thetaSlider.addEventListener(    'change', () => this.announce());
-    phiSlider.addEventListener(      'change', () => this.announce());
-    sightlinesCBox.addEventListener( 'change', () => this.render());
+    thetaSlider.addEventListener(    'change', () => this.syncControls());
+    phiSlider.addEventListener(      'change', () => this.syncControls());
+    sightlinesCBox.addEventListener( 'change', () => { this.announceSightlines(); this.render() });
 
     // Apply a number box only when the typed value is already inside the
     // slider range, so a half-finished entry such as "1" of "130" is left alone.
@@ -1037,17 +1242,17 @@ class App {
       updateSliderProgress(slider);
       this.applyControls();
     };
-    const onNumberChange = (number, slider) => {
-      this.readNumber(number, slider);
+    const onNumberChange = (number, slider, label) => {
+      this.readNumber(number, slider, label);
       this.applyControls();
-      this.announce();
+      this.syncControls();
     };
     /*
     thetaNumber.addEventListener('input',  () => onNumberInput(thetaNumber,  thetaSlider));
     phiNumber.addEventListener(  'input',  () => onNumberInput(phiNumber,    phiSlider));
     */
-    thetaNumber.addEventListener('change', () => onNumberChange(thetaNumber, thetaSlider));
-    phiNumber.addEventListener(  'change', () => onNumberChange(phiNumber,   phiSlider));
+    thetaNumber.addEventListener('change', () => onNumberChange(thetaNumber, thetaSlider, 'horizontal angle'));
+    phiNumber.addEventListener(  'change', () => onNumberChange(phiNumber,   phiSlider,   'vertical tilt'   ));
     thetaNumber.addEventListener('keydown', noEinNumber);
     phiNumber.addEventListener(  'keydown', noEinNumber);
 
@@ -1057,6 +1262,25 @@ class App {
     this.canvas.addEventListener('pointercancel', (ev) => this.onPointerUp(ev));
     this.canvas.addEventListener('keydown',       (ev) => this.onCanvasKey(ev));
     this.canvas.addEventListener('keyup',         (ev) => this.onCanvasKeyUp(ev));
+
+    // Insure that if user updates a number box via up/down ticks and then tabs to 
+    // another element and then shift-tabs back, the number box aria-valuetext is 
+    // updated as soon as focus leaves. Part of abandoned attempt (defaulted to
+    // native HTML to satisfy Chrome+Voiceover).
+    /*
+    this.thetaNumber.addEventListener('blur', () => {
+      this.thetaNumber.setAttribute('aria-valuetext', 'horizontal angle ' +
+                                    speak(this.thetaNumber.value, 0, 'degree'));s
+    });
+    this.phiNumber.addEventListener('blur', () => {
+      this.phiNumber.setAttribute('aria-valuetext', 'vertical tilt ' +
+                                  speak(this.phiNumber.value, 0, 'degree'));
+    });
+    */
+    
+    // Setting gear when only figure is shown
+    document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
+    document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
 
     window.addEventListener('resize', () => this.resizeCanvas());
   }
@@ -1098,9 +1322,15 @@ class App {
     if (moved) {
       this.setView(Math.round(this.theta), Math.round(this.phi));
       this.syncControls();
+    //this.syncControls();
       this.render();
     }
-    this.announce();
+    // Clear cascade of repeated keyboard-driven announcement calls with a
+    // debounce mechanism
+    //clearTimeout(this.announceOrientationTimer);
+    //this.announceOrientationTimer = setTimeout(() => {
+      this.announceOrientation();
+    //}, 600);
   }
 
   onCanvasKey(ev) {
@@ -1116,19 +1346,32 @@ class App {
       case 'PageDown':                        dPhi   = -PHI_PAGE; break;
       case 'Home':   dTheta = THETA_MIN - Math.round(this.theta); break;
       case 'End':    dTheta = THETA_MAX - Math.round(this.theta); break;
+      // If control panels are hidden, enable keyboard controls to reset simulation or show/hide sightlines
+      case 'r' : case 'R': if (urlClean) { this.reset(); break; }
+      case 'l' : case 'L': if (urlClean) {
+        this.sightlinesCBox.checked = !this.sightlinesCBox.checked; this.announceSightlines(); this.render(); break;
+      }
       default: return;
     }
-    ev.preventDefault();
-    this.keyed = true;
-    this.setView(Math.round(this.theta) + dTheta, Math.round(this.phi) + dPhi);
-    this.syncControls();
-    this.render();
+    if ( ( ev.key !== 'r' ) && ( ev.key !== 'R' ) &&
+         ( ev.key !== 'l' ) && ( ev.key !== 'L' ) )  { 
+      ev.preventDefault();
+      this.keyed = true;
+      this.setView(Math.round(this.theta) + dTheta, Math.round(this.phi) + dPhi);
+      this.syncControls();
+      this.render();
+    }
   }
 
   onCanvasKeyUp() {
     if (!this.keyed) return;
     this.keyed = false;
-    this.announce();
+    // Clear cascade of repeated keyboard-driven announcement calls with a
+    // debounce mechanism
+    //clearTimeout(this.announceOrientationTimer);
+    //this.announceOrientationTimer = setTimeout(() => {
+      this.announceOrientation();
+    //}, 600);
   }
 }
 

@@ -26,7 +26,7 @@ import {
 import {
   legToFixed, stepToPrec, speak, pMod, snapFixed, noEinNumber, keyAccel, 
   updateSliderProgress, hexToRGBA, soon, announceLive, VO_FIX_LGND, logAct,
-  updateShowHideLabelButtons
+  updateShowHideLabelButtons, descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
 // Log initialization, browser, platform, and screen size in server access log
@@ -178,7 +178,9 @@ class App {
   reset() {
     this.setStarLocation({ az: 140, alt: 45 });
     this.S.setThetaAndPhi(190, 28);
-    this.hideAllLabels();
+    this.chk.zenith.checked = false; this.chk.horizon.checked  = false;
+    this.chk.nadir.checked  = false; this.chk.meridian.checked = false;
+    this.updateLabels();
     this.applyURL();
     
     this.onSphereOrientationChanged();
@@ -204,12 +206,14 @@ class App {
       Object.values(this.chk)
     );
     this.render();
-    this.announce();
+    // Silently update canvas description
+    this.updateCanvasDescription();
   }
   setAllLabelsVisibility(v) {
     this.chk.zenith.checked = v; this.chk.horizon.checked  = v;
     this.chk.nadir.checked  = v; this.chk.meridian.checked = v;
     this.updateLabels();
+    this.updateLabelDescription();
   }
   showAllLabels() { this.setAllLabelsVisibility(true);  }
   hideAllLabels() { this.setAllLabelsVisibility(false); }
@@ -255,33 +259,21 @@ class App {
       this.altNumber.value = legToFixed(pt.alt, stepToPrec(altNumber.step ) );
     }
     // Spoken values include angle name and degrees unit.
+    // 
+    // Note that slider bars now announce value in degrees and cite degree unit
+    // under both Chrome and Safari on MacOS, but that for number boxes while both
+    // browsers announce value in degrees, only Chrome cites the degree unit
+    // while Safari+Voiceover omits it. This is system-level behavior, and so  
+    // we do not and should not attempt to change it.
+    // Note these updates were redundant
+    /*
     this.azSlider.setAttribute ('aria-valuetext', 'Azimuth '  + speak(pt.az,  0, 'degree'));
+    this.azNumber.setAttribute ('aria-valuetext', 'Azimuth '  + speak(pt.az,  0, 'degree'));
     this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 0, 'degree'));
+    this.altNumber.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 0, 'degree'));
+    */
   }
 
-  descMoreKeys()  {
-    // When control panels are hidden, remind user of additional keyboard
-    // navigation
-
-    if (urlClean)  {
-      if (document.getElementById('url-clean-panel').style.display == 'none' )  { 
-        document.getElementById('url-clean-panel').style.display   = 'block';
-        document.getElementById('closeKeyNavBtn').focus();
-      } else  {
-        document.getElementById('url-clean-panel').style.display   = 'none';
-      }
-      document.getElementById('skyHelp').innerHTML =
-        'Drag, or use the arrow keys, to rotate the view. ' +
-        'Toggle label visibility with 1, 2, 3, and 4, and reset the simulation with R.';
-    }
-  }
-
-  hideMoreKeys()  {
-    // Hide reminder about additional keyboard navigation
-    
-    document.getElementById('url-clean-panel').style.display = 'none';
-  }
-  
   // ----------------------------------------------------------------------
   // Rendering
   // ----------------------------------------------------------------------
@@ -352,8 +344,8 @@ class App {
 
     ctx.restore();
 
-    this.positionOverlay();
-    this.updateCanvasDescription();
+    this.positionOverlay();    
+    this.updateURL();
   }
 
   paintCircleBucket(which) {
@@ -642,34 +634,108 @@ class App {
   positionOverlay() {
     this.starHandle.style.left = ((this.CENTER + this.star.sp.x) / this.STAGE * 100) + '%';
     this.starHandle.style.top  = ((this.CENTER + this.star.sp.y) / this.STAGE * 100) + '%';
-    this.starHandle.setAttribute('aria-label',
-      'Star position. Azimuth ' + speak(this.star.az,  0, 'degree') +
-                  ', altitude ' + speak(this.star.alt, 0, 'degree') + '.');
   }
 
   updateCanvasDescription() {
-    const onLabels = [];
-    if (this.labels.zenith)   onLabels.push('Zenith');
-    if (this.labels.horizon)  onLabels.push('Horizon Plane');
-    if (this.labels.nadir)    onLabels.push('Nadir');
-    if (this.labels.meridian) onLabels.push('Meridian');
-
-    const labelText = onLabels.length ? onLabels.join(', ') : 'none';
     this.canvas.setAttribute('aria-label',
       'Horizon diagram. Cardinal directions N, E, S, and W shown on the horizon. ' +
       'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
            ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' + 
-      locateStar(this.star.az,this.star.alt, 0) + 'Visible labels: ' + labelText + '.');
+       locateStar(this.star.az,this.star.alt, 0) + this.listLabels() );
   }
 
-  announce(includeOrientation) {
+  updateLabelDescription() {
+    // Announce state of labels
+
+    // Update canvas aria-label (full state) silently
+    this.updateLabels();
+
+    // Send transient announcement to dedicated live region,
+    // first zeroing out content to force Chrome to read it
+    const liveRegion = document.getElementById('diagramDesc');
+    if (liveRegion) {
+      liveRegion.textContent = '';
+      setTimeout(() => { liveRegion.textContent = this.listLabels(); }, 50);
+    }
+  }
+
+  listLabels()  {
+    // List state of labels
+
+    const onLabels = [];
+    if (this.chk.zenith.checked)   onLabels.push('Zenith');
+    if (this.chk.horizon.checked)  onLabels.push('Horizon Plane');
+    if (this.chk.nadir.checked)    onLabels.push('Nadir');
+    if (this.chk.meridian.checked) onLabels.push('Meridian');
+
+    let labelText = onLabels.length ? onLabels.join(', ') : 'none';
+    const i = labelText.lastIndexOf(', ');
+    const j = labelText.split(', ').length - 1;
+    if ( i > -1 )  {
+      if ( j > 1 )  { 
+        labelText = labelText.substring( 0, i + 2 ) + 'and ' +
+          labelText.substring( i + 2 );
+      } else  {
+        labelText = labelText.substring( 0, i ) + ' and ' +
+          labelText.substring( i + 2 );
+      }
+    }
+    return 'Visible labels: ' + labelText + '.';
+  }
+
+  announce(isReset) {
+    // Announce state of simulation
+    
+    const az  = pMod(360 - this.S.getTheta(), 360);   // viewer azimuth
+    const alt = this.S.getPhi();                      // viewer altitude
+
+    let msg = (isReset) ? 'Simulation reset. ' : '';
+    msg    += 'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
+                   ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' +
+               locateStar(this.star.az,this.star.alt, 0);
+    msg    += 'Celestial sphere rotated by ' + speak( az,  0, 'degree' ) +
+                           ' and tilted by ' + speak( alt, 0, 'degree' ) + '. ';
+    msg    += this.listLabels();
+    
+  //this.desc.textContent = msg;
+    this.desc.textContent = '';
+    setTimeout(() => { this.desc.textContent = msg; }, 600);
+
+    // Update aria-label contents for view of celestial sphere and star
+    this.updateCanvasDescription();
+    // Under MacOS Chrome triggers a name change event for aria-label below to  
+    // screen readers when element holds keyboard focus, while Safari+Voiceover  
+    // typically ignores dynamic name changes on focused elements. We thus 
+    // only perform the following update when the element does not hold focus.
+    if (document.activeElement !== this.starHandle) {
+      this.starHandle.setAttribute('aria-label',
+        'Star position. Azimuth ' + speak(this.star.az,  0, 'degree') +
+                    ', altitude ' + speak(this.star.alt, 0, 'degree') + '.');
+    }
+  }
+
+  announceStar() {
+    // Announce state of star
+    
     let msg = 'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
                    ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' +
-              locateStar(this.star.az,this.star.alt, 0);
-    if (includeOrientation) {
-      msg += ' View reset.';
+               locateStar(this.star.az,this.star.alt, 0);
+    
+  //this.desc.textContent = msg;
+    clearTimeout(this.announceTimer);
+    this.announceTimer = setTimeout(() => { this.desc.textContent = msg; }, 600);
+
+    // Update aria-label contents for view of celestial sphere and star
+    this.updateCanvasDescription();
+    // Under MacOS Chrome triggers a name change event for aria-label below to  
+    // screen readers when element holds keyboard focus, while Safari+Voiceover  
+    // typically ignores dynamic name changes on focused elements. We thus 
+    // only perform the following update when the element does not hold focus.
+    if (document.activeElement !== this.starHandle) {
+      this.starHandle.setAttribute('aria-label',
+        'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
+             ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ');
     }
-    this.desc.textContent = msg;
   }
 
   applyURL()  {
@@ -733,9 +799,52 @@ class App {
         el.style.display        = 'flex';
         el.style.justifyContent = 'center';
       });
+      
+      // Update screen reader help for keyboard control over canvas
+      document.getElementById('skyHelp').innerHTML =
+        'Drag, or use the arrow keys, to rotate the view. ' +
+        'Toggle label visibility with 1, 2, 3, and 4, and reset the simulation with R.';
+
+      // Re-direct skip link to new help (gear button) and strip masthead event listener
+      const oldSkipLink = document.querySelector('.sr-only-focusable');
+      if (oldSkipLink) {
+        const newSkipLink       = oldSkipLink.cloneNode(true);
+        newSkipLink.textContent = 'Skip to Keyboard Navigation';
+        newSkipLink.setAttribute('href', '#canvas-more-keys');
+        
+        newSkipLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const gearBtn = document.getElementById('canvas-more-keys');
+          if (gearBtn) gearBtn.focus();
+        });
+        
+        oldSkipLink.parentNode.replaceChild(newSkipLink, oldSkipLink);
+      }
     }
   }
 
+  updateURL()  {
+    // Log current state parameters for possible URL-building
+
+    // URL parameters are theta and phi for celestial sphere, azimuth and altitude
+    // for star, and visibility of four labels.
+    const theta = Math.round( R2D*this.S.theta );
+    const phi   = Math.round( R2D*this.S.phi   );
+    const azi   = Math.round( document.getElementById('azNumber').value  );
+    const alt   = Math.round( document.getElementById('altNumber').value );
+    const zen   =            +document.getElementById('chkZenith').checked;
+    const ndr   =            +document.getElementById('chkNadir').checked;
+    const hor   =            +document.getElementById('chkHorizon').checked;
+    const mrd   =            +document.getElementById('chkMeridian').checked;
+
+    let s0 = 'Azimuth-Altitude-Demonstrator/index.html';    
+    s0    += '?theta=' + theta + '&phi=' + phi;
+    s0    += '&alt='   + alt   + '&azi=' + azi;
+    s0    += '&labels=\[' + zen + ',' + ndr + ',' + hor + ',' + mrd + '\]';
+
+    window.stateURL = s0;
+  }
+  
   // ----------------------------------------------------------------------
   // Pointer + keyboard interaction
   // ----------------------------------------------------------------------
@@ -755,7 +864,23 @@ class App {
     const syncFromSlider = (slider, number) => {
       number.value = legToFixed(Number(slider.value), stepToPrec(number.step) );
       this.onPositionSliderChanged();
-      this.announce();
+      // Our announcements of the celestial sphere and star state are wrapped 
+      // in a timeout so that we don't get stuttering as a screen reader
+      // attempts to read one for every change in a sequence of updates (as in 
+      // when a user holds down or rapidly taps an arrow key to swoosh up or
+      // down the slider), triggering a sequence of screen reader content updates.
+      //
+      // Note that there may still be a stuttered attempt to read out bare
+      // updates for every change to the slider bar value. This is a native
+      // response to a standard input, and we should not alter it because we
+      // would be violating established user expectations.
+      const name = ( number.id === 'azNumber' ) ? 'Azimuth ' : 'Altitude ';
+      clearTimeout(this.announceTimer);
+      this.announceTimer = setTimeout(() => {
+        number.setAttribute ('aria-valuetext', name + speak(number.value,  0, 'degree'));
+        slider.setAttribute ('aria-valuetext', name + speak(number.value,  0, 'degree'));
+        this.announceStar();
+      }, 600);
     };
     this.azSlider.addEventListener( 'input', () => syncFromSlider(this.azSlider,  this.azNumber ));
     this.altSlider.addEventListener('input', () => syncFromSlider(this.altSlider, this.altNumber));
@@ -767,7 +892,14 @@ class App {
       number.value = legToFixed(v, stepToPrec(number.step) );
       slider.value = v;
       this.onPositionSliderChanged();
-      this.announce();
+      // See above note on slider bar screen reader updates
+      const name = ( number.id === 'azNumber' ) ? 'Azimuth ' : 'Altitude ';
+      clearTimeout(this.announceTimer);
+      this.announceTimer = setTimeout(() => {
+        number.setAttribute ('aria-valuetext', name + speak(slider.value,  0, 'degree'));
+        slider.setAttribute ('aria-valuetext', name + speak(slider.value,  0, 'degree'));
+        this.announceStar();
+      }, 600);
     };
     this.azNumber.addEventListener( 'change',  () => syncFromNumber(this.azNumber,  this.azSlider) );
     this.altNumber.addEventListener('change',  () => syncFromNumber(this.altNumber, this.altSlider));
@@ -779,12 +911,12 @@ class App {
     document.getElementById('showAllBtn').addEventListener('click', () => this.showAllLabels());
     document.getElementById('hideAllBtn').addEventListener('click', () => this.hideAllLabels());
     for (const k of Object.keys(this.chk)) {
-      this.chk[k].addEventListener('change', () => this.updateLabels());
+      this.chk[k].addEventListener('change', () => { this.updateLabels(); this.updateLabelDescription()} );
     }
 
     // Setting gear when only figure is shown
-    document.getElementById('canvas-more-keys').addEventListener('click', () => this.descMoreKeys());
-    document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => this.hideMoreKeys());
+    document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
+    document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
 
     // Canvas pointer drag: star (if front-facing) else rotate the sphere
     this.dragMode = null;
@@ -800,6 +932,15 @@ class App {
     this.starHandle.addEventListener('keydown', (ev) => this.onStarKey(  ev));
 
     window.addEventListener('resize', () => this.render());
+
+    // Insure that if user moves star via starHandle and then tabs to another
+    // element and then shift-tabs back, the star Handle aria-label is updated
+    // as soon as focus leaves. 
+    this.starHandle.addEventListener('blur', () => {
+      this.starHandle.setAttribute('aria-label',
+        'Star position. Azimuth ' + speak(this.star.az,  0, 'degree') +
+                    ', altitude ' + speak(this.star.alt, 0, 'degree') + '.');
+    });
   }
 
   nearStar(stage) {
@@ -856,9 +997,10 @@ class App {
 
   onPointerUp() {
     if (!this.dragMode) return;
+    if (this.dragMode === 'star') { this.announceStar(); }
+    else                          { this.announceView(); }
     this.dragMode = null;
     this.canvas.classList.remove('dragging');
-    this.announce();
   }
 
   // Arrow keys rotate view; Shift/CapsLock = x10 larger step (10deg vs 1deg),
@@ -879,16 +1021,22 @@ class App {
       case 'PageDown':                       dPhi   =  bigStep;  break;
       // If control panels are hidden, enable keyboard controls to reset simulation or show/hide labels
       case 'r': case 'R': if (urlClean) { this.reset(); break; }
-      case '1': case '!': if (urlClean) { this.chk.zenith.checked   = !this.chk.zenith.checked;   this.updateLabels(); break; }
-      case '2': case '@': if (urlClean) { this.chk.nadir.checked    = !this.chk.nadir.checked;    this.updateLabels(); break; }
-      case '3': case '#': if (urlClean) { this.chk.horizon.checked  = !this.chk.horizon.checked;  this.updateLabels(); break; }
-      case '4': case '$': if (urlClean) { this.chk.meridian.checked = !this.chk.meridian.checked; this.updateLabels(); break; }
+      case '1': case '!': if (urlClean) { this.chk.zenith.checked   = !this.chk.zenith.checked;   this.updateLabelDescription(); break; }
+      case '2': case '@': if (urlClean) { this.chk.nadir.checked    = !this.chk.nadir.checked;    this.updateLabelDescription(); break; }
+      case '3': case '#': if (urlClean) { this.chk.horizon.checked  = !this.chk.horizon.checked;  this.updateLabelDescription(); break; }
+      case '4': case '$': if (urlClean) { this.chk.meridian.checked = !this.chk.meridian.checked; this.updateLabelDescription(); break; }
       default: return;
     }
     ev.preventDefault();
-    this.S.setThetaAndPhi(this.S.getTheta() + dTheta, this.S.getPhi() + dPhi);
-    this.onSphereOrientationChanged();
-    this.announceView();
+    if ( (dTheta != 0 ) || (dPhi != 0) )  { 
+      this.S.setThetaAndPhi(this.S.getTheta() + dTheta, this.S.getPhi() + dPhi);
+      this.onSphereOrientationChanged();
+      
+      // Clear cascade of repeated keyboard-driven announcement calls with a
+      // debounce mechanism
+      clearTimeout(this.announceViewTimer);
+      this.announceViewTimer = setTimeout(() => { this.announceView(); }, 600);
+    }
   }
 
   // Arrow keys move star (alt/az), mirroring star drag. Same step scheme 
@@ -908,27 +1056,45 @@ class App {
       case 'PageDown':                       dAlt = -15*dStp;  break;
       // If control panels are hidden, enable keyboard controls to reset simulation or show/hide labels
       case 'r': case 'R': if (urlClean) { this.reset(); break; }
-      case '1': case '!': if (urlClean) { this.chk.zenith.checked   = !this.chk.zenith.checked;   this.updateLabels(); break; }
-      case '2': case '@': if (urlClean) { this.chk.nadir.checked    = !this.chk.nadir.checked;    this.updateLabels(); break; }
-      case '3': case '#': if (urlClean) { this.chk.horizon.checked  = !this.chk.horizon.checked;  this.updateLabels(); break; }
-      case '4': case '$': if (urlClean) { this.chk.meridian.checked = !this.chk.meridian.checked; this.updateLabels(); break; }
+      case '1': case '!': if (urlClean) { this.chk.zenith.checked   = !this.chk.zenith.checked;   this.updateLabelDescription(); break; }
+      case '2': case '@': if (urlClean) { this.chk.nadir.checked    = !this.chk.nadir.checked;    this.updateLabelDescription(); break; }
+      case '3': case '#': if (urlClean) { this.chk.horizon.checked  = !this.chk.horizon.checked;  this.updateLabelDescription(); break; }
+      case '4': case '$': if (urlClean) { this.chk.meridian.checked = !this.chk.meridian.checked; this.updateLabelDescription(); break; }
       default: return;
     }
     ev.preventDefault();
-    let alt = this.star.alt + dAlt;
-    if (alt > 90) alt = 90; else if (alt < -90) alt = -90;   // slider range
-    // setStarLocation normalizes azimuth mod 360 and syncs sliders/boxes.
-    this.setStarLocation({ az: this.star.az + dAz, alt: alt });
-    this.render();
-    this.announce();
+    if ( (dAz != 0 ) || (dAlt != 0) )  { 
+      let alt = this.star.alt + dAlt;
+      if (alt > 90) alt = 90; else if (alt < -90) alt = -90;   // slider range
+      // setStarLocation normalizes azimuth mod 360 and syncs sliders/boxes.
+      this.setStarLocation({ az: this.star.az + dAz, alt: alt });
+      this.render();
+      // Clear cascade of repeated keyboard-driven announcement calls with a debounce mechanism
+      clearTimeout(this.announceTimer);
+      this.announceTimer = setTimeout(() => {
+        this.azSlider.setAttribute ('aria-valuetext', 'Azimuth '  + speak(this.star.az,  0, 'degree'));
+        this.azNumber.setAttribute ('aria-valuetext', 'Azimuth '  + speak(this.star.az,  0, 'degree'));
+        this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(this.star.alt, 0, 'degree'));
+        this.altNumber.setAttribute('aria-valuetext', 'Altitude ' + speak(this.star.alt, 0, 'degree'));
+        this.announceStar();
+      }, 600);
+    }
   }
 
   announceView() {
     const az  = pMod(360 - this.S.getTheta(), 360);   // viewer azimuth
     const alt = this.S.getPhi();                      // viewer altitude
+    /*
     this.desc.textContent = 'View rotated. ' +
          'Viewing azimuth ' + speak(az,  0, 'degree') +
       ', viewing altitude ' + speak(alt, 0, 'degree') + '.';
+    */
+    this.desc.textContent =
+      'Celestial sphere rotated by ' + speak( az,  0, 'degree' ) +
+                   ' and tilted by ' + speak( alt, 0, 'degree' ) + '. ';
+
+    // Update aria-label content for view of celestial sphere
+    this.updateCanvasDescription();
   }
 }
 

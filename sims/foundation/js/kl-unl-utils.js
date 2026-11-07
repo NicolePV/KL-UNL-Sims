@@ -253,13 +253,17 @@ export function soon(callback, timeoutMs=60) {
   window.setTimeout(run, timeoutMs);
 };
 
+//let liveToggle = false;
+
 export function announceLive(liveEl, message, delayMs=100) {
   // Flush a polite live region so identical consecutive strings still announce.
   if (!liveEl) { return; }
-  liveEl.setAttribute('aria-hidden', 'true');
+//liveEl.setAttribute('aria-hidden', 'true');
   liveEl.textContent = '';
   window.setTimeout(function () {
-    liveEl.removeAttribute('aria-hidden');
+  //liveToggle = !liveToggle;
+  //liveEl.removeAttribute('aria-hidden');
+  //liveEl.textContent = message + (liveToggle ? '\u200B' : '');
     liveEl.textContent = message;
   }, delayMs);
 };
@@ -295,6 +299,118 @@ export function drawArrowhead(ctx, tip, delta, fcolor='', scolor='')  {
   ctx.fill();
   ctx.stroke();
 };
+
+
+/* ===========================================================================
+   URL saving functions
+   =========================================================================== */
+
+export function descMoreKeys( urlClean )  {
+    // When control panels are hidden, remind user of additional keyboard
+    // navigation options
+
+    if (urlClean)  {
+      if (document.getElementById('url-clean-panel').style.display == 'none' )  { 
+        document.getElementById('url-clean-panel').style.display   = 'block';
+        document.getElementById('url-clean-panel').focus();
+      } else  {
+        document.getElementById('url-clean-panel').style.display   = 'none';
+        document.getElementById('canvas-more-keys').focus();
+      }
+    }
+  }
+
+export function hideMoreKeys()  {
+    // Hide reminder about additional keyboard navigation
+    
+    document.getElementById('url-clean-panel').style.display = 'none';
+    document.getElementById('canvas-more-keys').focus();
+}
+
+export function buildURL( flag )  {
+  // Construct URL for user to use in future, to initialize simulation in
+  // current state. 
+
+  // Note that function cannot run asynchronously or build URL using hidden
+  // elements due to security concerns, and under MacOS+Safari temporary
+  // textArea must be readonly (to prevent a mobile keyboard pop-up).
+
+  // For example, 
+  // http://astronomy.nmsu.edu/geas/klunl/sims/Azimuth-Altitude-Demonstrator/index.html?
+  // theta=190&phi=28&alt=140&azi=45&labels=[0,0,0,0]&clean=1
+
+  let i;
+  let s0;
+
+  i = (window.location.href).indexOf('/sims/');
+  if ( i > -1 )  { s0 = (window.location.href).substring( 0, i+6 );   }
+  else           { s0 = 'http://astronomy.nmsu.edu/geas/klunl/sims/'; }
+
+  if (window.stateURL !== undefined)  { s0 += window.stateURL;      }
+  else                                { s0  = window.location.href; }
+  
+  // User may show compete simulation, or only figure
+  if ( flag === 1 )  { s0 += '&clean=1'; }
+
+  // Create a temporary off-screen textarea for reliable selection of text
+  const tempInput          = document.createElement('textarea');
+  tempInput.value          = s0;
+  tempInput.setAttribute('aria-hidden', 'true');
+  tempInput.setAttribute('readonly', '');
+  tempInput.style.position = 'fixed';
+  tempInput.style.left     = '-9999px';
+  tempInput.style.top      = '0';
+
+  // Append textarea to modal dialog if it is open, otherwise fallback to body
+  let container  = document.body;
+  const masthead = document.querySelector('kl-unl-masthead');
+  
+  if (masthead && masthead.shadowRoot) {
+    const dialog = masthead.shadowRoot.getElementById('settingsDialog-mh');
+    if (dialog && dialog.hasAttribute('open')) {
+      container = dialog;
+    }
+  }
+  container.appendChild(tempInput);
+
+  // Explicit focus is required by MacOS+Safari before select()
+  tempInput.focus();
+  tempInput.select();
+  tempInput.setSelectionRange(0, 99999);
+  
+  // Select and copy synchronously within the active user gesture
+  i = document.execCommand('copy');
+
+  // Indicate successful placement of link on clipboard by disabling button
+  if ( i )  {
+    if      ( flag === 2 )  {
+      masthead.shadowRoot.getElementById('urlConfirmAll').disabled = true;
+      masthead.shadowRoot.getElementById('urlConfirmFig').disabled = false;
+      masthead.shadowRoot.getElementById('dialogBody3-mh').style.display = 'block';
+      masthead.shadowRoot.getElementById('dialogBody4-mh').style.display = 'none';
+      masthead.shadowRoot.getElementById('dialogBody3-mh').ariaHidden    = 'false';
+      masthead.shadowRoot.getElementById('dialogBody4-mh').ariaHidden    = 'true';
+    } else if ( flag === 1 )  {
+      masthead.shadowRoot.getElementById('urlConfirmAll').disabled = false;
+      masthead.shadowRoot.getElementById('urlConfirmFig').disabled = true;
+      masthead.shadowRoot.getElementById('dialogBody3-mh').style.display = 'none';
+      masthead.shadowRoot.getElementById('dialogBody4-mh').style.display = 'block';
+      masthead.shadowRoot.getElementById('dialogBody3-mh').ariaHidden    = 'true';
+      masthead.shadowRoot.getElementById('dialogBody4-mh').ariaHidden    = 'false';
+    }
+  } else  {
+      masthead.shadowRoot.getElementById('urlConfirmAll').disabled = false;
+      masthead.shadowRoot.getElementById('urlConfirmFig').disabled = false;
+      masthead.shadowRoot.getElementById('dialogBody3-mh').style.display = 'none';
+      masthead.shadowRoot.getElementById('dialogBody4-mh').style.display = 'none';
+      masthead.shadowRoot.getElementById('dialogBody3-mh').ariaHidden    = 'true';
+      masthead.shadowRoot.getElementById('dialogBody4-mh').ariaHidden    = 'true';
+  }
+
+  // Clean up DOM
+  container.removeChild(tempInput);
+
+}
 
 
 /* ===========================================================================

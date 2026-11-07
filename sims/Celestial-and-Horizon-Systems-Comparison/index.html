@@ -14,16 +14,14 @@
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png" sizes="32x32">
   <link rel="apple-touch-icon" href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
-  <script defer src="../foundation/js/kl-unl-masthead.js"></script>
+  <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
   <script defer src="../foundation/js/kl-unl-mathjax.js"></script>
-  <!-- <script type="module" src="simulation.js"></script> -->
   <script type="module" src="simulation.js"></script>
-  <script src="clipboard.js"></script>
 </head>
 
 <body>
 
-  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
 
   <div class="app-shell">
 
@@ -34,8 +32,8 @@
       <!-- ================= diagram panel ================= -->
       <section class="panel sim-panel sim-panel--diagram" aria-labelledby="diagramHeading">
         <h2 class="panel__heading" id="diagramHeading" aria-hidden="true">Sky Diagram
-          <p id="sr-description-kn1" class="sr-only">Show description of keyboard navigation options.</p>
-          <button id="canvas-more-keys"aria-describedby="sr-description-kn1"><img src="../foundation/images/klunl_gear.svg"
+          <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
+          <img src="../foundation/images/klunl_gear.svg"
           alt="Additional Keyboard Navigation" width="30" height="30"></button>
         </h2>
 
@@ -109,7 +107,7 @@
             <!-- <label class="control-row__label"
             for="latNumber">latitude:</label> -->
             <input class="control-row__input sim-number" id="latNumber"
-                   type="number" min="-90" max="90" step="1" value="41"
+                   type="number" step="1" value="41"
                    inputmode="decimal" autocomplete="off" aria-labelledby="latLgnd">
             <span class="sim-unit" aria-hidden="true">&deg;</span>
             <input class="control-row__slider sim-slider" id="latSlider"
@@ -128,12 +126,16 @@
         </fieldset>
       </section>
 
-      <section class="panel sim-panel" id="url-clean-panel" aria-labelledby="urlHeading" style="display:none">
+      <section class="panel sim-panel" id="url-clean-panel" role="dialog" 
+        aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
+        style="display:none">
         <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
-        Drag and use the arrow keys (or A, D, W, and S) to rotate the
-        view, amplifying the effect with the Shift or Caps Lock keys. 
-        Adjust observer latitude similarly with the plus and minus keys. 
-        Skip or restore transitions by typing T, and reset the simulation with R.
+        <p id="urlDesc">  
+          Drag and use the arrow keys (or A, D, W, and S) to rotate the
+          view, amplifying the effect with the Shift or Caps Lock keys. 
+          Adjust observer latitude similarly with the plus and minus keys. 
+          Skip or restore transitions by typing T, and reset the simulation with
+          R.</p>
         <p id="sr-description-kn2" class="sr-only">Close description of keyboard
         navigation options.</p>
         <div class="div-closeKeyNavBtn">
@@ -143,7 +145,7 @@
 
     </main>
 
-    <p id="sr-status" class="sr-only" role="status" aria-live="polite"></p>
+    <p id="sr-status" class="sr-only" aria-live="polite"></p>
 
   </div>
 

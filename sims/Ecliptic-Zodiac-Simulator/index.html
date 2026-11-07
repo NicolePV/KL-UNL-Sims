@@ -14,12 +14,12 @@
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png" sizes="32x32">
   <link rel="apple-touch-icon" href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
-  <script defer src="../foundation/js/kl-unl-masthead.js"></script>
+  <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
   <script defer src="../foundation/js/kl-unl-mathjax.js"></script>
   <script type="module" src="simulation.js"></script>
 </head>
 <body>
-  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
 
   <div class="app-shell">
 
@@ -30,17 +30,21 @@
 
       <!-- Diagram + timeline: wide band of zodiac constellations with year timeline beneath -->
       <section class="panel sim-panel sim-diagram-panel" aria-labelledby="diagram-heading">
-        <h2 id="diagram-heading" class="panel__heading">Zodiac View</h2>
+        <h2 id="diagram-heading" class="panel__heading">Zodiac View
+          <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
+          <img src="../foundation/images/klunl_gear.svg"
+          alt="Additional Keyboard Navigation" width="30" height="30"></button>
+        </h2>
 
         <div class="panel__canvas-wrap sim-canvas-wrap">
           <!-- Band is drag-rotatable: click or tab, then arrow keys. -->
           <div class="sim-stage" id="stage" tabindex="0" role="application"
-               aria-label="Wide band of zodiac constellations. Drag with the
-               pointer, or use the left and right arrow keys to rotate the
-               view and the up and down arrow keys to change the viewing
-               angle. Users may also use the A and D keys to rotate the view 
-               left and right, and the W and S keys to rotate the viewing
-               angle up and down."
+               aria-label="The Earth sits at the center of a wide zodiacal
+               band of constellations. Drag with the pointer, or use the left
+               and right arrow keys to rotate the view and the up and down
+               arrow keys to change the viewing angle. Users may also use the
+               A and D keys to rotate the view left and right, and the W and S
+               keys to rotate the viewing angle up and down."
                aria-describedby="stage-desc"
                aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown A D W S">
             <canvas id="stage-canvas" class="sim-canvas" aria-hidden="true"></canvas>
@@ -61,8 +65,25 @@
           </div>
         </div>
 
+        <p id="celestial-sphere" class="sr-only" aria-live="polite"></p>
         <p id="stage-desc" class="sr-only"></p>
-        <p id="sr-status" class="sr-only" aria-live="polite"></p>
+        <p id="sr-status"  class="sr-only" aria-live="polite"></p>
+      </section>
+
+      <section class="panel sim-panel" id="url-clean-panel" role="dialog"
+        aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
+        style="display:none">
+        <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
+        <p id="urlDesc">  
+          Drag and use the arrow keys (or A, D, W, and S) to rotate the view,
+          amplifying the effect with the Shift or Caps Lock keys. Use the plus
+          and minus keys similarly to change the date, and reset the simulation
+          with R.</p>
+        <p id="sr-description-kn2" class="sr-only">Close description of keyboard
+        navigation options.</p>
+        <div class="div-closeKeyNavBtn">
+          <button id="closeKeyNavBtn" aria-describedby="sr-description-kn2">Close</button>
+        </div>
       </section>
 
     </main>

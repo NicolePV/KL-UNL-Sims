@@ -28,7 +28,8 @@ import {
 
 import {
   legToFixed, speak, pMod, noEinNumber, keyAccel,
-  updateSliderProgress, announceLive, VO_FIX_LGND, logAct
+  updateSliderProgress, announceLive, VO_FIX_LGND, logAct,
+  descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
 import { EARTH_SHORES } from '../foundation/js/kl-unl-earth-shores.js';
@@ -431,36 +432,6 @@ class Scene {
     this._drawLines(ctx, 'fE');
   }
 
-  descMoreKeys()  {
-    // When control panels are hidden, remind user of additional keyboard
-    // navigation
-    
-    if (urlClean)  {
-      if (document.getElementById('url-clean-panel').style.display == 'none' )  { 
-        document.getElementById('url-clean-panel').style.display   = 'block';
-        document.getElementById('closeKeyNavBtn').focus();
-      } else  {
-        document.getElementById('url-clean-panel').style.display   = 'none';
-      }
-      document.getElementById('stage').ariaLabel = 
-        'Celestial sphere diagram. Drag, or use the arrow keys, to rotate the view. ' +
-        'Users may also use the A and D keys to rotate the view left and right, and ' +
-        'the W and S keys to rotate the viewing angle up and down, adding the Shift ' +
-        'or Caps Lock keys to increase the effect. The observer latitude can be '     +
-        'changed similarly with the plus and minus keys. Typing T will skip or '      +
-        'restore showing transitions, V will change the view, and R will reset the '  +
-        'simulation.';
-      document.getElementById('stage').ariaLabeKeyshortcuts =
-        'ArrowLeft ArrowRight ArrowUp ArrowDown A D W S ' + 'plus minus V T R';
-    }
-  }
-
-  hideMoreKeys()  {
-    // Hide reminder about additional keyboard navigation
-    
-    document.getElementById('url-clean-panel').style.display = 'none';
-  }
-  
   applyURL()  {
     // Check loaded URL for initial setup parameters, allowing user to specify
     // theta and phi on celestial sphere, change observer's latitude, and/or 
@@ -472,7 +443,7 @@ class Scene {
 
     if ( Object.keys(urlParams).length === 0 )  return;
 
-    let URL_THT, URL_PHI, URL_LAT, URL_SKP;
+    let URL_THT, URL_PHI, URL_LAT, URL_DIR, URL_SKP;
 
     // Define theta and phi of celestial sphere, and latitude of observer, and
     // whether user requests that transitions be skipped
@@ -486,6 +457,9 @@ class Scene {
     if ( (urlParams.lat   !== undefined) && (!Number.isNaN(Number(urlParams.lat  ))) )  {
       URL_LAT = Math.round( Math.max( Math.min( Number(urlParams.lat), 90 ), -90 ) );
     } else  { URL_LAT =  41; }
+    if ( (urlParams.dir   !== undefined) && (!Number.isNaN(Number(urlParams.dir  ))) )  {
+      URL_DIR = Number(urlParams.dir);
+    } else  { URL_DIR =   1; }
     if (urlParams.skp     !== undefined)  {
       URL_SKP = Boolean(Number(urlParams.skp));
     } else  { URL_SKP = false; }
@@ -494,6 +468,8 @@ class Scene {
     INIT_PHI      = URL_PHI;
     INIT_LATITUDE = URL_LAT;
     latVal        = URL_LAT;
+    direction     = URL_DIR;
+    
     mainScene.sphere.setThetaAndPhi( URL_THT, URL_PHI );
     if ( (urlParams.skp !== undefined) && URL_SKP )  { 
       document.getElementById('chkRdcMotion').checked = true;
@@ -511,7 +487,55 @@ class Scene {
         el.style.display        = 'flex';
         el.style.justifyContent = 'center';
       });
+      
+      // Update screen reader help for keyboard control over canvas
+      document.getElementById('stage').ariaLabel = 
+        'Celestial sphere diagram. Drag, or use the arrow keys, to rotate the view. ' +
+        'Users may also use the A and D keys to rotate the view left and right, and ' +
+        'the W and S keys to rotate the viewing angle up and down, adding the Shift ' +
+        'or Caps Lock keys to increase the effect. The observer latitude can be '     +
+        'changed similarly with the plus and minus keys. Typing T will skip or '      +
+        'restore showing transitions, V will change the view, and R will reset the '  +
+        'simulation.';
+
+      // Update screen reader help for keyboard control over canvas
+      document.getElementById('stage').ariaLabeKeyshortcuts =
+        'ArrowLeft ArrowRight ArrowUp ArrowDown A D W S ' + 'plus minus V T R';
+
+      // Re-direct skip link to new help (gear button) and strip masthead event listener
+      const oldSkipLink = document.querySelector('.sr-only-focusable');
+      if (oldSkipLink) {
+        const newSkipLink       = oldSkipLink.cloneNode(true);
+        newSkipLink.textContent = 'Skip to Keyboard Navigation';
+        newSkipLink.setAttribute('href', '#canvas-more-keys');
+        
+        newSkipLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const gearBtn = document.getElementById('canvas-more-keys');
+          if (gearBtn) gearBtn.focus();
+        });
+        
+        oldSkipLink.parentNode.replaceChild(newSkipLink, oldSkipLink);
+      }
     }
+  }
+
+  updateURL()  {
+    // Log current state parameters for possible URL-building
+
+    // URL parameters are theta and phi for celestial sphere, latitude for 
+    // observer, and preference to skip transitions
+    const theta = Math.round( window.mainScene.sphere.getTheta() );
+    const phi   = Math.round( window.mainScene.sphere.getPhi()   );
+    const lat   = Math.round( document.getElementById('latNumber').value );
+    const skp   =            +document.getElementById('chkRdcMotion').checked;
+    const dir   = direction;
+
+    let s0 = 'Celestial-and-Horizon-Systems-Comparison/index.html';
+    s0    += '?theta=' + theta + '&phi=' + phi;
+    s0    += '&lat='   + lat   + '&dir=' + dir + '&skp=' + skp;
+
+    window.stateURL = s0;
   }
 }
 
@@ -606,6 +630,7 @@ let latVal, latValOld = 360;
 let renderQueued = false;
 let dragging     = false, dragPointerId = null;
 let dragX = 0, dragY = 0, dragTheta = 0, dragPhi = 0;
+let announceTimer, announceViewTimer;
 
 const el = {};
 
@@ -632,8 +657,8 @@ function initSphere() {
   sphere.setThetaAndPhi(INIT_THETA, INIT_PHI);
 
   mainScene = new Scene(sphere, { hpVisible: false });
-  window.mainScene = mainScene;  // add to global window scope as within module
   mainScene.applyURL();
+  window.mainScene = mainScene;  // add to global window scope as within module
   mainScene.addShadingClip('Sphere Shading', 'front', 'inner', 'both');
   mainScene.addShadingClip('Sphere Shading', 'back',  'inner', 'both');
 
@@ -847,7 +872,6 @@ function doTransition() {
     globeSize = (direction === 1) ? 1 : 0.001;
     animating = 1;
     updateCelestialDiagram();
-  //announceMode(true);
     
     // Rotate horizon plane between latitude and 90 degrees
     animating = 2;
@@ -1091,6 +1115,7 @@ function requestRender() {
     renderQueued = false;
     render();
   });
+  mainScene.updateURL()
 }
 
 function render() {
@@ -1138,8 +1163,11 @@ function announce(text) {
 
 function announceMode(atEnd) {
   if (atEnd) {
-    announce('Now showing the ' + modeName() + ' for an observer at ' +
-             latitudeSpoken(latVal) + '.');
+  //announce('Now showing the ' + modeName() + ' for an observer at ' +
+  //         latitudeSpoken(latVal) + '.');
+    const s0 = 'Now showing the ' + modeName() + ' for an observer at ' + latitudeSpoken(latVal) + '.';
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => { announce( s0 ); }, 600);
   }
 }
 
@@ -1151,21 +1179,27 @@ function updateDescriptions() {
 
   // Note A-D-W-S alternate keyboard controls for MacOS+Voiceover users
   // running screen reader and using keyboard controls (VO_FIX_LGND).
-  el.canvas.setAttribute('aria-label',
-    'Celestial sphere diagram, currently showing the ' + modeName() + '. ' + view +
-    ' Drag, or use the arrow keys, to rotate the view. ' + VO_FIX_LGND);
+  //
+  // If canvas aria-label element is updated when canvas has focus, Chrome
+  // will announce it and prioritize it rather than a transient aria-live
+  // announcement (such as an announceView call that only contains the
+  // change in celestial sphere orientation).
+  if ( document.activeElement !== el.canvas )  { 
+    el.canvas.setAttribute('aria-label',
+      'Celestial sphere diagram, currently showing the ' + modeName() + '. ' + view +
+      ' Drag, or use the arrow keys, to rotate the view. ' + VO_FIX_LGND);
   
-  el.stageDesc.textContent =
-    'The diagram shows the ' + modeName() + ' for an observer at ' + latitudeSpoken(latVal) + '. ' +
-    'The Earth globe sits at the center of the celestial sphere, with a small green observer ' +
-    'horizon plane defined by grey latitude and longitude circles. '                           +
-    'Yellow arcs denote the celestial equator and the zero hour right ascension arc; '         +
-    'white circles show the observer\'s local horizon, meridian, and prime vertical; '         +
-    'blue line segments at the poles mark the rotation axis of the celestial sphere. '         +
-    'As the view changes to the horizon diagram, the globe shrinks in size and the green '     +
-    'horizon plane, marked with north, south, east and west labels, grows to fill the sphere ' +
-    'with an observer positioned at its center. ' + view;
-
+    el.stageDesc.textContent =
+      'The diagram shows the ' + modeName() + ' for an observer at ' + latitudeSpoken(latVal) + '. ' +
+      'The Earth globe sits at the center of the celestial sphere, with a small green observer ' +
+      'horizon plane defined by grey latitude and longitude circles. '                           +
+      'Yellow arcs denote the celestial equator and the zero hour right ascension arc; '         +
+      'white circles show the observer\'s local horizon, meridian, and prime vertical; '         +
+      'blue line segments at the poles mark the rotation axis of the celestial sphere. '         +
+      'As the view changes to the horizon diagram, the globe shrinks in size and the green '     +
+      'horizon plane, marked with north, south, east and west labels, grows to fill the sphere ' +
+      'with an observer positioned at its center. ' + view;
+  }
 }
 
 window.klunlInitEqn = klunlInitEqn;
@@ -1208,7 +1242,8 @@ function setLatitude(raw, announceIt) {
               ( ( latValOld >=   0 ) || ( latValOld < -10 ) ) )  {
       s0 += ' South Celestial Pole on observer\'s southern horizon.';
     }
-    announce( s0 );
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => { announce( s0 ); }, 600);
   }
   
   setReferenceFrame();
@@ -1216,13 +1251,26 @@ function setLatitude(raw, announceIt) {
 
 function syncLatitudeControls() {
   const txt = legToFixed(latVal, LAT_PRECISION);
+  // Don't update number box if user is partway through typing a number value
   if (document.activeElement !== el.latNumber) el.latNumber.value = txt;
+  // Always update slider bar
   el.latSlider.value = String(latVal);
   updateSliderProgress(el.latSlider);
+
+  //if ( ( document.activeElement !== el.latNumber ) &&
+  //     ( document.activeElement !== el.latSlider ) )  {
+
+  // Debounce aria-valuetext updates to prevent jitter when arrow key is
+  // depressed and held
+  clearTimeout( announceTimer );
+  announceTimer = setTimeout(() => {
+    const spoken = 'Observer\'s ' + latitudeSpoken(latVal);
+    el.latSlider.setAttribute('aria-valuetext', spoken);
+    el.latNumber.setAttribute('aria-valuetext', spoken);
+  }, 600);
   
-  const spoken = 'Observer\'s ' + latitudeSpoken(latVal);
-  el.latSlider.setAttribute('aria-valuetext', spoken);
-  el.latNumber.setAttribute('aria-label',     spoken);
+  //el.latNumber.setAttribute('aria-label',     spoken);
+  //}
 }
 
 /* ---- pointer / keyboard drag ---- */
@@ -1283,14 +1331,18 @@ function onPointerUp(e) {
   dragging      = false;
   dragPointerId = null;
   try { el.canvas.releasePointerCapture(e.pointerId); } catch (_err) { /* already released */ }
-  announceView();
+//announceView();
+  // Use same debounce timer as keyboard rotation to dodge native event noise
+  // competition for Chrome to announce
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { announceView(); }, 600);
 }
 
 function announceView() {
   const az  = mainScene.sphere.getViewerAzimuth();
   const alt = mainScene.sphere.getPhi();
-  announce('View rotated to azimuth '  + speak( az, 0, 'degree') +
-                         ', altitude ' + speak(alt, 0, 'degree') + '.');
+  announce('Celestial sphere rotated by '  + speak( az, 0, 'degree') +
+                        ', and tilted by ' + speak(alt, 0, 'degree') + '.');
 }
 
 function rotateView(dTheta, dPhi) {
@@ -1298,7 +1350,11 @@ function rotateView(dTheta, dPhi) {
   S.setThetaAndPhi(S.getTheta() + dTheta, S.getPhi() + dPhi);
   syncGlobeView();
   requestRender();
-  announceView();
+//announceView();
+  // Clear cascade of repeated keyboard-driven announcement calls with a
+  // debounce mechanism
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { announceView(); }, 600);
 }
 
 function onStageKeyDown(ev) {
@@ -1318,21 +1374,51 @@ function onStageKeyDown(ev) {
       S.setThetaAndPhi(180, 2);  // Face-on figure, horizon tilted 2 deg for visibility
       syncGlobeView();
       requestRender();
-      announceView();
+    //announceView();
+      // Clear cascade of repeated keyboard-driven announcement calls with a
+      // debounce mechanism
+      clearTimeout(this.announceViewTimer);
+      this.announceViewTimer = setTimeout(() => { this.announceView(); }, 600);
       break;
     case 'End':
       S.setThetaAndPhi(92, 2);  // Edge-on figure, horizon tilted 2 deg for visibility
       syncGlobeView();
       requestRender();
-      announceView();
+    //announceView();
+      // Clear cascade of repeated keyboard-driven announcement calls with a
+      // debounce mechanism
+      clearTimeout(this.announceViewTimer);
+      this.announceViewTimer = setTimeout(() => { this.announceView(); }, 600);
       break;
     // If control panels are hidden, enable keyboard controls to reset simulation or
     // change view, skip transitions, or change observer latitude
-    case 'r': case 'R': resetSim();     break;
-    case 'v': case 'V': doTransition(); break;
-    case 't': case 'T': document.getElementById('chkRdcMotion').checked = (!document.getElementById('chkRdcMotion').checked); break;
-    case '+': case '=': if (urlClean) { setLatitude(latVal+keyAccel(ev, dStp), true); break; }
-    case '-': case '_': if (urlClean) { setLatitude(latVal-keyAccel(ev, dStp), true); break; }
+    case 'r': case 'R': if (urlClean) { resetSim();     break; }
+    case 'v': case 'V': if (urlClean) { doTransition(); break; }
+    case 't': case 'T':
+    if (urlClean) {
+      const chk = document.getElementById('chkRdcMotion');
+      chk.checked = !chk.checked;
+      announce( chk.checked ? 'Skipping transitions. ' : 'Restoring transitions. ' );
+      break;
+    }
+    case '+': case '=':
+      if (urlClean) {
+        setLatitude(latVal+keyAccel(ev, dStp), true);
+        /*
+        clearTimeout(announceTimer);
+        announceTimer = setTimeout(() => { setLatitude(el.latSlider.value, true); }, 600);
+        */
+      };
+      break;
+    case '-': case '_':
+      if (urlClean) {
+        setLatitude(latVal-keyAccel(ev, dStp), true);
+        /*
+        clearTimeout(announceTimer);
+        announceTimer = setTimeout(() => { setLatitude(el.latSlider.value, true); }, 600);
+        */
+      };
+      break;
     default: return;
   }
   ev.preventDefault();
@@ -1340,22 +1426,31 @@ function onStageKeyDown(ev) {
 
 /* ---- reset ---- */
 
-function resetSim() {
+function resetSim() {  // XXX
   direction = 1;
   globeSize = 1;
   latFrac   = 1;
   animating = 0;
   latVal    = INIT_LATITUDE;
   mainScene.applyURL();
+  if ( direction == -1 )  {
+    direction = 1;
+    globeSize = 1;
+    latFrac   = 1;
+    animating = 0;
+    doTransition();
+  }
 
   mainScene.sphere.setThetaAndPhi(INIT_THETA, INIT_PHI);
   globeSphere.setThetaAndPhi(     INIT_THETA, INIT_PHI);
   globeComponent.setRotationAngle(0);
-  mainScene.globeSphere.inst._xscale = 100;
-  mainScene.globeSphere.inst._yscale = 100;
+  mainScene.globeSphere.inst._xscale = 100 * globeSize;
+  mainScene.globeSphere.inst._yscale = 100 * globeSize;
   changeLatitude();
   syncLatitudeControls();
-  setTransitionFactor(1);
+  console.log( "rst 1", direction, globeSize );  // XXX preserve hor view if that is start
+//setTransitionFactor(1);
+  setTransitionFactor(globeSize);
   announce('Simulation reset. Showing the celestial sphere for an observer at ' +
            latitudeSpoken(latVal) + '. View direction restored.');
 }
@@ -1407,7 +1502,7 @@ function boot() {
     setLatitude(el.latSlider.value, true);
   });
   el.latSlider.addEventListener('change', () => {
-    setLatitude(el.latSlider.value, false);
+    setLatitude(el.latSlider.value, true);
   });
 
   /*
@@ -1421,9 +1516,17 @@ function boot() {
   el.latNumber.addEventListener('change', () => {
     setLatitude(el.latNumber.value, true);
     el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
+    const spoken = 'Observer\'s ' + latitudeSpoken(latVal);
+    el.latSlider.setAttribute('aria-valuetext', spoken);
+    el.latNumber.setAttribute('aria-valuetext', spoken);
+    el.latNumber.setAttribute('aria-label',     spoken);
   });
   el.latNumber.addEventListener('blur', () => {
     el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
+    const spoken = 'Observer\'s ' + latitudeSpoken(latVal);
+    el.latSlider.setAttribute('aria-valuetext', spoken);
+    el.latNumber.setAttribute('aria-valuetext', spoken);
+    el.latNumber.setAttribute('aria-label',     spoken);
   });
   el.latNumber.addEventListener('keydown', noEinNumber);
   /*
@@ -1446,14 +1549,30 @@ function boot() {
   });
 
   // Setting gear when only figure is shown
-  document.getElementById('canvas-more-keys').addEventListener('click', () => mainScene.descMoreKeys());
-  document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => mainScene.hideMoreKeys());
+  /*
+  function kybRmndrX()  { 
+    document.getElementById('stage').ariaLabel = 
+      'Celestial sphere diagram. Drag, or use the arrow keys, to rotate the view. ' +
+      'Users may also use the A and D keys to rotate the view left and right, and ' +
+      'the W and S keys to rotate the viewing angle up and down, adding the Shift ' +
+      'or Caps Lock keys to increase the effect. The observer latitude can be '     +
+      'changed similarly with the plus and minus keys. Typing T will skip or '      +
+      'restore showing transitions, V will change the view, and R will reset the '  +
+      'simulation.';
+    document.getElementById('stage').ariaLabeKeyshortcuts =
+      'ArrowLeft ArrowRight ArrowUp ArrowDown A D W S ' + 'plus minus V T R';
+    descMoreKeys(urlClean);
+  }
+  */
+  document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
+  document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
 
   canvas.addEventListener('pointerdown',   onPointerDown);
   canvas.addEventListener('pointermove',   onPointerMove);
   canvas.addEventListener('pointerup',     onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('keydown',       onStageKeyDown);
+  canvas.addEventListener('blur',          updateDescriptions);  // sync canvas aria-label on exit
 
   document.addEventListener('sim-reset', resetSim);
   window.addEventListener('resize', sizeCanvas);
@@ -1461,6 +1580,13 @@ function boot() {
     new ResizeObserver(sizeCanvas).observe(canvas);
   }
 
+  if ( direction != 1 )  {
+    direction = 1;
+    let s0 = ( document.getElementById('chkRdcMotion').checked );
+    document.getElementById('chkRdcMotion').checked = true;
+    doTransition();
+    document.getElementById('chkRdcMotion').checked = s0;
+  }
   requestRender();
 }
 

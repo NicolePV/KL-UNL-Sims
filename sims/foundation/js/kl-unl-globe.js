@@ -44,7 +44,7 @@ export class GlobeComponent {
   constructor(sphere, opts = {}) {
     this.sphere    = sphere;
     this.c         = {};
-    this.radius    = opts.radius != null ? opts.radius : DEFAULT_GLOBE_RADIUS;
+    this.radius    = opts.radius    != null ? opts.radius :    DEFAULT_GLOBE_RADIUS;
     this.shoreData = opts.shoreData != null ? opts.shoreData : EARTH_SHORES;
     this.sunDir    = null;
     this.setPrecessionAngle(0);

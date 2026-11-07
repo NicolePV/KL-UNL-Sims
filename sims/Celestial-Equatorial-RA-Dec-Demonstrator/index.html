@@ -14,12 +14,12 @@
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
   <link rel="apple-touch-icon"      href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
-  <script defer src="../foundation/js/kl-unl-masthead.js"></script>
+  <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
   <!-- <script defer src="../foundation/js/kl-unl-mathjax.js"></script> -->
-  <script src="clipboard.js"></script>
+  <script type="module" src="simulation.js"></script>
 </head>
 <body>
-  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
   <!-- <a class="sr-only sr-only-focusable" href="#star-position-heading">Skip to controls</a> -->
 
   <div class="app-shell">
@@ -34,8 +34,8 @@
       <!-- ===================== THE CELESTIAL SPHERE (diagram) ===================== -->
       <section class="panel sim-area-sky" aria-labelledby="sky-heading">
         <h2 id="sky-heading" class="panel__heading">The Celestial Sphere
-          <p id="sr-description-kn1" class="sr-only">Show description of keyboard navigation options.</p>
-          <button id="canvas-more-keys"aria-describedby="sr-description-kn1"><img src="../foundation/images/klunl_gear.svg"
+          <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
+          <img src="../foundation/images/klunl_gear.svg"
           alt="Additional Keyboard Navigation" width="30" height="30"></button>
         </h2>
  
@@ -87,7 +87,7 @@
                      aria-label="Right ascension, hours">
               -->
               <input class="control-row__input sim-num" id="ra-field" type="number" 
-                     min="0" max="24" step="0.1" value="4.0" autocomplete="off"
+                     step="0.1" value="4.0" autocomplete="off"
                      inputmode="decimal" aria-label="Right ascension, hours">
               <span class="sim-units" aria-hidden="true">&nbsp;h</span>
             </span>
@@ -110,7 +110,7 @@
                      aria-label="Declination, degrees">
               -->
               <input class="control-row__input sim-num" id="dec-field" type="number" 
-                     min="-90" max="90" step="1" value="60" autocomplete="off"
+                     step="1" value="60" autocomplete="off"
                      inputmode="decimal" aria-label="Declination, degrees">
               <span class="sim-units" aria-hidden="true">&nbsp;&deg;</span>
             </span>
@@ -178,15 +178,18 @@
         </fieldset>
       </section>
 
-      <section class="panel sim-panel" id="url-clean-panel" aria-labelledby="urlHeading" style="display:none">
+      <section class="panel sim-panel" id="url-clean-panel" role="dialog"
+        aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
+        style="display:none">
         <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
-        Drag and use the arrow keys (or A, D, W, and S) to rotate the view,
-        amplifying the effect with the Shift or Caps Lock keys. Click on the
-        star and use the same keys to move it in right ascension and
-        declination. Toggle label visibility with the 1 (North and South Poles),
-        2 (Equator), 3 (North and South Celestial Poles), 4 (Celestial
-        Equator), 5 (0<sup>h</sup> circle), 6 (East Arrow), and 7 (Ecliptic)
-        keys. Reset the simulation with R.
+        <p id="urlDesc">  
+          Drag and use the arrow keys (or A, D, W, and S) to rotate the view,
+          amplifying the effect with the Shift or Caps Lock keys. Click on the
+          star and use the same keys to move it in right ascension and
+          declination. Toggle label visibility with the 1 (North and South Poles),
+          2 (Equator), 3 (North and South Celestial Poles), 4 (Celestial
+          Equator), 5 (0<sup>h</sup> circle), 6 (East Arrow), and 7 (Ecliptic)
+          keys. Reset the simulation with R.</p>
         <p id="sr-description-kn2" class="sr-only">Close description of keyboard
         navigation options.</p>
         <div class="div-closeKeyNavBtn">
@@ -215,6 +218,6 @@
   -->
 
   <!-- Sim logic (ES module; imports shared celestial-core) -->
-  <script type="module" src="simulation.js"></script>
+  <!-- <script type="module" src="simulation.js"></script> -->
 </body>
 </html>

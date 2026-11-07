@@ -1,3 +1,5 @@
+import { buildURL } from './kl-unl-utils.js';
+
 class KLUNLMasthead extends HTMLElement {
   constructor() {
     super();
@@ -366,10 +368,16 @@ class KLUNLMasthead extends HTMLElement {
         </div>
         <p id="sr-description2-mh" class="sr-only"></p>
         <div class="button-row sim-button-row">
-          <button id="urlConfirmAll" onclick="buildURL(2)" class="button sim-button" 
+          <button id="urlConfirmAll" class="button sim-button" 
             aria-label="Copy link to show all panels to clipboard">Show Figure(s) and Controls</button>
-          <button id="urlConfirmFig" onclick="buildURL(1)" class="button sim-button" 
+          <button id="urlConfirmFig" class="button sim-button" 
             aria-label="Copy link to show only figures to clipboard">Show Figure(s) Only</button>
+        </div>
+        <div id="dialogBody3-mh" style="display:none" aria-hidden="true">
+          <p>You have copied the full-display link, and may now paste it into a browser tab or document.</p>
+        </div>
+        <div id="dialogBody4-mh" style="display:none" aria-hidden="true">
+          <p>You have copied the figure-display link, and may now paste it into a browser tab or document.</p>
         </div>
         <div class="dialog-footer">
           <button id="closeSettingsBtn-mh" class="close-btn" aria-describedby="sr-description2-mh">Close</button>
@@ -395,6 +403,9 @@ class KLUNLMasthead extends HTMLElement {
     const cancelFbBtn    = shadow.getElementById('cancelFbBtn-mh');
     const closeFbSuccess = shadow.getElementById('closeFbSuccessBtn-mh');
 
+    const urlConfirmAll  = shadow.getElementById('urlConfirmAll');
+    const urlConfirmFig  = shadow.getElementById('urlConfirmFig');
+    
     if (helpBtn) {
       helpBtn.addEventListener('click',   () => this.openInfoModal('help',  helpBtn));
     }
@@ -420,6 +431,10 @@ class KLUNLMasthead extends HTMLElement {
     
     // Form submit listener
     fbForm.addEventListener('submit', (e) => this.handleFeedbackSubmit(e));
+
+    // URL generation listeners
+    if (urlConfirmAll) { urlConfirmAll.addEventListener('click', () => buildURL(2)); }
+    if (urlConfirmFig) { urlConfirmFig.addEventListener('click', () => buildURL(1)); }
 
     // Native dialog cancel hook (triggers via 'Escape' key)
     infoDialog.addEventListener('cancel', () => this.handleFocusRestoration());
@@ -639,7 +654,7 @@ class KLUNLMasthead extends HTMLElement {
     }
   }
 
-  openSettingsModal(triggerBtn) {
+  openSettingsModal(triggerBtn) {    
     this.activeTriggerButton = triggerBtn;
     this.shadowRoot.getElementById('urlConfirmAll').disabled = false;
     this.shadowRoot.getElementById('urlConfirmFig').disabled = false;
@@ -663,9 +678,22 @@ class KLUNLMasthead extends HTMLElement {
     // 
     srDesc.textContent       = flatText;
 
+    // Clear any previous messages about successful copying of urls
+    this.shadowRoot.getElementById('dialogBody3-mh').style.display = 'none';
+    this.shadowRoot.getElementById('dialogBody4-mh').style.display = 'none';
+    this.shadowRoot.getElementById('dialogBody3-mh').ariaHidden    = 'true';
+    this.shadowRoot.getElementById('dialogBody4-mh').ariaHidden    = 'true';
+
     // Check whether url-building function is defined
     if (typeof buildURL !== "function") {
-      console.log("myFunction is not defined.");
+      console.log("Oh no! The function buildURL is not defined.");
+      this.shadowRoot.getElementById('urlConfirmAll').disabled = true;
+      this.shadowRoot.getElementById('urlConfirmFig').disabled = true;
+    }
+
+    // Check whether URL state is defined
+    if (window.stateURL == undefined)  {
+      console.log("Oh no! The simulation state parameters are not defined.");
       this.shadowRoot.getElementById('urlConfirmAll').disabled = true;
       this.shadowRoot.getElementById('urlConfirmFig').disabled = true;
     }
