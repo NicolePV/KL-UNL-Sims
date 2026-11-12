@@ -253,20 +253,42 @@ export function soon(callback, timeoutMs=60) {
   window.setTimeout(run, timeoutMs);
 };
 
-//let liveToggle = false;
-
 export function announceLive(liveEl, message, delayMs=100) {
   // Flush a polite live region so identical consecutive strings still announce.
   if (!liveEl) { return; }
-//liveEl.setAttribute('aria-hidden', 'true');
   liveEl.textContent = '';
   window.setTimeout(function () {
-  //liveToggle = !liveToggle;
-  //liveEl.removeAttribute('aria-hidden');
-  //liveEl.textContent = message + (liveToggle ? '\u200B' : '');
     liveEl.textContent = message;
   }, delayMs);
 };
+
+export function listLabels( onLabels='', head='Visible labels: ', tail='. ' )  {
+  // List state of labels
+  // For 1:  x
+  // For 2:  x and y
+  // For 2+: x, y, and z
+
+  // Parse list of labels
+  let labelText = onLabels.length ? onLabels.join('XXX ') : 'none';
+
+  // Single element list is fine as-is
+  const i = labelText.lastIndexOf('XXX ');
+  if ( onLabels.length > 1 )  {
+    // Three or more element list takes Oxford comma and conjunction
+    if ( onLabels.length > 2 )  { 
+      labelText = labelText.substring( 0, i + 4 ) + 'and ' +
+        labelText.substring( i + 4 );
+    // Two element list takes conjunction
+    } else  {
+      labelText = labelText.substring( 0, i ) + ' and ' +
+        labelText.substring( i + 4 );
+    }
+    labelText = labelText.replaceAll( 'XXX', ',' );
+  }
+  if ( ( onLabels.length === 1 ) && ( head === 'Visible labels: ' ) )  head = 'Visible label: ';
+  
+  return head + labelText + tail;
+}
 
 /** Accessibility adaptation for MacOS + Voiceover users keyboard control */
 /**

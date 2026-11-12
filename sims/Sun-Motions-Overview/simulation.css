@@ -169,6 +169,15 @@
   margin-bottom: var(--sim-space-xs);
 }
 
+/* DualControl mount fills the observer fieldset width. */
+#latitude-dual-mount {
+  width: 100%;
+}
+
+#latitude-dual-mount .kl-dual__number-wrap {
+  max-width: var(--sim-field-width);
+}
+
 /* Readout and number field share one width and one height, and both sit
    flush to the right edge of the column, so their edges align vertically. */
 .sim-readout,

@@ -17,11 +17,19 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, speak, noEinNumber, keyAccel,
-  updateSliderProgress, announceLive, VO_FIX_LGND, logAct
+  legToFixed, speak, listLabels, pMod, keyAccel,
+  announceLive, VO_FIX_LGND, logAct,
+  descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
+import { DualControl } from '../foundation/js/kl-unl-dual-control.js';
+
 logAct('INIT_sunmotionsoverview');
+
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
+
+let announceTimer;
 
 /* ---- constants (Flash parity) ------------------------------------------ */
 
@@ -455,13 +463,12 @@ function render() {
   drawLineLayer(ctx, lines, 'fE');
 
   syncDom();
+  updateURL();
 }
 
 /* ---- DOM / a11y -------------------------------------------------------- */
 
 const el = {
-  latSlider:    document.getElementById('latitude-slider'),
-  latNumber:    document.getElementById('latitude-number'),
   viewProxy:    document.getElementById('sphere-view'),
   status:       document.getElementById('sim-status'),
   canvasDesc:   document.getElementById('canvas-description'),
@@ -478,6 +485,36 @@ function latSpoken(v) {
   const hemi = v < 0 ? 'south' : 'north';
   return 'Latitude ' + speak(Math.abs(v), LAT_PRECISION, 'degree') + ' ' + hemi;
 }
+
+/* Accessible paired latitude number box + muted slider (aria-hidden). */
+const latDual = new DualControl({
+  mount:           '#latitude-dual-mount',
+  id:              'latitude',
+  label:           'Latitude:',
+  min:             -90,
+  max:              90,
+  step:            LAT_STEP,
+  pageStep:        LAT_PAGE,
+  value:           INIT_LATITUDE,
+  unit:            '°',
+  minLabel:        '90&deg;&nbsp;S',
+  maxLabel:        '90&deg;&nbsp;N',
+  numberRowClass:  'control-row sim-row-number     kl-dual__number-row',
+  sliderRowClass:  'control-row sim-row-latitude   kl-dual__slider-row',
+  numberClass:     'control-row__input  sim-number kl-dual__number',
+  sliderClass:     'control-row__slider sim-slider kl-dual__slider',
+  formatValue:     (v) => legToFixed(v, LAT_PRECISION),
+  formatAnnounce:  (v) => latSpoken(v),
+  /* Call out multiples of 30 degrees while dragging. */
+  milestone:       (v) => (v % 30 === 0) && (Math.abs(v) !== 90),
+  announceMoving:  true,
+  autoAnnounce:    true,
+  onInput:         (v) => { setLatitude(v); },
+  onChange:        (v) => commitLatitude(v, true)
+});
+
+el.latNumber = latDual.numberEl;
+el.latSlider = latDual.sliderEl;
 
 function klunlInitEqn() {}
 window.klunlInitEqn = klunlInitEqn;
@@ -499,20 +536,49 @@ function setThetaAndPhi(thetaDeg, phiDeg) {
 
 function syncDom() {
   const v = S.getLatitude();
-  if (document.activeElement !== el.latSlider) el.latSlider.value = String(v);
-  if (document.activeElement !== el.latNumber) {
-    el.latNumber.value = legToFixed(v, LAT_PRECISION);
-  }
-  el.latSlider.setAttribute('aria-valuetext', latSpoken(v));
-  el.latNumber.setAttribute('aria-label',     latSpoken(v));
-  updateSliderProgress(el.latSlider);
 
+  /* Keep the dual control in sync unless the user is mid-edit / mid-drag. */
+  if (latDual.getValue() !== v) {
+    latDual.setValue(v, { silent: true, source: 'sync' });
+  }
+
+  /*
   el.step1.checked = flags.showPoles;
   el.step2.checked = flags.showCE;
-  el.step3.checked = flags.showEquinox;
-  el.step4.checked = flags.showSolstice;
+  el.step3.checked = flags.showCE;
+  el.step4.checked = flags.showCE;
+  */
 
-  el.canvasDesc.textContent = describeScene();
+  /* Defer scene live-region updates while the dual control is interacting. */
+  /*
+  if (!latDual.isBusy() && document.activeElement !== el.latNumber && 0) {
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => {
+      el.status.textContent = '';
+      el.status.textContent = describeScene();
+    }, 600);
+  }
+  */
+}
+
+function describeSphereRot() {
+  announce('Celestial sphere rotated by ' + speak(S.getViewerAzimuth(), 0, 'degree') +
+                       ', and tilted by ' + speak(S.getPhi(),           0, 'degree') + '.');
+}
+
+function describeSphere() {
+  const v     = S.getLatitude();
+  const parts = [];
+  parts.push('Celestial sphere seen from ' +
+             speak( Math.abs(v), LAT_PRECISION, 'degree' ) + 
+             (v < 0 ? ' south' : ' north') + ' latitude, ' +
+             'rotated by ' + speak( S.getViewerAzimuth(), 0, 'degree' ) +
+         ' and tilted by ' + speak(S.getPhi(),            0, 'degree' ) +
+             '. ');
+  parts.push('An observer is at the center of the green horizon plane, ' +
+             'with north, east, south, and west marked around its border. ');
+
+  return parts.join(' ');
 }
 
 function describeScene() {
@@ -521,12 +587,21 @@ function describeScene() {
   parts.push('Celestial sphere seen from ' +
              speak( Math.abs(v), LAT_PRECISION, 'degree' ) + 
              (v < 0 ? ' south' : ' north') + ' latitude, ' +
-             'looking toward azimuth ' + speak( S.getViewerAzimuth(), 0, 'degree' ) +
-        ' from a viewing altitude of ' + speak(S.getPhi(),            0, 'degree' ) +
+             'rotated by ' + speak( S.getViewerAzimuth(), 0, 'degree' ) +
+         ' and tilted by ' + speak(S.getPhi(),            0, 'degree' ) +
              '. ');
-  parts.push('An observer is at the center of the green horizon plane, ' +
-             'with north, east, south, and west marked around its border. ');
+//parts.push('An observer is at the center of the green horizon plane, ' +
+//           'with north, east, south, and west marked around its border. ');
 
+  parts.push( addLabels2() + fillSayWhere() );
+  return parts.join(' ');
+}
+
+function fillSayWhere() {
+  // Add description of labeled components
+    
+  const v        = S.getLatitude();
+  const parts    = [];
   const sayWhere = [];
   const v2       = Math.abs( v );
   let   v3       = ( v >= 0 ) ? 'northern' : 'southern';
@@ -544,8 +619,8 @@ function describeScene() {
     sayWhere[0] += ' for the observer. ';
   }
   if (flags.showCE || flags.showEquinox)  {
-    if (!flags.showEquinox)  { sayWhere[1]   = 'The celestial equator ';            }
-    else                     { sayWhere[1]   = 'The Sun\'s path on the equinoxes '; }
+    if (!flags.showEquinox)  { sayWhere[1]   = 'The celestial equator '; }
+    else                     { sayWhere[1]   = 'The path of the Sun on the equinoxes '; }
     if      ( v2 ==  90 )    { sayWhere[1]  += 'is on the horizon'; }
     else if ( v2 >=  80 )    { sayWhere[1]  += 'is on the '                          + v4 + ' horizon'; }
     else if ( v2 >=  45 )    { sayWhere[1]  += 'stretches across the sky above the ' + v4 + ' horizon'; }
@@ -576,37 +651,192 @@ function describeScene() {
     else if ( v2 ==  0   )  { sayWhere[2] += 'the day is twelve hours long';      }
     sayWhere[2] += '. ';
   }
+  parts.push( sayWhere.join('') );
 
-  const shown = [];
-  if (flags.showPoles) {
-    shown.push('the axis through the North and South Celestial Poles, ' +
-               'labelled N C P and S C P');
-  }
-  if (flags.showCE && !flags.showEquinox) shown.push('the celestial equator');
-  if (flags.showEquinox) {
-    shown.push('the Sun\'s path on the autumnal and spring equinoxes, ' +
-               'at declination 0 degrees');
-  }
-  if (flags.showSolstice) {
-    if ( el.latSlider.value >= 0 )  { 
-    shown.push('the Sun\'s paths on the summer and winter solstices, ' +
-               'at declinations plus and minus ' +
-               speak(DEC_SUMMER_SOLSTICE, 1, 'degree' ) );
-    } else  {
-    shown.push('the Sun\'s paths on the winter and summer solstices, ' +
-               'at declinations plus and minus ' +
-               speak(DEC_SUMMER_SOLSTICE, 1, 'degree' ) );
+  if ( sayWhere.length === 0 ) {
+    if ( !urlClean )  { 
+      parts.push( 'Click through the steps to visualize the path of the Sun.' );
+    } else  { 
+      parts.push( 'Add steps 1 through 4 in turn to visualize the path of the Sun.' );
     }
   }
-  parts.push(shown.length
-    ? 'Also shown: ' + shown.join('; ') + '. ' + sayWhere.join('')
-             : 'No Sun paths currently shown. Click through the steps to build up the picture.');
 
   return parts.join(' ');
 }
 
+function addLabels2()  {
+  // Define state of labels
+
+  const onLabels = [];
+  if (flags.showPoles) {
+    onLabels.push('the axis through the North and South Celestial Poles, ' +
+               'labelled N C P and S C P');
+  }
+  if (flags.showCE && !flags.showEquinox) onLabels.push('the celestial equator');
+  if (flags.showEquinox) {
+    onLabels.push('the path of the Sun on the autumnal and spring equinoxes, ' +
+               'at declination 0 degrees');
+  }
+  if (flags.showSolstice) {
+    if ( latDual.getValue() >= 0 )  {
+    onLabels.push('the paths of the Sun on the summer and winter solstices, ' +
+               'at declinations plus and minus ' +
+               speak(DEC_SUMMER_SOLSTICE, 1, 'degree' ) );
+    } else  {
+    onLabels.push('the paths of the Sun on the winter and summer solstices, ' +
+               'at declinations plus and minus ' +
+               speak(DEC_SUMMER_SOLSTICE, 1, 'degree' ) );
+    }
+  }
+
+  return listLabels( onLabels );
+
+}
+
 function announce(msg) {
   announceLive(el.status, msg);
+}
+
+function updateLabelDescription() {
+  // Announce state of labels
+  el.step1.checked = flags.showPoles;
+  el.step2.checked = flags.showCE;
+  el.step3.checked = flags.showEquinox;
+  el.step4.checked = flags.showSolstice;
+
+  // Update canvas aria-label (full state) silently
+  //this.updateLabels();
+
+  // Send transient announcement to dedicated live region,
+  // first zeroing out content to force Chrome to read it
+  let msg = addLabels();
+  if ( flags.showPoles   || flags.showCE ||
+       flags.showEquinox || flags.showSolstice )  {
+    msg += fillSayWhere();
+  }
+  el.status.textContent = '';
+  setTimeout(() => { el.status.textContent = msg; }, 50);
+
+}
+
+function addLabels()  {
+  // Define list of labels
+
+  const onLabels = [];
+  if (el.step1.checked) onLabels.push('Celestial poles');
+  if (el.step2.checked) onLabels.push('Celestial equator');
+  if (el.step3.checked) onLabels.push('Equinox path');
+  if (el.step4.checked) onLabels.push('Solstice path');
+
+  return listLabels( onLabels );
+
+}
+
+function applyURL()  {
+  // Check loaded URL for initial setup parameters, allowing user to specify
+  // theta and phi on celestial sphere, latitude of observer, and/or visibility 
+  // of poles, celestial equator, equinox path, and solstice path labels, as
+  // well as visibility of masthead and control panels.
+
+  document.getElementById('canvas-more-keys').style.display = 'none';
+
+  const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+  if ( Object.keys(urlParams).length === 0 )  return;
+
+  let URL_THT, URL_PHI, URL_LAT, URL_LBL, URL_CLN;
+
+  // Define theta and phi of celestial sphere, and latitude of observer 
+  // (use simulation defaults for any unspecified values)
+  if ( (urlParams.theta !== undefined) && (!Number.isNaN(Number(urlParams.theta))) )  {
+    URL_THT = Math.round( pMod( Number(urlParams.theta), 360 ) );
+  } else  { URL_THT = 240; }
+  if ( (urlParams.phi   !== undefined) && (!Number.isNaN(Number(urlParams.phi  ))) )  {
+    URL_PHI = Math.round( Math.max( Math.min( Number(urlParams.phi), 90 ),   1 ) );
+  } else  { URL_PHI =  40; }
+  if ( (urlParams.lat   !== undefined) && (!Number.isNaN(Number(urlParams.lat  ))) )  {
+    URL_LAT = Math.round( Math.max( Math.min( Number(urlParams.lat), 90 ), -90 ) );
+  } else  { URL_LAT =  41; }
+
+  S.setLatitude( URL_LAT );
+  S.setThetaAndPhi( URL_THT, URL_PHI );
+
+  // Show/hide zenith, nadir, horizon, and meridian labels if label
+  // parameter is a defined array with four elements
+  // (ignore any values but 1 or 0)
+  if ( urlParams.labels !== undefined )  { 
+    URL_LBL = JSON.parse(urlParams.labels);
+      if ( Array.isArray(URL_LBL) && (URL_LBL.length === 4) )  {
+      if      ( URL_LBL[0] == 1 )  { flags.showPoles    = true;  }
+      else if ( URL_LBL[0] == 0 )  { flags.showPoles    = false; }
+      if      ( URL_LBL[1] == 1 )  { flags.showCE       = true;  }
+      else if ( URL_LBL[1] == 0 )  { flags.showCE       = false; }
+      if      ( URL_LBL[2] == 1 )  { flags.showEquinox  = true;  }
+      else if ( URL_LBL[2] == 0 )  { flags.showEquinox  = false; }
+      if      ( URL_LBL[3] == 1 )  { flags.showSolstice = true;  }
+      else if ( URL_LBL[3] == 0 )  { flags.showSolstice = false; }
+    }
+  }
+  syncDom();
+
+  // Hide masthead and control panels (everything except canvas)
+  // (hide if clean=true or clean=1)
+  if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+    urlClean = true;
+    document.getElementById('canvas-more-keys').style.display = 'block';
+    document.getElementById('control-panel').style.display    = 'none';
+    document.querySelectorAll('.app-layout').forEach((el) => {
+      el.style.display        = 'flex';
+      el.style.justifyContent = 'center';
+    });
+
+    // Update screen reader help for keyboard control over canvas
+    document.getElementById('sphere-instructions').innerHTML =
+      'Celestial sphere  surrounding horizon plane. '     +
+      'Drag, or use the arrow keys, to rotate the view. ' +
+      'Users may also use the A and D keys to rotate the view left and right, and ' +
+      'the W and S keys to rotate the viewing angle up and down, adding the Shift ' +
+      'or Caps Lock keys to increase the effect. The observer latitude can be '     +
+      'changed similarly with the plus and minus keys. Toggle label visibility '    +
+      'with 1, 2, 3, and 4, and reset the simulation with R.';
+    
+    // Re-direct skip link to new help (gear button) and strip masthead event listener
+    const oldSkipLink = document.querySelector('.sr-only-focusable');
+    if (oldSkipLink) {
+      const newSkipLink       = oldSkipLink.cloneNode(true);
+      newSkipLink.textContent = 'Skip to Keyboard Navigation';
+      newSkipLink.setAttribute('href', '#canvas-more-keys');
+
+      newSkipLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const gearBtn = document.getElementById('canvas-more-keys');
+        if (gearBtn) gearBtn.focus();
+      });
+
+      oldSkipLink.parentNode.replaceChild(newSkipLink, oldSkipLink);
+    }
+  }
+}
+
+function updateURL()  {
+  // Log current state parameters for possible URL-building
+
+  // URL parameters are theta and phi for celestial sphere, latitude for 
+  // observer, and visibility of four labels.
+  const theta = Math.round( R2D*S.theta );
+  const phi   = Math.round( R2D*S.phi   );
+  const lat   = Math.round( latDual.getValue() );
+  const st1   =            +document.getElementById('step-1').checked;
+  const st2   =            +document.getElementById('step-2').checked;
+  const st3   =            +document.getElementById('step-3').checked;
+  const st4   =            +document.getElementById('step-4').checked;
+
+  let s0 = 'Sun-Motions-Overview/index.html';    
+  s0    += '?theta=' + theta + '&phi=' + phi;
+  s0    += '&lat='   + lat;
+  s0    += '&labels=\[' + st1 + ',' + st2 + ',' + st3 + ',' + st4 + '\]';
+
+  window.stateURL = s0;
 }
 
 /* ---- pointer drag ------------------------------------------------------ */
@@ -650,8 +880,11 @@ canvas.addEventListener('pointermove', (evt) => {
 function endDrag(evt) {
   if (!drag || (evt && evt.pointerId !== drag.id)) return;
   drag = null;
-  announce('Viewing direction: azimuth ' + speak(S.getViewerAzimuth(), 0, 'degree') +
-                   ', viewing altitude ' + speak(S.getPhi(),           0, 'degree') + '.');
+  describeSphereRot();
+//announce('Celestial sphere rotated by ' + speak(S.getViewerAzimuth(), 0, 'degree') +
+//         ', and tilted by ' + speak(S.getPhi(),           0, 'degree') + '.');
+  
+  el.canvasDesc.textContent = describeSphere();
 }
 canvas.addEventListener('pointerup',     endDrag);
 canvas.addEventListener('pointercancel', endDrag);
@@ -671,79 +904,86 @@ el.viewProxy.addEventListener('keydown', (evt) => {
     case 'PageDown':                       dAlt =    15; break;
     case 'Home':                           dAlt =  90 - S.getPhi(); break;
     case 'End':                            dAlt = -90 - S.getPhi(); break;
+    case 'r': case 'R': if (urlClean) { resetSim(); break; }
+    case '1': case '!': if (urlClean) { flags.showPoles    = !flags.showPoles;    updateLabelDescription(); break; }
+    case '2': case '@': if (urlClean) { flags.showCE       = !flags.showCE;       updateLabelDescription(); break; }
+    case '3': case '#': if (urlClean) { flags.showEquinox  = !flags.showEquinox;  updateLabelDescription(); break; }
+    case '4': case '$': if (urlClean) { flags.showSolstice = !flags.showSolstice; updateLabelDescription(); break; }
+    case '+': case '=':
+      if (urlClean) {
+        latDual.setValue(latDual.getValue() + step, { announce: true, source: 'hotkey' });
+      }
+      break;
+    case '-': case '_':
+      if (urlClean) {
+        latDual.setValue(latDual.getValue() - step, { announce: true, source: 'hotkey' });
+      }
+      break;
     default: handled = false;
   }
   if (!handled) return;
   evt.preventDefault();
 
-  S.setViewerAzimuth(S.getViewerAzimuth() + dAz);
-  S.setPhi(S.getPhi() + dAlt);
-  render();
-  announce(           'Azimuth ' + speak(S.getViewerAzimuth(), 0, 'degree') +
-           ', viewing altitude ' + speak(S.getPhi(),           0, 'degree') + '.');
+  if ( (dAz !== 0) || (dAlt !== 0) )  { 
+    S.setViewerAzimuth(S.getViewerAzimuth() + dAz);
+    S.setPhi(S.getPhi() + dAlt);
+    describeSphereRot();
+  //announce('Celestial sphere rotated by ' + speak(S.getViewerAzimuth(), 0, 'degree') +
+  //         ', and tilted by ' + speak(S.getPhi(),           0, 'degree') + '.');
+  //announce(           'Azimuth ' + speak(S.getViewerAzimuth(), 0, 'degree') +
+  //         ', viewing altitude ' + speak(S.getPhi(),           0, 'degree') + '.');
+  //el.canvasDesc.textContent = describeSphere();
+  }
+  if ( ( evt.key !== 'r' ) && ( evt.key !== 'R' ) )  { 
+    buildScene();
+    render();
+  }
 });
 
-/* ---- latitude controls ------------------------------------------------- */
+/* ---- latitude controls (via DualControl) ------------------------------- */
 
+/**
+ * Commit latitude after an interaction ends. Returns the spoken message so
+ * DualControl can route it through its debounced aria-live region.
+ */
 function commitLatitude(v, doAnnounce) {
   setLatitude(v);
 
-  // Announce new latitude and flag when summer and winter solstices swap dates
-  let s0;
-  if ( flags.showSolstice && ( ( v * xLat < 0 )          ||
-                               ( v    == 0 && xLat < 0 ) ||
-                               ( xLat == 0 && v    < 0 ) ) )  {
-    s0  = '. The summer solstice is now in ';
-    s0 += ( v >= 0 ) ? 'June' : 'December';
-    s0 += ' and the winter solstice is now in ';
-    s0 += ( v <  0 ) ? 'June' : 'December';
-    s0 += '.';
-  } else  {
-    s0  = '.';
+  let msg = null;
+  if (doAnnounce) {
+    let s0;
+    if ( flags.showSolstice && ( ( v * xLat < 0 )          ||
+                                 ( v    == 0 && xLat < 0 ) ||
+                                 ( xLat == 0 && v    < 0 ) ) )  {
+      s0   = '. The summer solstice is now in ';
+      s0  += ( v >= 0 ) ? 'June' : 'December';
+      s0  += ' and the winter solstice in ';
+      s0  += ( v <  0 ) ? 'June' : 'December';
+      s0  += '. ';
+    } else {
+      s0 = '. ';
+    }
+    xLat = v;
+    msg  = latSpoken(v) + s0;
+    if ( flags.showPoles   || flags.showCE ||
+         flags.showEquinox || flags.showSolstice )  {
+      msg += fillSayWhere();
+    }
   }
-  xLat = v;
-  if (doAnnounce) announce(latSpoken(S.getLatitude()) + s0 );
+
+  if (document.activeElement !== el.viewProxy) {
+    el.canvasDesc.textContent = describeSphere();
+  } else if ( urlClean )  {
+    clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => { announce( msg, true ); }, 600);
+  }
+
+  return msg;
 }
 
-el.latSlider.addEventListener('input', () => {
-  setLatitude(parseFloat(el.latSlider.value));
-});
-el.latSlider.addEventListener('change', () => {
-  commitLatitude(parseFloat(el.latSlider.value), true);
-});
-
-/*
-el.latNumber.addEventListener('input', () => {
-  const v = parseFloat(el.latNumber.value);
-});
-*/
-el.latNumber.addEventListener('change', () => {
-  el.latNumber.value = Math.max( Math.min( parseFloat(el.latNumber.value), 90 ), -90 );
-  const v = parseFloat(el.latNumber.value);
-  commitLatitude(isFinite(v) ? v : S.getLatitude(), true);
-});
-el.latNumber.addEventListener('keydown', noEinNumber);
-
-el.latNumber.addEventListener('wheel', (evt) => {
-  evt.preventDefault();
-  commitLatitude(S.getLatitude() + (evt.deltaY < 0 ? LAT_STEP : -LAT_STEP), true);
-});
-el.latSlider.addEventListener('wheel', (evt) => {
-  evt.preventDefault();
-  commitLatitude(S.getLatitude() + (evt.deltaY < 0 ? LAT_STEP : -LAT_STEP), true);
-});
-
-el.latNumber.addEventListener('keydown', (evt) => {
-  let delta = 0;
-  if      (evt.key === 'ArrowUp'  ) delta =  keyAccel(evt, LAT_STEP);
-  else if (evt.key === 'ArrowDown') delta = -keyAccel(evt, LAT_STEP);
-  else if (evt.key === 'PageUp')    delta =  LAT_PAGE;
-  else if (evt.key === 'PageDown')  delta = -LAT_PAGE;
-  else return;
-  evt.preventDefault();
-  commitLatitude(S.getLatitude() + delta, true);
-  el.latNumber.value = Math.round( S.getLatitude() );
-});
+// Setting gear when only figure is shown
+document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
+document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
 
 const STEPS = [
   { el: 'step1', flag: 'showPoles',    label: 'show poles'             },
@@ -757,7 +997,17 @@ STEPS.forEach((step) => {
     flags[step.flag] = el[step.el].checked;
     buildScene();
     render();
-    announce(step.label + (flags[step.flag] ? ' on.' : ' off.'));
+    updateLabelDescription();
+    /*
+    let msg = addLabels();
+    if ( flags.showPoles   || flags.showCE ||
+         flags.showEquinox || flags.showSolstice )  {
+      msg += fillSayWhere();
+    }
+    announce( msg );
+    */
+  //announce(step.label + (flags[step.flag] ? ' on.' : ' off.'));
+
   });
 });
 
@@ -768,10 +1018,13 @@ function resetSim() {
   S.setViewerAzimuth(INIT_VIEWER_AZIMUTH);
   S.setPhi(INIT_VIEWER_ALTITUDE);
   S.setLatitude(INIT_LATITUDE);
+  xLat = INIT_LATITUDE;
+  applyURL();
+
   buildScene();
   render();
-  announce('Simulation reset. Showing the celestial sphere for an observer at ' +
-           latSpoken(INIT_LATITUDE) + '.');
+  el.status.textContent = '';
+  el.status.textContent = 'Simulation reset. ' + describeScene();
 }
 
 document.addEventListener('sim-reset', resetSim);
@@ -784,6 +1037,7 @@ function scheduleResize() {
 window.addEventListener('resize', scheduleResize);
 
 function boot() {
+  applyURL();
   buildScene();
   klunlInitEqn();
   render();

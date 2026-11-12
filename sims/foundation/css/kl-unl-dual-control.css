@@ -1,0 +1,196 @@
+/* ===========================================================================
+   KL-UNL dual control — paired text number box + muted range slider
+
+   Mimics the Safari / Chrome number-field spin ticks and reuses the foundation
+   slider track/thumb look from kl-unl-utils.css (.control-row__slider).
+   =========================================================================== */
+
+.kl-dual {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.35rem;
+  width:          100%;
+}
+
+/* --- number row ---------------------------------------------------------- */
+
+.kl-dual__number-row {
+  grid-template-columns: 1fr auto auto;
+  align-items:           center;
+  gap:                   0.35rem 0.5rem;
+}
+
+.kl-dual__number-wrap {
+  position:     relative;
+  display:      inline-block;
+  width:        100%;
+  max-width:    7.5rem;
+  box-sizing:   border-box;
+}
+
+.kl-dual__number {
+  box-sizing:    border-box;
+  width:         100%;
+  min-height:    2.75rem;
+  padding-right: 1.6rem;
+  text-align:    right;
+  font-size:     1.125rem;
+  /* Avoid native spinbutton / search clear chrome if UA invents any. */
+  -moz-appearance:    textfield;
+  appearance:         textfield;
+}
+
+/* Number-box unit (opts.unit) — peer of minLabel / maxLabel, right of field. */
+.kl-dual__unit {
+  font-size:   1.125rem;
+  line-height: 1;
+  user-select: none;
+}
+
+/* --- custom spin ticks (Chrome / Safari style) --------------------------- */
+
+.kl-dual__spins {
+  position:        absolute;
+  right:           1px;
+  top:             1px;
+  bottom:          1px;
+  width:           1.15rem;
+  display:         flex;
+  flex-direction:  column;
+  border-left:     1px solid #dbdbdb;
+  background:      #f0f0f0;
+  user-select:     none;
+  border-radius:   0 3px 3px 0;
+  overflow:        hidden;
+}
+
+.kl-dual__spin {
+  flex:            1 1 0;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  margin:          0;
+  padding:         0;
+  border:          0;
+  background:      #f0f0f0;
+  cursor:          default;
+  min-height:      0;
+  min-width:       0;
+  color:           inherit;
+}
+
+.kl-dual__spin--up {
+  border-bottom: 1px solid #dbdbdb;
+}
+
+.kl-dual__spin:hover {
+  background: #e5e5e5;
+}
+
+.kl-dual__spin:active {
+  background: #cccccc;
+}
+
+.kl-dual__spin:focus {
+  outline: none;
+}
+
+.kl-dual__spin:focus-visible {
+  outline:        2px solid var(--button-outline-color2, #005fcc);
+  outline-offset: -2px;
+  z-index:        1;
+}
+
+.kl-dual__spin--up::after {
+  content:       "";
+  border-left:   3.5px solid transparent;
+  border-right:  3.5px solid transparent;
+  border-bottom: 4px solid #555555;
+}
+
+.kl-dual__spin--down::after {
+  content:      "";
+  border-left:  3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top:   4px solid #555555;
+}
+
+/* --- slider row ---------------------------------------------------------- */
+
+.kl-dual__slider-row {
+  grid-template-columns: 1fr auto;
+  align-items:           center;
+  gap:                   0.35rem 0.5rem;
+}
+
+.kl-dual__slider {
+  grid-column: 1 / -1;
+  margin:      0;
+}
+
+.kl-dual__scale-min,
+.kl-dual__scale-max {
+  font-size:  0.95rem;
+  margin-top: -0.35rem;
+}
+
+.kl-dual__scale-min {
+  grid-column:  1;
+  justify-self: start;
+}
+
+.kl-dual__scale-max {
+  grid-column:  2;
+  justify-self: end;
+}
+
+/* No native tick marks on the range control. */
+.kl-dual__slider {
+  background: transparent;
+}
+
+/* KL-UNL blue ring on the thumb while scrubbing (range stays unfocused). */
+.kl-dual__slider.kl-dual__slider--active::-webkit-slider-thumb {
+  outline:        var(--button-outline-width, 2px) var(--button-outline-style, solid)
+                  var(--button-outline-color2, #005fcc);
+  outline-offset: 4px;
+}
+
+.kl-dual__slider.kl-dual__slider--active::-moz-range-thumb {
+  outline:        var(--button-outline-width, 2px) var(--button-outline-style, solid)
+                  var(--button-outline-color2, #005fcc);
+  outline-offset: 4px;
+}
+
+@media (max-width: 30rem) {
+  .kl-dual__number-wrap {
+    max-width: none;
+  }
+
+  .kl-dual__number {
+    width: 100%;
+  }
+}
+
+@media (forced-colors: active) {
+  .kl-dual__spins {
+    border-left: 1px solid CanvasText;
+    background:  ButtonFace;
+  }
+
+  .kl-dual__spin {
+    background: ButtonFace;
+  }
+
+  .kl-dual__spin--up {
+    border-bottom: 1px solid CanvasText;
+  }
+
+  .kl-dual__spin--up::after {
+    border-bottom-color: ButtonText;
+  }
+
+  .kl-dual__spin--down::after {
+    border-top-color: ButtonText;
+  }
+}

@@ -16,7 +16,7 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, stepToPrec, speak, pMod, noEinNumber, keyAccel,
+  legToFixed, stepToPrec, speak, listLabels, pMod, noEinNumber, keyAccel,
   updateSliderProgress, hexToRGBA, VO_FIX_LGND, logAct,
   descMoreKeys, hideMoreKeys, updateShowHideLabelButtons
 } from '../foundation/js/kl-unl-utils.js';
@@ -672,15 +672,14 @@ class App {
       '. A star is shown at right ascension ' + speak(this.star.ra,  stepToPrec( this.raField.step  ), ' hour') +
                              ', declination ' + speak(this.star.dec, stepToPrec( this.decField.step ), 'degree') +
       ', both drawn as coloured arcs. ' +
-      this.listLabels() + 
+      this.addLabels() + 
     //(shown.length ? 'Labels shown: ' + shown.join(', ') + '.' : 'none.') +
       ' Arrow keys rotate this view (and the Shift and Caps Lock keys increase the effect of each key).' +
       ' Tab to the star marker to move the star with the arrow keys instead. ' +
       VO_FIX_LGND + s0;
   }
 
-  listLabels()  {
-    // List state of labels
+  addLabels()  {
 
     const onLabels = [];
     if (this.labels.earthPoles) onLabels.push('Earth poles');
@@ -690,22 +689,10 @@ class App {
     if (this.labels.zeroHours)  onLabels.push('zero-hour circle');
     if (this.labels.ecliptic)   onLabels.push('ecliptic');
     if (this.labels.eastArrow)  onLabels.push('east arrow');
-    
-    let labelText = onLabels.length ? onLabels.join(', ') : 'none';
-    const i = labelText.lastIndexOf(', ');
-    const j = labelText.split(', ').length - 1;
-    if ( i > -1 )  {
-      if ( j > 1 )  { 
-        labelText = labelText.substring( 0, i + 2 ) + 'and ' +
-          labelText.substring( i + 2 );
-      } else  {
-        labelText = labelText.substring( 0, i ) + ' and ' +
-          labelText.substring( i + 2 );
-      }
-    }
-    return 'Visible labels: ' + labelText + '. ';
-  }
 
+    return listLabels( onLabels );
+  }
+  
   announce(msg) {
     if (this.live)  {
     //this.live.textContent = msg;
@@ -996,7 +983,7 @@ class App {
         this.render();
         clearTimeout(this.announceTimer);
         this.announceTimer = setTimeout(() => {
-          this.announce(this.listLabels());
+          this.announce(this.addLabels());
         }, 600);
       }
     });
@@ -1055,7 +1042,7 @@ class App {
         this.render();
         clearTimeout(this.announceTimer);
         this.announceTimer = setTimeout(() => {
-          this.announce(this.listLabels());
+          this.announce(this.addLabels());
         }, 600);
         }
       });

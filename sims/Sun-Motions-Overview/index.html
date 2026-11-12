@@ -7,18 +7,19 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
-  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"        type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css"      type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-dual-control.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png" sizes="32x32">
   <link rel="apple-touch-icon" href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
-  <script defer src="../foundation/js/kl-unl-masthead.js"></script>
+  <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
   <script type="module" src="simulation.js"></script>
 </head>
 <body>
-  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
 
   <div class="app-shell">
 
@@ -31,7 +32,12 @@
       <!-- ===== Diagram panel ===================================== -->
       <section class="panel sim-panel sim-diagram-panel"
                aria-labelledby="diagram-heading">
-        <h2 id="diagram-heading" class="panel__heading">Celestial sphere</h2>
+        <h2 id="diagram-heading" class="panel__heading">Celestial Sphere
+            <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
+            <img src="../foundation/images/klunl_gear.svg"
+            alt="Additional Keyboard Navigation" width="30"
+            height="30"></button>
+    </h2>
 
         <div class="panel__canvas-wrap sim-canvas-wrap">
           <div class="sim-canvas-stage">
@@ -64,44 +70,21 @@
           view left and right, and the W and S keys to rotate the
           viewing angle up and down.
         </p>
-        
-        <p id="canvas-description" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+        <!-- Static description, to be read when element receives focus -->
+        <p id="canvas-description" class="sr-only"></p>
+        <!-- Live region, for reporting active changes of state (alt/az, latitude, labels) -->
+        <p id="sim-status"         class="sr-only" aria-live="polite"></p>
       </section>
 
       <!-- ===== Controls panel ==================================== -->
-      <section class="panel sim-panel sim-controls-panel"
+      <section class="panel sim-panel sim-controls-panel" id="control-panel"
                aria-labelledby="controls-heading">
         <h2 id="controls-heading" class="panel__heading">Controls</h2>
 
         <fieldset class="control-fieldset sim-fieldset">
-        <!-- <legend class="control-fieldset__legend">Observer</legend> -->
-        
-
-          <div class="control-row sim-row-number">
-            <label class="control-row__label" for="latitude-number">Latitude:</label>
-            <input class="control-row__input sim-number"
-                   id="latitude-number"
-                   type="number"
-                   min="-90" max="90" step="1" value="41"
-                   inputmode="decimal"><span>&deg;</span>
-          </div>
-
-          <div class="control-row sim-row-latitude">
-            <!-- <label class="control-row__label" for="latitude-slider">Latitude</label> -->
-
-            <input class="control-row__slider sim-slider"
-                   id="latitude-slider"
-                   type="range"
-                   min="-90" max="90" step="1" value="41"
-                   aria-hidden="true" tabindex="-1">
-
-            <span class="sim-scale-min" id="latitude-min" aria-hidden="true"
-                  >90&deg;&nbsp;S</span>
-            <span class="sim-scale-max" id="latitude-max" aria-hidden="true"
-                  >90&deg;&nbsp;N</span>
-
-          </div>
-
+          <!-- DualControl mounts the paired latitude number box + muted slider. -->
+          <div id="latitude-dual-mount"></div>
         </fieldset>
 
         <fieldset class="control-fieldset sim-fieldset sim-fieldset--legend">
@@ -153,9 +136,24 @@
           </div>
         </fieldset>
       </section>
+      <section class="panel sim-panel" id="url-clean-panel" role="dialog"
+        aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
+        style="display:none">
+        <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
+          <p id="urlDesc">
+          Drag and use the arrow keys (or A, D, W, and S) to rotate the view,
+          amplifying the effect with the Shift or Caps Lock keys. Adjust
+          observer latitude similarly with the plus and minus keys.  Toggle
+          arc and line visibility with the 1 (poles), 2 (celestial equator), 3
+          (equinox path), and 4 (solstice path) keys. Reset the simulation
+          with R.</p>
+        <p id="sr-description-kn2" class="sr-only">Close description of keyboard
+        navigation options.</p>
+        <div class="div-closeKeyNavBtn">
+          <button id="closeKeyNavBtn" aria-describedby="sr-description-kn2">Close</button>
+        </div>
+      </section>
     </main>
-
-    <p id="sim-status" class="sr-only" role="status" aria-live="polite"></p>
   </div>
 </body>
 </html>

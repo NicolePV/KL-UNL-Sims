@@ -24,7 +24,7 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, stepToPrec, speak, pMod, snapFixed, noEinNumber, keyAccel, 
+  legToFixed, stepToPrec, speak, listLabels, pMod, snapFixed, noEinNumber, keyAccel, 
   updateSliderProgress, hexToRGBA, soon, announceLive, VO_FIX_LGND, logAct,
   updateShowHideLabelButtons, descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
@@ -641,7 +641,7 @@ class App {
       'Horizon diagram. Cardinal directions N, E, S, and W shown on the horizon. ' +
       'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
            ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' + 
-       locateStar(this.star.az,this.star.alt, 0) + this.listLabels() );
+       locateStar(this.star.az,this.star.alt, 0) + listLabels() );
   }
 
   updateLabelDescription() {
@@ -655,12 +655,12 @@ class App {
     const liveRegion = document.getElementById('diagramDesc');
     if (liveRegion) {
       liveRegion.textContent = '';
-      setTimeout(() => { liveRegion.textContent = this.listLabels(); }, 50);
+      setTimeout(() => { liveRegion.textContent = this.addLabels(); }, 50);
     }
   }
 
-  listLabels()  {
-    // List state of labels
+  addLabels()  {
+    // Define state of labels
 
     const onLabels = [];
     if (this.chk.zenith.checked)   onLabels.push('Zenith');
@@ -668,19 +668,7 @@ class App {
     if (this.chk.nadir.checked)    onLabels.push('Nadir');
     if (this.chk.meridian.checked) onLabels.push('Meridian');
 
-    let labelText = onLabels.length ? onLabels.join(', ') : 'none';
-    const i = labelText.lastIndexOf(', ');
-    const j = labelText.split(', ').length - 1;
-    if ( i > -1 )  {
-      if ( j > 1 )  { 
-        labelText = labelText.substring( 0, i + 2 ) + 'and ' +
-          labelText.substring( i + 2 );
-      } else  {
-        labelText = labelText.substring( 0, i ) + ' and ' +
-          labelText.substring( i + 2 );
-      }
-    }
-    return 'Visible labels: ' + labelText + '.';
+    return listLabels( onLabels );
   }
 
   announce(isReset) {
@@ -695,7 +683,7 @@ class App {
                locateStar(this.star.az,this.star.alt, 0);
     msg    += 'Celestial sphere rotated by ' + speak( az,  0, 'degree' ) +
                            ' and tilted by ' + speak( alt, 0, 'degree' ) + '. ';
-    msg    += this.listLabels();
+    msg    += this.addLabels();
     
   //this.desc.textContent = msg;
     this.desc.textContent = '';
