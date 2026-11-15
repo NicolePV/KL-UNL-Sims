@@ -28,9 +28,20 @@
    =========================================================================== */
 
 import {
-  legToFixed, stepToPrec, speak, snapFixed, amplifyArrowKey, updateSliderProgress,
-  drawArrowhead, soon, announceLive
+  legToFixed, stepToPrec, speak,
+  drawArrowhead, soon, pMod, keyAccel, announceLive, logAct,
+  descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
+import { DualControl } from '../foundation/js/kl-unl-dual-control.js';
+
+logAct('INIT_centerofmasssimulator');
+
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
+
+let   canvasVar   = 0;  // cycle between updating mass 1, mass 2, and mass separation
+let   canvasFocus = 'mass1';
+const PARM_STEP   = 0.1;
 
 (function () {
   'use strict';
@@ -66,20 +77,23 @@ import {
   const MASS_ART     = 28;    // sphere.svg: 28 × 28, radius 14
   const CROSS_ART    = 12;    // cross.svg:  12 × 12
 
+  const PARM_PREC   = stepToPrec(String(PARM_STEP));
+
   const SLIDER_SPEC = {
-    mass1: { min:  1, max: 10, init:  7,
-             precision: stepToPrec(document.getElementById('mass1Num').step),
-             text:      'object 1 mass:' },
-    mass2: { min:  1, max: 10, init:  3,
-             precision: stepToPrec(document.getElementById('mass2Num').step),
-             text:      'object 2 mass:' },
-    sep:   { min:  1, max: 20, init: 10,
-             precision: stepToPrec(document.getElementById('sepNum').step ),
-             text:      'separation:'    }
+    mass1: { min:  1, max: 10, init:  7, precision: PARM_PREC, text: 'object 1 mass:' },
+    mass2: { min:  1, max: 10, init:  3, precision: PARM_PREC, text: 'object 2 mass:' },
+    sep:   { min:  1, max: 20, init: 10, precision: PARM_PREC, text: 'separation:'    }
   };
-  
+
+  // Same rounding as DualControl, so state and the number boxes always agree.
+  function quantize(n, spec) {
+    const k = Math.pow(10, spec.precision);
+    return Math.round(Math.min(Math.max(n, spec.min), spec.max) * k) / k;
+  }
+
   // Product default is unchecked; keep in sync with index.html (no checked attr).
-  const FIX_CM_INIT = false;
+  // A URL cmf value replaces it so Reset returns to the linked setup.
+  let FIX_CM_INIT = false;
 
   // Quantities are dimensionless; spoken units name the abstract measure.
   const MASS_UNIT = 'mass unit';
@@ -150,16 +164,14 @@ import {
     fixCM:      document.getElementById('fixCM')
   };
 
+  // dual (DualControl) is attached in section 8 once the helpers exist.
   const controls = {
-    mass1: { num:   document.getElementById('mass1Num'),
-             range: document.getElementById('mass1Slider'),
-             spec:  SLIDER_SPEC.mass1, unit: MASS_UNIT, name: 'Object 1 mass' },
-    mass2: { num:   document.getElementById('mass2Num'),
-             range: document.getElementById('mass2Slider'),
-             spec:  SLIDER_SPEC.mass2, unit: MASS_UNIT, name: 'Object 2 mass' },
-    sep:   { num:   document.getElementById('sepNum'),
-             range: document.getElementById('sepSlider'),
-             spec:  SLIDER_SPEC.sep,   unit: DIST_UNIT, name: 'Separation' }
+    mass1: { mount: 'mass1-dual-mount', hint: 'massRangeHint', other: 'mass2',
+             spec:  SLIDER_SPEC.mass1,  unit: MASS_UNIT,       name:  'Object 1 mass', dual: null },
+    mass2: { mount: 'mass2-dual-mount', hint: 'massRangeHint', other: 'mass1',
+             spec:  SLIDER_SPEC.mass2,  unit: MASS_UNIT,       name:  'Object 2 mass', dual: null },
+    sep:   { mount: 'sep-dual-mount',   hint: 'sepRangeHint',  other: null,
+             spec:  SLIDER_SPEC.sep,    unit: DIST_UNIT,       name:  'Separation',    dual: null }
   };
 
   const ctx = el.canvas.getContext('2d');
@@ -370,6 +382,7 @@ import {
     drawArrowhead( ctx, [ 0,    ARROW_Y ], [  sz3*del, del ] );
 
     ctx.restore();
+    updateURL();
   }
 
   function updateOverlay(d) {
@@ -436,16 +449,12 @@ import {
            vd2 + ', from the center of mass to object 2. ' + heavier + ' ' + frame;
   }
 
-  function syncControls(d) {
+  // Silent: DualControl skips writes to a focused field mid-gesture and never
+  // announces from here (announcements come from commit handlers only).
+  function syncControls() {
     Object.keys(controls).forEach(function (key) {
-      const c     = controls[key];
-      const value = state[key];
-      const text  = legToFixed(value, c.spec.precision);
-      // Always rewrite the text field from clamped state (including rejections).
-      c.num.value   = text;
-      c.range.value = String(value);
-
-      updateSliderProgress(c.range);
+      const dual = controls[key].dual;
+      if (dual) { dual.setValue(state[key], { silent: true, source: 'sync' }); }
     });
     el.fixCM.checked = state.fixCM;
   }
@@ -455,7 +464,7 @@ import {
     drawCanvas(d);
     updateOverlay(d);
     updateLabels(d);
-    syncControls(d);
+    syncControls();
     el.canvasDesc.textContent = describeDiagram(d);
     calibrateMassLabels();
     return d;
@@ -478,7 +487,7 @@ import {
             'it lies closer to the center of mass. ';
     } else if ( state.mass1 < state.mass2 )  {
       cmp = 'Because object 1 is less massive than object 2, ' +
-            'it lies further from the center of mass. ';
+            'it lies farther from the center of mass. ';
     } else  {
       cmp = 'Because objects 1 and 2 are of equal mass, ' +
             'they lie the same distance from the center of mass. ';
@@ -487,106 +496,190 @@ import {
            + vd2 + '. ' + cmp;
   }
 
-  function announceControl(key, d) {
+  function controlSentence(key, d) {
     const c = controls[key];
-    announce(c.name + ' ' + speak(state[key], c.spec.precision, c.unit) + '. ' +
-             distancesSentence(d));
+    return c.name + ' ' + speak(state[key], c.spec.precision, c.unit) + '. ' +
+           distancesSentence(d);
+  }
+
+  // A dragged mass reaching or passing the other mass (null otherwise).
+  function massesEqualCrossing(key, v, prev) {
+    const other = controls[key].other;
+    if (!other || prev === state[other]) { return null; }
+    return ((prev - state[other]) * (v - state[other]) <= 0) ? 'Masses equal.' : null;
   }
 
   /* =========================================================================
-     7. INPUT — linked number boxes and sliders write the same state
-
-     A catalog-wide binder may move to foundation once a second sim needs it;
-     for now the commit / announce wording stays sim-specific here.
+     7. URL — URL parameters can specify initial setup
      ========================================================================= */
 
-  function setValue(key, raw, announceIt=true) {
+  function applyURL()  {
+    // Check loaded URL for initial setup parameters, allowing user to specify
+    // mass 1 and 2, mass separation, and/or fixed or free center of mass  
+    // position, as well as visibility of masthead and control panels.
+
+    document.getElementById('canvas-more-keys').style.display = 'none';
+
+    const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+    if ( Object.keys(urlParams).length === 0 )  return;
+
+    let URL_MS1, URL_MS2, URL_SEP, URL_CMF;
+
+    // Define mass 1, mass 2, and mass separation 
+    // (use simulation defaults for any unspecified values)
+    // Keep tenths (the controls' step); clamp to each control's range.
+    const fromURL = function (raw, spec) {
+      const n = Number(raw);
+      return (raw !== undefined && raw !== '' && Number.isFinite(n))
+        ? quantize(n, spec)
+        : spec.init;
+    };
+    URL_MS1 = fromURL(urlParams.ms1, SLIDER_SPEC.mass1);
+    URL_MS2 = fromURL(urlParams.ms2, SLIDER_SPEC.mass2);
+    URL_SEP = fromURL(urlParams.sep, SLIDER_SPEC.sep  );
+
+    state.mass1 = SLIDER_SPEC.mass1.init = URL_MS1;
+    state.mass2 = SLIDER_SPEC.mass2.init = URL_MS2;
+    state.sep   = SLIDER_SPEC.sep.init   = URL_SEP;
+
+    // Make center of mass fixed/free to shift if linked parameter is defined
+    // (ignore any values but 1 or 0; anm is accepted from older links)
+    const cmfParam = (urlParams.cmf !== undefined) ? urlParams.cmf : urlParams.anm;
+    if ( cmfParam !== undefined )  {
+      URL_CMF = cmfParam;
+      if      ( URL_CMF == 1 )  { state.fixCM = FIX_CM_INIT = true;  }
+      else if ( URL_CMF == 0 )  { state.fixCM = FIX_CM_INIT = false; }
+    } else  { URL_CMF = FIX_CM_INIT; }
+    syncControls();
+
+    // Hide masthead and control panels (everything except canvas)
+    // (hide if clean=true or clean=1)
+    if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+      urlClean = true;
+      document.getElementById('canvas-more-keys').style.display = 'block';
+      document.getElementById('control-panel').style.display    = 'none';
+      document.querySelector('.stage-panel').classList.add('stage-panel--clean');
+      document.querySelectorAll('.app-layout').forEach((el) => {
+        el.style.display        = 'flex';
+        el.style.justifyContent = 'center';
+      });
+
+      // Update screen reader help for keyboard control over canvas
+      document.getElementById('grid-instructions').innerHTML =
+        'Use the arrow keys (or A and D) to change the mass of Object 1, '      + 
+        'amplifying the effect with the Shift or Caps Lock keys. Press enter '  + 
+        'once to update the mass of Object 2 similarly, and a second time to '  + 
+        'update the object separation. Toggle keeping the center of mass '      + 
+        'fixed or free with F, and reset the simulation with R.';
+
+      // Re-direct skip link to new help (gear button) and strip masthead event listener
+      const oldSkipLink = document.querySelector('.sr-only-focusable');
+      if (oldSkipLink) {
+        const newSkipLink       = oldSkipLink.cloneNode(true);
+        newSkipLink.textContent = 'Skip to Keyboard Navigation';
+        newSkipLink.setAttribute('href', '#canvas-more-keys');
+
+        newSkipLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const gearBtn = document.getElementById('canvas-more-keys');
+          if (gearBtn) gearBtn.focus();
+        });
+
+        oldSkipLink.parentNode.replaceChild(newSkipLink, oldSkipLink);
+      }
+    }
+  }
+
+  function updateURL()  {
+    // Log current state parameters for possible URL-building
+
+    // URL parameters are mass of objects 1 and 2, object separation, and
+    // fixed/free nature of center of mass.
+    const ms1 = state.mass1;
+    const ms2 = state.mass2;
+    const sep = state.sep;
+    const cmf = +document.getElementById('fixCM').checked;
+
+    let s0 = 'center-of-mass-simulator/index.html';    
+    s0    += '?ms1=' + ms1 + '&ms2=' + ms2;
+    s0    += '&sep=' + sep + '&cmf=' + cmf;
+
+    window.stateURL = s0;
+  }
+  
+  /* =========================================================================
+     8. INPUT — foundation DualControl pairs (number box + muted slider)
+
+     DualControl owns the gesture timing (silent mid-drag, one message on
+     release); the commit wording stays sim-specific here.
+     ========================================================================= */
+
+  // Commit text for a DualControl release / Enter / blur. Typed commits carry
+  // meta.invalid (not a number; value kept) or meta.clamped (pinned to an end).
+  function commitSentence(key, meta) {
     const c    = controls[key];
     const spec = c.spec;
-
-    if (typeof raw !== 'number' || Number.isNaN(raw) || !Number.isFinite(raw)) {
-      const d = render();
-      if (announceIt) {
-        announce('Enter a number from ' + spec.min + ' to ' + spec.max + '. ' +
-                 c.name + ' remains ' + speak(state[key], spec.precision, c.unit) + '.');
-      }
-      return d;
+    const d    = derive();
+    if (meta.invalid) {
+      return 'Enter a number from ' + spec.min + ' to ' + spec.max + '. ' +
+             c.name + ' remains ' + speak(state[key], spec.precision, c.unit) + '.';
     }
-
-    const outOfRange = raw < spec.min || raw > spec.max;
-    state[key] = snapFixed(raw, spec.precision, spec.min, spec.max);
-    const d = render();
-
-    if (outOfRange) {
-      announce('Value must lie within valid range (' + spec.min + ' to ' + spec.max + '). ' +
-               c.name + ' ' + speak(state[key], spec.precision, c.unit) + '. ' +
-               distancesSentence(d));
-    } else if (announceIt) {
-      announceControl(key, d);
+    if (meta.clamped) {
+      return 'Value must lie within valid range (' + spec.min + ' to ' + spec.max + '). ' +
+             controlSentence(key, d);
     }
-    return d;
+    return controlSentence(key, d);
   }
 
   Object.keys(controls).forEach(function (key) {
     const c = controls[key];
-
-    // input = live while dragging / arrowing; change = commit + announce.
-    c.range.addEventListener('input', function () {
-      setValue(key, parseFloat(c.range.value), false);
-    });
-    c.range.addEventListener('change', function () {
-      setValue(key, parseFloat(c.range.value), true);
-    });
-
-    // Number box: Enter, spin button, or blur commits.
-    let keydownTriggered = false;
-    c.num.addEventListener('keydown', function (event) {
-      const isAllowedKey = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(event.key);
-      const isDigit      = event.key >=  '0' && event.key <= '9';
-      const isDecimal    = event.key === '.' && !c.num.value.includes('.');
-
-      if ( !isAllowedKey  && !isDigit && !isDecimal && event.key.length === 1 &&
-           !event.ctrlKey && !event.metaKey ) {
-        event.preventDefault();
-        return;
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        keydownTriggered = true;
-        setValue(key, parseFloat(c.num.value), true);
-        c.num.blur();
-      }
-    });
-    // Capture spin button events (clicking on up or down arrows within number box)
-    c.num.addEventListener('change', function () {
-      if (keydownTriggered) {
-        keydownTriggered = false;
-        return;
-      }
-      setValue(key, parseFloat(c.num.value), true);
-    });
-    c.num.addEventListener('blur', function () {
-      if (keydownTriggered) {
-        keydownTriggered = false;
-        return;
-      }
-      setValue(key, parseFloat(c.num.value), true);
+    c.dual  = new DualControl({
+      mount:       document.getElementById(c.mount),
+      id:          key + '-ctl',
+      label:       c.spec.text,
+      min:         c.spec.min,
+      max:         c.spec.max,
+      step:        PARM_STEP,
+      pageStep:    1,
+      value:       state[key],
+      minLabel:    String(c.spec.min),
+      maxLabel:    String(c.spec.max),
+      liveRegion:  el.live,
+      describedBy: c.hint,
+      milestone:   c.other ? function (v, prev) { return massesEqualCrossing(key, v, prev); } : null,
+      onInput:     function (v) { state[key] = v; render(); },
+      onChange:    function (v, meta) { return commitSentence(key, meta); }
     });
   });
+
+  // Canvas keyboard mode (clean URL): same state path, announced per key press.
+  function stepControl(key, next) {
+    const prev    = state[key];
+    state[key]    = controls[key].dual.setValue(next, { silent: true, source: 'canvas' });
+    const d       = render();
+    const crossed = (state[key] !== prev) ? massesEqualCrossing(key, state[key], prev) : null;
+    announce((crossed ? crossed + ' ' : '') + controlSentence(key, d));
+  }
 
   el.fixCM.addEventListener('change', function () {
     state.fixCM = el.fixCM.checked;
     const d = render();
     announce(state.fixCM
-      ? 'Keep CM fixed is on. The center of mass stays at the middle of the grid. '          + distancesSentence(d)
-      : 'Keep CM fixed is off. The two objects stay in place and the center of mass moves. ' + distancesSentence(d));
+      ? 'Keep C M fixed is on. The center of mass stays at the middle of the grid. '          + distancesSentence(d)
+      : 'Keep C M fixed is off. The two objects stay in place and the center of mass moves. ' + distancesSentence(d));
   });
 
   document.addEventListener('sim-reset', function () {
+    reset();
+  });
+
+  function reset()  {
     state.mass1 = SLIDER_SPEC.mass1.init;
     state.mass2 = SLIDER_SPEC.mass2.init;
     state.sep   = SLIDER_SPEC.sep.init;
     state.fixCM = FIX_CM_INIT;
+    applyURL();
 
     const d   = render();
     const vm1 = speak(state.mass1, SLIDER_SPEC.mass1.precision, MASS_UNIT);
@@ -599,24 +692,66 @@ import {
              'object 2 mass ' + vm2 + ', ' +
              'separation '    + vsp + '. ' +
              'C M position '  + cms + '. ' + distancesSentence(d));
-  });
+  }
 
-  // Shift (or Caps Lock) + arrow: ×10 (9+1) step via foundation amplifyArrowKey.
-  controls.mass1.range.addEventListener('keydown', function (event) {
-    amplifyArrowKey(event, controls.mass1.range, 9);
-    updateSliderProgress(controls['mass1'].range);
+  el.canvas.addEventListener('keydown', (evt) => {
+
+    if (!urlClean) return;
+    
+    // Change target (mass 1, mass 2, or separation of masses)
+    if ( (evt.key == "Enter") || (evt.key == " ") )  {
+      canvasVar = pMod( canvasVar + 1, 3 );
+      if ( canvasVar == 1 )  { 
+        canvasFocus = "mass2";
+        announce( "Mass 2 control mode; " +
+                  "arrow keys now decrease and increase mass 2. " +
+                  "Press Enter to change separation of masses." );
+      } else if ( canvasVar == 2 )  {
+        canvasFocus = "sep";
+        announce( "Mass separation control mode; " +
+                  "arrow keys now decrease and increase separation of masses. " +
+                  "Press Enter to change mass 1." );
+      } else  {
+        canvasFocus = "mass1";
+        announce( "Mass 1 control mode; " +
+                  "arrow keys now decrease and increase mass 1. " +
+                  "Press Enter to change mass 2." );
+      }
+      evt.preventDefault();
+      return;
+    };
+  
+    // Keyboard control for reset and fixed/free center of mass 
+    // when controls are hidden
+    if (urlClean) {
+      switch (evt.key) {
+        case 'r': case 'R': reset();          return;
+        case 'f': case 'F': el.fixCM.click(); return;
+      }
+    }
+  
+    // Keyboard control for the current target (mass 1, mass 2, or separation)
+    const key  = canvasFocus;
+    const spec = SLIDER_SPEC[key];
+    const step = keyAccel(evt, PARM_STEP);
+    let used   = true;
+    switch (evt.key) {
+      // MacOS+Voiceover users need an alternative to arrow keys
+      case "ArrowLeft":  case "ArrowDown": case 'A': case 'a': stepControl(key, state[key] - step); break;
+      case "ArrowRight": case "ArrowUp":   case 'D': case 'd': stepControl(key, state[key] + step); break;
+      case "Home":                                             stepControl(key, spec.min);          break;
+      case "End":                                              stepControl(key, spec.max);          break;
+      default: used = false;
+    }
+    if (used) evt.preventDefault();
   });
-  controls.mass2.range.addEventListener('keydown', function (event) {
-    amplifyArrowKey(event, controls.mass2.range, 9);
-    updateSliderProgress(controls['mass2'].range); 
-  });
-  controls.sep.range.addEventListener('keydown',   function (event) {
-    amplifyArrowKey(event, controls.sep.range, 9);
-    updateSliderProgress(controls['sep'].range);
-  });
+  
+  // Setting gear when only figure is shown
+  document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
+  document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
 
   /* =========================================================================
-     8. SIZING — stage scale drives overlay label size and redraw
+     9. SIZING — stage scale drives overlay label size and redraw
      ========================================================================= */
 
   function updateStageScale() {
@@ -650,13 +785,14 @@ import {
   }
 
   /* =========================================================================
-     9. START-UP
+     10. START-UP
 
      Foundation klunlInitEqn() is a stub; replace it here so MathJax ready
      (and a direct call below) both initialize the sim.
      ========================================================================= */
 
   window.klunlInitEqn = function () {
+    applyURL();
     readPalette();
     updateStageScale();
     render();

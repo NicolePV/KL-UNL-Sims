@@ -9,6 +9,7 @@
   <!-- Shared KL-UNL foundation -->
   <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
   <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-dual-control.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
@@ -48,7 +49,7 @@
 </head>
 
 <body id="body">
-  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
   <div class="app-shell com-shell">
     <div class="app-shell__backdrop" aria-hidden="true"></div>
 
@@ -64,7 +65,12 @@
 
       <!-- ===================== DIAGRAM ===================== -->
       <section class="panel stage-panel" aria-labelledby="hdgDiagram">
-        <h2 class="panel__heading" id="hdgDiagram">Grid Diagram</h2>
+        <h2 class="panel__heading" id="hdgDiagram">Grid Diagram
+            <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
+            <img src="../foundation/images/klunl_gear.svg"
+            alt="Additional Keyboard Navigation" width="30"
+            height="30"></button>
+        </h2>
 
         <div class="panel__canvas-wrap">
           <!-- The stage is one composite image for assistive technology: the
@@ -73,10 +79,10 @@
                the same render() that draws the picture. -->
           <div class="stage" id="stage" role="img"
                aria-label="Two objects on a scaled grid with their center of mass marked between them"
-               aria-describedby="canvasDesc">
+               aria-describedby="canvasDesc grid-instructions">
 
             <!-- Code-drawn art only (the grid and the arrows) -->
-            <canvas id="simCanvas" class="stage-canvas" aria-hidden="true"></canvas>
+            <canvas id="simCanvas" class="stage-canvas" tabindex="0" aria-hidden="true"></canvas>
 
             <!-- Legacy assets stored in images, plus the MathJax-typeset
             labels. Positioned in percentages of the stage box so everything
@@ -99,6 +105,9 @@
         </div>
 
         
+        <!-- Visible/Offscreen Instructions -->
+        <p id="grid-instructions" class="sr-only"></p>
+
         <p class="panel__help sr-only sr-only-focusable">
           Each grid square is one distance unit on a side, so the grid rescales
           when you change the separation. The blue arrow spans the distance from
@@ -108,7 +117,7 @@
       </section>
 
       <!-- ===================== CONTROLS ===================== -->
-      <section class="panel controls-panel" aria-labelledby="hdgControls">
+      <section class="panel controls-panel" id="control-panel" aria-labelledby="hdgControls">
         <!-- Visually hidden rather than deleted: the three labeled rows already
              say what this panel is, so the visible heading was redundant, but it
              stays in the DOM so the section keeps an accessible name and the
@@ -122,69 +131,25 @@
                boxes and the sliders line up down the whole panel. -->
           <div class="com-rows">
           <h3 class="sr-only" id="hdgMass1">Mass 1 number box and slider controls</h3>
-          <div class="control-row com-row" aria-labelledby="hdgMass1">
-            <label class="control-row__label com-row__label" for="mass1Num">object 1 mass:</label>
-            <!-- Switch from type=text to type=number
-            <input class="control-row__input control-row__tnum" id="mass1Num"
-                   type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" spellcheck="false"
-                   value="7.0" aria-describedby="massRangeHint">
-            -->
-            <input class="control-row__input control-row__tnum" id="mass1Num"
-                   type="number" step="0.1" min="1" max="10" autocomplete="off" spellcheck="false"
-                   value="7.0" aria-describedby="massRangeHint">
-            <label class="sr-only" for="mass1Slider">object 1 mass slider</label>
-            <input class="control-row__slider com-row__slider" id="mass1Slider"
-                   type="range" min="1" max="10" step="0.1" value="7"
-                   aria-hidden="true" tabindex="-1">
-            <span class="sim-scale-min" id="mass1-min" aria-hidden="true">1</span>
-            <span class="sim-scale-max" id="mass1-max" aria-hidden="true">10</span>
-          </div>
+          <!-- DualControl (foundation) renders label, number box, spin ticks,
+               muted slider, and scale labels into each mount. -->
+          <div class="com-row sim-dual-mount" id="mass1-dual-mount"></div>
 
           <h3 class="sr-only" id="hdgMass2">Mass 2 number box and slider controls</h3>
-          <div class="control-row com-row" aria-labelledby="hdgMass2">
-            <label class="control-row__label com-row__label" for="mass2Num">object 2 mass:</label>
-            <!-- Switch from type=text to type=number
-            <input class="control-row__input control-row__tnum" id="mass2Num"
-                   type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" spellcheck="false"
-                   value="3.0" aria-describedby="massRangeHint">
-            -->
-            <input class="control-row__input control-row__tnum" id="mass2Num"
-                   type="number" step="0.1" min="1" max="10" autocomplete="off" spellcheck="false"
-                   value="3.0" aria-describedby="massRangeHint">
-            <label class="sr-only" for="mass2Slider">object 2 mass slider</label>
-            <input class="control-row__slider com-row__slider" id="mass2Slider" 
-                   type="range" min="1" max="10" step="0.1" value="3"
-                   aria-hidden="true" tabindex="-1">
-            <span class="sim-scale-min" id="mass2-min" aria-hidden="true">1</span>
-            <span class="sim-scale-max" id="mass2-max" aria-hidden="true">10</span>
-          </div>
+          <div class="com-row sim-dual-mount" id="mass2-dual-mount"></div>
 
           <h3 class="sr-only" id="hdgSep">Object separation number box and slider controls</h3>
-          <div class="control-row com-row" aria-labelledby="hdgSep">
-            <label class="control-row__label com-row__label" for="sepNum">separation:</label>
-            <!-- Switch from type=text to type=number
-            <input class="control-row__input control-row__tnum" id="sepNum"
-                   type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" spellcheck="false"
-                   value="10.0" aria-describedby="sepRangeHint">
-            -->
-            <input class="control-row__input control-row__tnum" id="sepNum"
-                   type="number" step="0.1" min="1" max="20" autocomplete="off" spellcheck="false"
-                   value="10.0" aria-describedby="sepRangeHint">
-            <label class="sr-only" for="sepSlider">separation slider</label>
-            <input class="control-row__slider com-row__slider" id="sepSlider"
-                   type="range" min="1" max="20" step="0.1" value="10"
-                   aria-hidden="true" tabindex="-1">
-            <span class="sim-scale-min" id="sep-min" aria-hidden="true">1</span>
-            <span class="sim-scale-max" id="sep-max" aria-hidden="true">20</span>
-          </div>
+          <div class="com-row sim-dual-mount" id="sep-dual-mount"></div>
 
           <p id="massRangeHint" class="com-hint sr-only sr-only-focusable">
             Masses are in mass units, from 1.0 to 10.0 in steps of 0.1. Type a
-            value and press Enter, or use the arrow keys on the slider.
+            value and press Enter, or use the up and down arrow keys; hold Shift
+            for steps of 1.
           </p>
           <p id="sepRangeHint" class="com-hint sr-only sr-only-focusable">
             Separation is in distance units, from 1.0 to 20.0 in steps of 0.1.
-            Type a value and press Enter, or use the arrow keys on the slider.
+            Type a value and press Enter, or use the up and down arrow keys; hold
+            Shift for steps of 1.
           </p>
           </div>
 
@@ -199,13 +164,30 @@
         </fieldset>
 
       </section>
+          
+      <section class="panel sim-panel" id="url-clean-panel" role="dialog"
+        aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
+        style="display:none">
+        <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
+          <p id="urlDesc">
+          Use the arrow keys (or A and D) to change the mass of Object 1,
+          amplifying the effect with the Shift or Caps Lock keys. Press enter 
+          once to update the mass of Object 2 similarly, and a second time to 
+          update the object separation. Keep the center of mass fixed or free 
+          with F, and reset the simulation with R.</p>
+        <p id="sr-description-kn2" class="sr-only">Close description of keyboard
+        navigation options.</p>
+        <div class="div-closeKeyNavBtn">
+          <button id="closeKeyNavBtn" aria-describedby="sr-description-kn2">Close</button>
+        </div>
+      </section>
 
     </main>
   </div>
 
   <!-- Foundation scripts. Utilities are imported by simulation.js (ES module). -->
   <!-- Loading at the end allows Skip to Help to attach to masthead --> 
-  <script src="../foundation/js/kl-unl-masthead.js"></script>
+  <script type="module" src="../foundation/js/kl-unl-masthead.js"></script>
   <script src="../foundation/js/kl-unl-mathjax.js"></script>
   <!-- All simulator logic. -->
   <script type="module" src="simulation.js"></script>

@@ -8,12 +8,16 @@
 
 import {
   legToFixed, stepToPrec, clamp, keyAccel,
-  updateSliderProgress, announceLive
+  updateSliderProgress
 } from './kl-unl-utils.js';
 
 const SPIN_REPEAT_DELAY_MS = 400;
 const SPIN_REPEAT_RATE_MS  =  60;
 const LIVE_DEBOUNCE_MS     = 100;
+/* Rough VoiceOver speaking time at its default rate. A new message waits
+   this long after the previous one so polite updates do not cut it off. */
+const SPEECH_MS_PER_CHAR   =   55;
+const SPEECH_MAX_MS        = 1500;
 
 /**
  * Synchronized range slider + decimal text field with custom spin buttons.
@@ -40,13 +44,30 @@ export class DualControl {
    * @param {boolean}              [opts.createLiveRegion=true]
    * @param {(v:number)=>string}   [opts.formatValue]   Number-box display.
    * @param {(v:number)=>string}   [opts.formatAnnounce] Spoken value text.
-   * @param {((v:number)=>boolean)|number|null} [opts.milestone]
+   * @param {((v:number, prev:number)=>boolean|string)|number|null} [opts.milestone]
    *        Predicate or modulus for mid-drag callouts (e.g. 30 → value%30===0).
+   *        A predicate may return a string to announce instead of the value
+   *        (e.g. threshold crossings between prev and v).
+   * @param {boolean}              [opts.readOnly=false] Field cannot be typed into;
+   *        arrow / page keys, spin ticks, and slider still step the value.
+   * @param {boolean}              [opts.textValue=false] Display is text (e.g. a
+   *        date), not digits: wider, left-aligned field.
+   * @param {boolean}              [opts.wrap=false]    Spin / keys wrap max → min
+   *        (slider still stops at its ends).
+   * @param {HTMLElement}          [opts.sliderDecor]   Full-width node placed just
+   *        above the slider track (e.g. season labels).
+   * @param {string}               [opts.describedBy]   Id for aria-describedby on
+   *        the number field (the slider is aria-hidden).
+   * @param {string}               [opts.spinUpLabel]   Accessible name of up tick.
+   * @param {string}               [opts.spinDownLabel] Accessible name of down tick.
    * @param {boolean}              [opts.announceMoving=false]
    * @param {string}               [opts.movingWord='moving']
    * @param {boolean}              [opts.autoAnnounce=true]
    * @param {(v:number, meta:object)=>void} [opts.onInput]
    * @param {(v:number, meta:object)=>void|string|false} [opts.onChange]
+   *        meta = { source, announce }. Typed commits (source 'enter' / 'blur')
+   *        add { raw, invalid, clamped }: invalid = not a number (value kept),
+   *        clamped = outside [min, max] (value pinned to the nearest end).
    * @param {string}               [opts.numberRowClass]
    * @param {string}               [opts.sliderRowClass]
    * @param {string}               [opts.numberClass]
@@ -85,6 +106,13 @@ export class DualControl {
     this.sliderRowClass   = opts.sliderRowClass   || 'control-row kl-dual__slider-row';
     this.numberClass      = opts.numberClass      || 'control-row__input  kl-dual__number';
     this.sliderClass      = opts.sliderClass      || 'control-row__slider kl-dual__slider';
+    this.readOnly         = !!opts.readOnly;
+    this.textValue        = !!opts.textValue;
+    this.wrap             = !!opts.wrap;
+    this.sliderDecor      = opts.sliderDecor      || null;
+    this.describedBy      = opts.describedBy      || null;
+    this.spinUpLabel      = opts.spinUpLabel      || 'Increase ' + this.labelName;
+    this.spinDownLabel    = opts.spinDownLabel    || 'Decrease ' + this.labelName;
 
     this._value           = this._quantize(
       opts.value != null ? Number(opts.value) : this.min
@@ -98,6 +126,9 @@ export class DualControl {
     this._spinTimer        = 0;
     this._spinRepeat       = 0;
     this._spinDir          = 0;
+    this._liveTimer        = 0;
+    this._pendingMilestone = null;
+    this._speakingUntil    = 0;
     this._bound            = [];
 
     this._render(opts);
@@ -148,11 +179,26 @@ export class DualControl {
   /** Push a message into the component (or external) live region. */
   announce(message) {
     if (!this.liveEl || message == null || message === '') return;
-    announceLive(this.liveEl, String(message), LIVE_DEBOUNCE_MS);
+    this._queueLive(String(message), false);
   }
 
   get numberEl() { return this.numberInput; }
   get sliderEl() { return this.slider; }
+
+  /** Point the number field's aria-describedby at an id (null removes it). */
+  setDescribedBy(id) {
+    this.describedBy = id || null;
+    if (this.describedBy) this.numberInput.setAttribute('aria-describedby', this.describedBy);
+    else                  this.numberInput.removeAttribute('aria-describedby');
+  }
+
+  /** Replace the slider track with a CSS background (null restores the fill). */
+  setTrackGradient(css) {
+    const on = !!css;
+    this.slider.classList.toggle('kl-dual__slider--custom-track', on);
+    if (on) this.slider.style.setProperty('--kl-dual-track', css);
+    else    this.slider.style.removeProperty('--kl-dual-track');
+  }
 
   /** True while dragging, spinning, key-stepping, or typing an uncommitted value. */
   isBusy() {
@@ -161,6 +207,7 @@ export class DualControl {
 
   destroy() {
     this._clearSpinRepeat();
+    clearTimeout(this._liveTimer);
     this._sliderKeyArmed   = false;
     for (const { el, type, fn, opts } of this._bound) {
       el.removeEventListener(type, fn, opts);
@@ -186,7 +233,9 @@ export class DualControl {
 
   _render(opts) {
     const root = document.createElement('div');
-    root.className = 'kl-dual';
+    root.className = 'kl-dual' +
+                     (this.readOnly  ? ' kl-dual--readonly' : '') +
+                     (this.textValue ? ' kl-dual--text'     : '');
     root.id        = this.id + '-dual';
 
     const numberId = this.id + '-number';
@@ -202,14 +251,15 @@ export class DualControl {
           '<input class="' + this.numberClass + '"' +
                  ' id="' + numberId + '"' +
                  ' type="text"' +
-                 ' inputmode="decimal"' +
+                 ' inputmode="' + (this.textValue ? 'text' : 'decimal') + '"' +
+                 (this.readOnly ? ' readonly' : '') +
                  ' autocomplete="off"' +
                  ' spellcheck="false">' +
           '<div class="kl-dual__spins">' +
             '<button type="button" class="kl-dual__spin kl-dual__spin--up"' +
-                    ' aria-label="Increase ' + this._escape(this.labelName) + '" tabindex="-1"></button>' +
+                    ' aria-label="' + this._escape(this.spinUpLabel) + '" tabindex="-1"></button>' +
             '<button type="button" class="kl-dual__spin kl-dual__spin--down"' +
-                    ' aria-label="Decrease ' + this._escape(this.labelName) + '" tabindex="-1"></button>' +
+                    ' aria-label="' + this._escape(this.spinDownLabel) + '" tabindex="-1"></button>' +
           '</div>' +
         '</div>' +
         (this.unit
@@ -239,6 +289,12 @@ export class DualControl {
     this.slider       = root.querySelector('#' + sliderId);
     this.spinUp       = root.querySelector('.kl-dual__spin--up');
     this.spinDown     = root.querySelector('.kl-dual__spin--down');
+
+    if (this.sliderDecor) {
+      this.sliderDecor.classList.add('kl-dual__decor');
+      this.slider.before(this.sliderDecor);
+    }
+    if (this.describedBy) this.setDescribedBy(this.describedBy);
 
     if (opts.liveRegion) {
       this.liveEl = opts.liveRegion;
@@ -357,17 +413,19 @@ export class DualControl {
 
     /* Number text — typing commits on blur / Enter only. */
     this._listen(this.numberInput, 'input', () => {
+      if (this.readOnly) return;
       this._typing = true;
     });
 
     this._listen(this.numberInput, 'keydown', (evt) => {
-      if (evt.key === 'e' || evt.key === 'E') {
+      if (!this.textValue && (evt.key === 'e' || evt.key === 'E')) {
         evt.preventDefault();
         return;
       }
 
       if (evt.key === 'Enter') {
         evt.preventDefault();
+        if (this.readOnly) return;
         this._commitTyped('enter');
         this._collapseNumberSelection();
         this.numberInput.blur();
@@ -535,7 +593,36 @@ export class DualControl {
 
   /** Drop stale polite text so VO cannot re-read an old value mid-gesture. */
   _clearLiveRegion() {
+    clearTimeout(this._liveTimer);
+    this._liveTimer        = 0;
+    this._pendingMilestone = null;
     if (this.liveEl) this.liveEl.textContent = '';
+  }
+
+  /**
+   * One speaking slot for the live region. A message waits until the previous
+   * one has probably been spoken. A milestone still waiting is replaced by a
+   * newer milestone, or folded into the front of a final (release) message,
+   * so a crossing just before release is heard once with the final value.
+   */
+  _queueLive(text, isMilestone) {
+    if (this._liveTimer) {
+      clearTimeout(this._liveTimer);
+      if (!isMilestone && this._pendingMilestone) {
+        text = this._pendingMilestone + ' ' + text;
+      }
+    }
+    this._pendingMilestone = isMilestone ? text : null;
+    /* Flush first so an identical consecutive string still announces. */
+    this.liveEl.textContent = '';
+    const wait = Math.max(LIVE_DEBOUNCE_MS, this._speakingUntil - performance.now());
+    this._liveTimer = window.setTimeout(() => {
+      this._liveTimer         = 0;
+      this._pendingMilestone  = null;
+      this.liveEl.textContent = text;
+      this._speakingUntil     = performance.now() +
+                                Math.min(SPEECH_MAX_MS, SPEECH_MS_PER_CHAR * text.length);
+    }, wait);
   }
 
   /** Blue KL-UNL ring on the thumb for the whole armed slider session. */
@@ -602,9 +689,17 @@ export class DualControl {
     this._applyContinuous(this._value + dir * this.step, source);
   }
 
+  /** Wrap into [min, max] on a ring of (max - min + step) values. */
+  _wrapValue(n) {
+    const span = this.max - this.min + this.step;
+    return ((n - this.min) % span + span) % span + this.min;
+  }
+
   _applyContinuous(next, source) {
-    const v = this._quantize(next);
-    if (v === this._value) {
+    const raw  = (this.wrap && source !== 'slider') ? this._wrapValue(next) : next;
+    const v    = this._quantize(raw);
+    const prev = this._value;
+    if (v === prev) {
       this._syncUI({ updateNumber: false });
       return;
     }
@@ -612,18 +707,21 @@ export class DualControl {
     /* Slider track always; number box updates unless focused mid key-step. */
     this._syncUI({ updateNumber: true });
     this._emitInput(source);
-    this._maybeMilestone();
+    this._maybeMilestone(prev);
   }
 
   _commitTyped(source) {
     this._typing = false;
-    const parsed = parseFloat(String(this.numberInput.value).replace(/,/g, ''));
-    const v      = this._quantize(Number.isFinite(parsed) ? parsed : this._value);
+    const raw     = String(this.numberInput.value).trim();
+    const parsed  = parseFloat(raw.replace(/,/g, ''));
+    const invalid = !Number.isFinite(parsed);
+    const clamped = !invalid && (parsed < this.min || parsed > this.max);
+    const v       = this._quantize(invalid ? this._value : parsed);
     const changed = v !== this._value;
     this._value = v;
     this._syncUI({ updateNumber: true, forceNumber: true });
     if (changed) this._emitInput(source);
-    this._emitChange(source, true);
+    this._emitChange(source, true, { raw, invalid, clamped });
   }
 
   /**
@@ -660,22 +758,27 @@ export class DualControl {
     }
   }
 
-  _maybeMilestone() {
+  _maybeMilestone(prev) {
     if (!this.milestone || !this._isContinuous() || !this.autoAnnounce) return;
-    if (!this.milestone(this._value)) return;
-    if (this._lastMilestone === this._value) return;
-    this._lastMilestone = this._value;
-    this.announce(this.formatAnnounce(this._value));
+    const hit = this.milestone(this._value, prev);
+    if (!hit) return;
+    /* String results are crossing messages: dedupe on the text so jitter
+       back and forth over one threshold speaks it only once. */
+    const key = (typeof hit === 'string') ? hit : this._value;
+    if (this._lastMilestone === key) return;
+    this._lastMilestone = key;
+    if (!this.liveEl) return;
+    this._queueLive(typeof hit === 'string' ? hit : this.formatAnnounce(this._value), true);
   }
 
   _emitInput(source) {
     if (this.onInput) this.onInput(this._value, { source });
   }
 
-  _emitChange(source, doAnnounce) {
+  _emitChange(source, doAnnounce, extra = {}) {
     let custom = undefined;
     if (this.onChange) {
-      custom = this.onChange(this._value, { source, announce: doAnnounce });
+      custom = this.onChange(this._value, { ...extra, source, announce: doAnnounce });
     }
     if (!doAnnounce || !this.autoAnnounce) return;
     if (custom === false) return;

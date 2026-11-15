@@ -61,6 +61,12 @@
 }
 
 .stage-panel     { grid-column: 1 / -1; }
+
+.stage-panel--clean {
+  width:          100%;
+  max-width:      800px;
+}
+
 .controls-panel  {
   grid-column:    1 / -1;
   /* Single column: this sim has no side panel (foundation default is 2-col). */
@@ -172,23 +178,26 @@
   gap:            0.6rem 0.75rem;
 }
 
-.com-row {
+/* Each DualControl (mount > .kl-dual > number row + slider row) dissolves into
+   the shared grid, so its label, number box, slider, and scale labels become
+   grid items in the columns below. */
+.com-row,
+.com-rows .kl-dual,
+.com-rows .kl-dual__number-row,
+.com-rows .kl-dual__slider-row {
   display:        contents;
 }
 
-.com-row__slider { grid-column: 3 / span 2; }
-.sim-scale-min   { grid-column: 3; justify-self: start; }
-.sim-scale-max   { grid-column: 4; justify-self: end;   }
+.com-rows .control-row__label   { grid-column: 1; justify-self: end; font-size: 1.05rem; }
+.com-rows .kl-dual__number-wrap { grid-column: 2; max-width: none; }
+.com-rows .kl-dual__slider      { grid-column: 3 / span 2; }
+.com-rows .kl-dual__scale-min   { grid-column: 3; justify-self: start; }
+.com-rows .kl-dual__scale-max   { grid-column: 4; justify-self: end;   }
 
 /* Checkbox row sits outside .com-rows so display:contents from .com-row does
    not override foundation .control-choice flex layout. */
 .com-choice {
   margin-top:     0.75rem;
-}
-
-.com-row__label {
-  justify-self:   end;
-  font-size:      1.05rem;
 }
 
 .com-choice label {
@@ -217,21 +226,17 @@
     grid-column:  1 / -1;
   }
 
-  /* The foundation moves .control-row__slider onto its own full-width line at
-     this breakpoint. Match that with a two-column row so the label stretches
-     and the value box stays flush with the right edge of the slider. */
+  /* Two columns: label + value box on one line, the slider full width below,
+     and the value box flush with the right edge of the slider. */
   .com-rows {
     grid-template-columns: minmax(0, 1fr) 5.75rem;
     gap:          0.3rem 0.75rem;
   }
 
-  .com-row__label {
-    justify-self: start;
-  }
-
-  .com-row__slider {
-    margin-bottom: 0.4rem;
-  }
+  .com-rows .control-row__label { justify-self: start; }
+  .com-rows .kl-dual__slider    { grid-column: 1 / -1; }
+  .com-rows .kl-dual__scale-min { grid-column: 1; margin-bottom: 0.4rem; }
+  .com-rows .kl-dual__scale-max { grid-column: 2; margin-bottom: 0.4rem; }
 }
 
 @media (max-width: 134rem) {

@@ -744,7 +744,7 @@ function applyURL()  {
 
   if ( Object.keys(urlParams).length === 0 )  return;
 
-  let URL_THT, URL_PHI, URL_LAT, URL_LBL, URL_CLN;
+  let URL_THT, URL_PHI, URL_LAT, URL_LBL;
 
   // Define theta and phi of celestial sphere, and latitude of observer 
   // (use simulation defaults for any unspecified values)

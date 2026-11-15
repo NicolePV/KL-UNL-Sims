@@ -40,6 +40,20 @@
   appearance:         textfield;
 }
 
+/* Text display (opts.textValue, e.g. "September 30"): wider, left-aligned. */
+.kl-dual--text .kl-dual__number-wrap {
+  max-width:   9.5rem;
+}
+
+.kl-dual--text .kl-dual__number {
+  text-align:           left;
+  font-variant-numeric: tabular-nums;
+}
+
+.kl-dual--readonly .kl-dual__number {
+  cursor:      default;
+}
+
 /* Number-box unit (opts.unit) — peer of minLabel / maxLabel, right of field. */
 .kl-dual__unit {
   font-size:   1.125rem;
@@ -146,6 +160,24 @@
 
 /* No native tick marks on the range control. */
 .kl-dual__slider {
+  background: transparent;
+}
+
+/* Optional full-width decoration above the track (opts.sliderDecor). */
+.kl-dual__decor {
+  grid-column: 1 / -1;
+}
+
+/* Custom track background (setTrackGradient), e.g. a temperature scale. */
+.kl-dual__slider--custom-track::-webkit-slider-runnable-track {
+  background: var(--kl-dual-track, #e0e0e0);
+}
+
+.kl-dual__slider--custom-track::-moz-range-track {
+  background: var(--kl-dual-track, #e0e0e0);
+}
+
+.kl-dual__slider--custom-track::-moz-range-progress {
   background: transparent;
 }
 

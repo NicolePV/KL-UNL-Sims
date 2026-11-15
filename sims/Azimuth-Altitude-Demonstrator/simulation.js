@@ -738,7 +738,7 @@ class App {
 
     if ( Object.keys(urlParams).length === 0 )  return;
 
-    let URL_THT, URL_PHI, URL_AZI, URL_ALT, URL_LBL, URL_CLN;
+    let URL_THT, URL_PHI, URL_AZI, URL_ALT, URL_LBL;
 
     // Define theta and phi of celestial sphere, and azimuth and altitude of star
     // (use simulation defaults for any unspecified values)

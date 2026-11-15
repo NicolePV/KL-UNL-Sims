@@ -432,6 +432,9 @@ export function buildURL( flag )  {
   // Clean up DOM
   container.removeChild(tempInput);
 
+  // Place focus on close button
+  masthead.shadowRoot.getElementById('closeSettingsBtn-mh').focus();
+
 }
 
 

@@ -19,10 +19,18 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  pMod, speak, hexToRGBA, logAct, updateSliderProgress, noEinNumber, keyAccel
+  pMod, speak, hexToRGBA, logAct, keyAccel,
+  descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
-logAct('INIT_SUNPATHS');
+import { DualControl } from '../foundation/js/kl-unl-dual-control.js';
+
+logAct('INIT_sunpaths');
+
+// Assume vanilla URL (masthead and control panels shown)
+let urlClean = false;
+
+let announceTimer;
 
 const S = new CelestialSphere(120);   // radius 120 (AS sphere.size = 240)
 S.showUnder = false;
@@ -34,8 +42,13 @@ const CSC = CELESTIAL_SPHERE_COLORS;
 const sun = { ra: 0, dec: 0, p: {}, _altaz: {} };
 let day   = 0;
 
+let   INIT_THETA         = 160;
+let   INIT_PHI           =  30;
+let   INIT_LAT           =  41;
+let   INIT_ANM           = false;
+let   INIT_INS           = false;
 let   showTemperatures   = document.getElementById("light").checked;
-const showTemperatures_0 = showTemperatures;
+let   showTemperatures_0 = showTemperatures;
 let   canvasVar          = 0;  // cycle between moving celestial sphere, date, and latitude
 
 /* ---- Stage geometry (original internal coordinates) -------------------- */
@@ -96,9 +109,57 @@ function wrapCalendarDay(cd) {
   return pMod(Math.round(cd), 365);
 }
 
+const CDAY_MAR_21 = MONTHS[1][0]  + 20;  // Mar. 21, cd  79
 const CDAY_JUN_21 = MONTHS[4][0]  + 20;  // June 21, cd 171
+const CDAY_SEP_22 = MONTHS[7][0]  + 21;  // Sep. 22, cd 264
 const CDAY_DEC_21 = MONTHS[10][0] + 20;  // Dec. 21, cd 354
 const TROPIC_LAT  = 23.5;
+
+/* Mid-gesture screen reader callouts. Calendar dates are approximate; the
+   sim's sine declination model puts its autumn equinox near Sep. 19. */
+const SEASON_DAYS = [
+  { cd: CDAY_MAR_21, name: 'March equinox'     },
+  { cd: CDAY_JUN_21, name: 'June solstice'     },
+  { cd: CDAY_SEP_22, name: 'September equinox' },
+  { cd: CDAY_DEC_21, name: 'December solstice' }
+];
+
+const LAT_LINES = [
+  { lat:  66.5, name: 'the Arctic Circle'       },
+  { lat:  23.5, name: 'the Tropic of Cancer'    },
+  { lat:   0,   name: 'the equator'             },
+  { lat: -23.5, name: 'the Tropic of Capricorn' },
+  { lat: -66.5, name: 'the Antarctic Circle'    }
+];
+
+/** Last season day reached moving prev → cd (shortest way around the year). */
+function seasonCrossing(cd, prev) {
+  if (prev == null || cd === prev) return false;
+  let delta = pMod(cd - prev, 365);
+  if (delta > 182) delta -= 365;
+  const dir = Math.sign(delta);
+  let hit   = null;
+  for (let k = 1; k <= Math.abs(delta); k++) {
+    const day = pMod(prev + dir * k, 365);
+    const s   = SEASON_DAYS.find((d) => d.cd === day);
+    if (s) hit = s;
+  }
+  return hit ? hit.name + '.' : false;
+}
+
+/** Last latitude line crossed moving prev → v (landing on 0 reaches the equator). */
+function latCrossing(v, prev) {
+  if (prev == null || v === prev) return false;
+  const lines = (v < prev) ? LAT_LINES : LAT_LINES.slice().reverse();
+  let hit     = null;
+  for (const L of lines) {
+    const crossed = (L.lat === 0)
+      ? (prev !== 0 && (v === 0 || prev * v < 0))
+      : ((prev - L.lat) * (v - L.lat) < 0);
+    if (crossed) hit = L;
+  }
+  return hit ? 'Crossing ' + hit.name + '.' : false;
+}
 
 function updateSeasonLabels(latDeg) {
   // Label winter and summer seasons when latitude is outside of the tropics
@@ -140,7 +201,7 @@ function insolationIndex(latDeg, calendarDay) {
   // Sun being nearly overhead at local noon.
   // 
   const simDay   =  calendarDayToSimDay(calendarDay);
-  const dec      =  23.5 * D2R * Math.sin(simDay * TWO_PI / 365);
+  const dec      =  23.5   * D2R * Math.sin(simDay * TWO_PI / 365);
   const phi      =  latDeg * D2R;
   const sinAlt   =  Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec);
   const alt      =  Math.asin(Math.max(-1, Math.min(1, sinAlt)));
@@ -187,20 +248,16 @@ function buildTempGradient(sampleAtFrac) {
   return `linear-gradient(to right, ${parts.join(', ')})`;
 }
 
-function applyTempTrackGradient(slider, gradient) {
-  slider.style.setProperty('--temp-track-gradient', gradient);
-}
-
 function showTemperatureForDate(simDay, latDeg) {
   if (!showTemperatures) return;
-  applyTempTrackGradient(elCdaySlider,
+  cdayDual.setTrackGradient(
     buildTempGradient(frac => insolationIndex(latDeg, frac * 364)));
 }
 
 function showTemperatureForLatitude(simDay, latDeg) {
   if (!showTemperatures) return;
   const cd = simDayToCalendarDay(simDay);
-  applyTempTrackGradient(elLatInput,
+  latDual.setTrackGradient(
     buildTempGradient(frac => insolationIndex(-90 + frac * 180, cd)));
 }
 
@@ -477,18 +534,13 @@ function render() {
   ctx.restore();
 
   drawSun(      'front');
-
+  
+  updateURL();
 }
 
 /* ======================================================================
    State recompute + DOM sync (single source of truth)
    ====================================================================== */
-const elLatNum       = document.getElementById("latitude-value");
-const elLatInput     = document.getElementById("latitude");
-const elCdaySlider   = document.getElementById("cday");
-const elCdayValue    = document.getElementById("cday-value");
-const elCdayStepUp   = document.querySelector( ".sim-cday-step--up"  );
-const elCdayStepDown = document.querySelector( ".sim-cday-step--down");
 const elDate         = document.getElementById("date-string");
 const elDateSr       = document.getElementById("date-sr");
 const elStatus       = document.getElementById("sr-status");
@@ -501,35 +553,82 @@ const elSeasonDec    = document.getElementById("season-dec");
 const elSeasonSouth  = document.getElementById("season-south");
 const elSeasonNorth  = document.getElementById("season-north");
 
-const TEMP_TRACK_CLASS = "sim-slider--temp-track";
+function latDegrees() {
+  return Math.round(S.lat * R2D);
+}
+
+function latSpoken(v = latDegrees()) {
+  const hemi = (v < 0) ? "south" : "north";
+  return speak(Math.abs(v), 0, "degree") + " " + hemi;
+}
+
+function dateMessage(cd) {
+  return "Date " + getDateString(calendarDayToSimDay(cd)) + ".";
+}
+
+/* ---- Paired number box + muted slider (DualControl) ------------------- */
+/* Both controls announce through #sr-status so control speech, canvas
+   keyboard speech, and animation speech share one polite live region. */
+const cdayDual = new DualControl({
+  mount:          '#cday-dual-mount',
+  id:             'cday',
+  label:          'date',
+  min:            0,
+  max:            364,
+  step:           1,
+  pageStep:       7,
+  value:          CDAY_OFFSET,
+  readOnly:       true,
+  textValue:      true,
+  wrap:           true,
+  minLabel:       'Jan. 1',
+  maxLabel:       'Dec. 31',
+  spinUpLabel:    'Later day',
+  spinDownLabel:  'Earlier day',
+  liveRegion:     elStatus,
+  sliderDecor:    document.getElementById('cday-seasons'),
+  numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+  sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+  formatValue:    (cd) => getDateString(calendarDayToSimDay(cd)),
+  formatAnnounce: (cd) => dateMessage(cd),
+  milestone:      (cd, prev) => seasonCrossing(cd, prev),
+  onInput:        (cd) => applyCalendarDay(cd),
+  onChange:       (cd) => dateMessage(cd)
+});
+
+const latDual = new DualControl({
+  mount:          '#latitude-dual-mount',
+  id:             'latitude',
+  label:          'latitude',
+  min:            -90,
+  max:             90,
+  step:            1,
+  pageStep:        10,
+  value:           INIT_LAT,
+  unit:           '°',
+  minLabel:       '90&deg;&nbsp;S',
+  maxLabel:       '90&deg;&nbsp;N',
+  liveRegion:     elStatus,
+  sliderDecor:    document.getElementById('lat-seasons'),
+  numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+  sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+  formatAnnounce: (v) => "Latitude " + latSpoken(v) + ".",
+  milestone:      (v, prev) => latCrossing(v, prev),
+  onInput:        (v) => applyLatitude(v),
+  onChange:       (v) => "Latitude " + latSpoken(v) + "."
+});
 
 function initTemperatureBars() {
   if (!showTemperatures) {
-    elCdaySlider.classList.remove(    TEMP_TRACK_CLASS);
-    elLatInput.classList.remove(      TEMP_TRACK_CLASS);
-    elCdaySlider.style.removeProperty("--temp-track-gradient");
-    elLatInput.style.removeProperty(  "--temp-track-gradient");
-    elCdaySlider.removeAttribute(     "aria-describedby");
-    elLatInput.removeAttribute(       "aria-describedby");
-    updateSliderProgress(             elCdaySlider);
-    updateSliderProgress(             elLatInput);
+    cdayDual.setTrackGradient(null);
+    latDual.setTrackGradient( null);
+    cdayDual.setDescribedBy(  null);
+    latDual.setDescribedBy(   null);
     return;
   }
-  elCdaySlider.classList.add(         TEMP_TRACK_CLASS);
-  elLatInput.classList.add(           TEMP_TRACK_CLASS);
-  elCdaySlider.setAttribute(          "aria-describedby", "temp-desc-date");
-  elLatInput.setAttribute(            "aria-describedby", "temp-desc-latitude");
+  cdayDual.setDescribedBy("temp-desc-date");
+  latDual.setDescribedBy( "temp-desc-latitude");
   initTempColorScale();
-}
-
-function latDegrees() {
-  return Math.round(S.lat * R2D * 10) / 10;
-}
-
-function latSpoken() {
-  const v    = Math.abs( latDegrees() );
-  const hemi = (S.lat < 0) ? "south" : "north";
-  return speak(v, 0, "degree") + " " + hemi;
 }
 
 function recompute() {
@@ -540,24 +639,15 @@ function recompute() {
 }
 
 function syncReadouts() {
-  if (document.activeElement !== elLatNum) {
-    elLatNum.value = String(latDegrees());
-  }
-  elLatInput.setAttribute("aria-valuetext", latSpoken());
-  if (!showTemperatures) updateSliderProgress(elLatInput);
-  
   const ds = getDateString();
   const cd = simDayToCalendarDay(day);
   elDate.textContent   = ds;
   elDateSr.textContent = "Date: " + ds;
-  if (document.activeElement !== elCdayValue) {
-    elCdayValue.value = ds;
-  }
-  elCdayValue.setAttribute("aria-valuenow", String(cd));
-  elCdayValue.setAttribute("aria-valuetext", ds);
-  elCdaySlider.value = String(cd);
-  elCdaySlider.setAttribute("aria-valuetext", ds);
-  if (!showTemperatures) updateSliderProgress(elCdaySlider);
+
+  /* Silent: no-op when unchanged; DualControl skips writes to a focused box. */
+  latDual.setValue( latDegrees(), { silent: true, source: 'sync' });
+  cdayDual.setValue(cd,           { silent: true, source: 'sync' });
+
   if (showTemperatures) {
     const latDeg = S.lat * R2D;
     showTemperatureForDate(    day, latDeg);
@@ -569,60 +659,154 @@ function syncReadouts() {
   updateSeasonLabels(S.lat * R2D);
 }
 
-function commitLatNum() {
-  let v = parseFloat(elLatNum.value);
-  if (!isFinite(v)) { syncReadouts(); return; }
-  if (v > 90) v = 90; else if (v < -90) v = -90;
-  S.setLatitude(v);
-  elLatInput.value = String(Math.round(v * 10) / 10);
-  elLatInput.value = String(Math.round(v));
-  if (!showTemperatures) updateSliderProgress(elLatInput);
-  recompute();
-  syncReadouts();
-  updateCanvasDesc();
-  announce("Latitude " + latSpoken() + ".");
-}
-
 function diagramDescription() {
-  const aa     = sun._altaz;
-  const dirOf  = function (az) {
-    const dirs = ["north", "northeast", "east", "southeast",
+  const aa    = sun._altaz;
+  const dirOf = function (az) {
+  const dirs  = ["north", "northeast", "east", "southeast",
                   "south", "southwest", "west", "northwest", "north"];
     return dirs[ Math.round(pMod(az, 360) / 45) ];
   };
-  const sunDesc = (aa.alt > 0)
-    ? ("The sun is up at altitude " + speak(aa.alt, 0, "degree") + ", toward the " + dirOf(aa.az) + ". ")
-    : "The sun is below the horizon. ";
+  let sunDesc = (aa.alt > 0)
+    ? ("The Sun transits in the " + dirOf(aa.az)) + " at altitude " + speak(aa.alt, 0, "degree") + " "
+     : "The Sun is below the horizon ";
+  sunDesc += "from a latitude of " + latSpoken();
 
-  const insDesc = ( showTemperatures ) ? "Insolation index is " + TEMP_NOW + " percent. " : "";
+  const insDesc = ( showTemperatures ) ? ", and the insolation index is " + TEMP_NOW + " percent. " : ". ";
 
-  return "Horizon diagram for latitude " + latSpoken() + " on " + getDateString() +
-    ". Sun's declination " + speak(sun.dec, 0, "degree") + ". " + sunDesc + insDesc;
+  return "The solar declination is " + speak(sun.dec, 0, "degree") + " on " +
+    getDateString() + ". " + sunDesc + insDesc;
 }
 
-function announce(msg)      { elStatus.textContent     = msg; }
+function announce(msg)      {
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { elStatus.textContent = msg;}, 600);
+}
 function updateCanvasDesc() { elCanvasDesc.textContent = diagramDescription(); }
+
+function applyURL()  {
+  // Check loaded URL for initial setup parameters, allowing user to specify
+  // theta and phi on celestial sphere, latitude of observer, day of year, and/or
+  // play/pause for animation and show/hide for insolation indicators, as
+  // well as visibility of masthead and control panels.
+
+  document.getElementById('canvas-more-keys').style.display = 'none';
+
+  const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
+
+  if ( Object.keys(urlParams).length === 0 )  return;
+
+  let URL_THT, URL_PHI, URL_LAT, URL_DAY, URL_ANM, URL_INS;
+
+  // Define theta and phi of celestial sphere, latitude of observer, and day 
+  // (use simulation defaults for any unspecified values)
+  if ( (urlParams.theta !== undefined) && (!Number.isNaN(Number(urlParams.theta))) )  {
+    URL_THT = Math.round( pMod( Number(urlParams.theta), 360 ) );
+  } else  { URL_THT = INIT_THETA; }
+  if ( (urlParams.phi   !== undefined) && (!Number.isNaN(Number(urlParams.phi  ))) )  {
+    URL_PHI = Math.round( Math.max( Math.min( Number(urlParams.phi),  90 ),   1 ) );
+  } else  { URL_PHI = INIT_PHI;   }
+  if ( (urlParams.lat   !== undefined) && (!Number.isNaN(Number(urlParams.lat  ))) )  {
+    URL_LAT = Math.round( Math.max( Math.min( Number(urlParams.lat),  90 ), -90 ) );
+  } else  { URL_LAT = INIT_LAT;   }
+  if ( (urlParams.day   !== undefined) && (!Number.isNaN(Number(urlParams.day  ))) )  {
+    URL_DAY = Math.round( Math.max( Math.min( Number(urlParams.day), 365 ), 0 ) );
+  } else  { URL_DAY =   0; }
+
+  S.setLatitude( URL_LAT );
+  S.setThetaAndPhi( URL_THT, URL_PHI );
+  setDay( URL_DAY );
+  INIT_THETA = URL_THT;
+  INIT_PHI   = URL_PHI;
+  INIT_LAT   = URL_LAT;
+
+  // Play/pause animation and show/hide insolation if linked parameter is 
+  // defined (ignore any values but 1 or 0)
+  if ( urlParams.anm !== undefined )  {
+    URL_ANM = urlParams.anm;
+    if      ( URL_ANM == 1 )  { animating = elAnimate.checked = INIT_ANM = true;  }
+    else if ( URL_ANM == 0 )  { animating = elAnimate.checked = INIT_ANM = false; }
+  } else  { URL_ANM = INIT_ANM; }
+  if ( urlParams.ins !== undefined )  {
+    URL_INS = urlParams.ins;
+    if      ( URL_INS == 1 )  { showTemperatures_0 = elLight.checked = INIT_INS = true;  }
+    else if ( URL_INS == 0 )  { showTemperatures_0 = elLight.checked = INIT_INS = false; }
+  } else  { URL_INS = INIT_INS; }
+  syncReadouts();
+
+  // Hide masthead and control panels (everything except canvas)
+  // (hide if clean=true or clean=1)
+  if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+    urlClean = true;
+    document.getElementById('canvas-more-keys').style.display = 'block';
+    document.getElementById('control-panel').style.display    = 'none';
+    document.querySelectorAll('.app-layout').forEach((el) => {
+      el.style.display        = 'flex';
+      el.style.justifyContent = 'center';
+    });
+
+    // Update screen reader help for keyboard control over canvas
+    document.getElementById('canvas-help').innerHTML =
+      'Celestial sphere  surrounding horizon plane. '     +
+      'Drag, or use the arrow keys, to rotate the view. ' +
+      'Users may also use the A and D keys to rotate the view left and right, and ' +
+      'the W and S keys to rotate the viewing angle up and down, adding the Shift ' +
+      'or Caps Lock keys to increase the effect. Press enter once to update the '   +
+      'date similarly, and a second time to update the observer\'s latitude. Play ' +
+      'or pause the animation with P, toggle insolation with I, and reset the '     +
+      'simulation with R.';
+    
+    // Re-direct skip link to new help (gear button) and strip masthead event listener
+    const oldSkipLink = document.querySelector('.sr-only-focusable');
+    if (oldSkipLink) {
+      const newSkipLink       = oldSkipLink.cloneNode(true);
+      newSkipLink.textContent = 'Skip to Keyboard Navigation';
+      newSkipLink.setAttribute('href', '#canvas-more-keys');
+
+      newSkipLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        const gearBtn = document.getElementById('canvas-more-keys');
+        if (gearBtn) gearBtn.focus();
+      });
+
+      oldSkipLink.parentNode.replaceChild(newSkipLink, oldSkipLink);
+    }
+  }
+}
+
+function updateURL()  {
+  // Log current state parameters for possible URL-building
+
+  // URL parameters are theta and phi for celestial sphere, latitude for 
+  // observer, day of year, play/pause state of animation, and visibility of
+  // insolation.
+  const theta = Math.round( R2D*S.theta  );
+  const phi   = Math.round( R2D*S.phi    );
+  const lat   = Math.round( latDegrees() );
+  const anm   = +document.getElementById('animate').checked;
+  const ins   = +document.getElementById('light').checked;
+
+  let s0 = 'Sun-Path-Demo/index.html';    
+  s0    += '?theta=' + theta + '&phi=' + phi;
+  s0    += '&lat='   + lat   + '&day=' + day;
+  s0    += '&anm='   + anm   + '&ins=' + ins;
+
+  window.stateURL = s0;
+}
 
 /* ======================================================================
    Controls
    ====================================================================== */
-function onLatInput() {
-  S.setLatitude(parseFloat(elLatInput.value));
-  recompute();
-  syncReadouts();
+/* DualControl onInput: visuals only. Speech comes from the control on commit
+   (onChange) or at milestones; drop any pending sim message mid-gesture. */
+function applyLatitude(v) {
+  clearTimeout(announceTimer);
+  S.setLatitude(v);
+  applyLatChange();
 }
 
-elLatInput.addEventListener("input",  onLatInput);
-elLatInput.addEventListener("change", function () {
-  updateCanvasDesc();
-  announce("Latitude " + latSpoken() + ".");
-});
-
-elLatNum.addEventListener("change",  commitLatNum);
-elLatNum.addEventListener("keydown", function (ev) {
-  noEinNumber(ev);
-  if (ev.key === "Enter") { ev.preventDefault(); commitLatNum(); }
-});
+// Setting gear when only figure is shown
+document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
+document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
 
 // Note user can use date box to shift date one day at a time
 const reduceMotion = window.matchMedia &&
@@ -642,32 +826,13 @@ function stopAnimateIfRunning() {
   stopAnimateSilent();
 }
 
-function commitCalendarDay(cd, doAnnounce) {
+/* DualControl onInput for the date (see applyLatitude). */
+function applyCalendarDay(cd) {
+  clearTimeout(announceTimer);
   stopAnimateIfRunning();
-  cd = wrapCalendarDay(cd);
-  setDay(calendarDayToSimDay(cd));
-  sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
-  recompute();
-  syncReadouts();
-  updateCanvasDesc();
-  if (doAnnounce) announce("Date " + getDateString() + ".");
+  setDay(calendarDayToSimDay(wrapCalendarDay(cd)));
+  applyDayChange();
 }
-
-function onCdayInput() {
-  commitCalendarDay(parseInt(elCdaySlider.value, 10), false);
-}
-
-elCdaySlider.addEventListener("input", onCdayInput);
-elCdaySlider.addEventListener("change", function () {
-  commitCalendarDay(parseInt(elCdaySlider.value, 10), true);
-});
-
-elCdayStepUp.addEventListener("click", function () {
-  commitCalendarDay(simDayToCalendarDay(day) - 1, true);
-});
-elCdayStepDown.addEventListener("click", function () {
-  commitCalendarDay(simDayToCalendarDay(day) + 1, true);
-});
 
 function tick(t) {
   if (!animating) return;
@@ -761,8 +926,7 @@ function applyLatChange() {
 }
 
 function announceSun() {
-  announce("Sun on " + getDateString() + ". Declination " +
-    speak(sun.dec, 0, "degree") + ".");
+  announce("Solar declination " + speak(sun.dec, 0, "degree") + " on " + getDateString() + ".");
 }
 
 function sunDragToCursor(px, py) {
@@ -791,10 +955,12 @@ function moveDay(delta) {
 }
 
 function moveLat(delta) {
-  const lat = Math.min( Math.max( latDegrees() + delta, -90 ), 90 );
+  const prev  = latDegrees();
+  const lat   = Math.min( Math.max( prev + delta, -90 ), 90 );
   S.setLatitude( lat );
   applyLatChange();
-  latSpoken();
+  const cross = latCrossing(lat, prev);
+  announce( (cross ? cross + " " : "") + "Latitude " + latSpoken() + "." );
 }
 
 canvas.addEventListener("pointerdown", function (ev) {
@@ -842,7 +1008,7 @@ canvas.addEventListener("pointercancel", endDrag);
 
 // Keyboard control on canvas (for celestial sphere, date, and latitude)
 canvas.addEventListener("keydown", function (ev) {
-  // Change target
+  // Change target (celestial sphere, date, or latitude)
   if ( (ev.key == "Enter") || (ev.key == " ") )  {
     canvasVar = pMod( canvasVar + 1, 3 );
     if ( canvasVar == 1 )  { 
@@ -864,6 +1030,17 @@ canvas.addEventListener("keydown", function (ev) {
     ev.preventDefault();
     return;
   };
+  
+  // Keyboard control for reset, play/pause animation, and show/hide insolation
+  // when controls are hidden
+  if (urlClean) {
+    switch (ev.key) {
+      case 'r': case 'R': resetState();      return;
+      case 'p': case 'P': elAnimate.click(); return;
+      case 'i': case 'I': elLight.click();   return;
+    }
+  }
+  
   // Keyboard control for date
   let used = true;
   if (canvasFocus === "sun") {
@@ -871,62 +1048,52 @@ canvas.addEventListener("keydown", function (ev) {
     const dayStep  = keyAccel(ev, 1);
     const weekStep = keyAccel(ev, 7);
     switch (ev.key) {
-      case "ArrowLeft":  case "ArrowUp":   moveDay(-dayStep );   break;
-      case "ArrowRight": case "ArrowDown": moveDay( dayStep );   break;
-      case "PageUp":                       moveDay(-weekStep);   break;
-      case "PageDown":                     moveDay( weekStep);   break;
-      case "Home": setDay(0);   applyDayChange(); announceSun(); break;
       // MacOS+Voiceover users need an alternative to arrow keys
-      case 'a': moveDay(-dayStep ); break; case 'A': moveDay(-dayStep ); break; 
-      case 'd': moveDay( dayStep ); break; case 'D': moveDay( dayStep ); break; 
-      case 'w': moveDay(-weekStep); break; case 'W': moveDay(-weekStep); break; 
-      case 's': moveDay( weekStep); break; case 'S': moveDay( weekStep); break; 
+      case "ArrowLeft":  case "ArrowUp":   case 'A': case 'a': moveDay(-dayStep ); break;
+      case "ArrowRight": case "ArrowDown": case 'D': case 'd': moveDay( dayStep ); break;
+      case "PageUp":                       case 'W': case 'w': moveDay(-weekStep); break;
+      case "PageDown":                     case 'S': case 's': moveDay( weekStep); break;
+      case "Home":                     setDay(0); applyDayChange(); announceSun(); break;
       default: used = false;
     }
     if (used) ev.preventDefault();
     return;
+    
   // Keyboard control for latitude
   } else if (canvasFocus === "lat" ) {
-    const latStep  = keyAccel(ev, 0.1);
-    const bigStep  = keyAccel(ev, 0.5);
+    const latStep  = keyAccel(ev,  1);
+    const bigStep  = keyAccel(ev, 10);
     switch (ev.key) {
-      case "ArrowLeft":  case "ArrowUp":   moveLat(-latStep);  break;
-      case "ArrowRight": case "ArrowDown": moveLat( latStep);  break;
-      case "PageUp":                       moveLat(-bigStep);  break;
-      case "PageDown":                     moveLat( bigStep);  break;
-      case "Home": S.setLatitude(-90);     moveLat(0);         break;
-      case "End":  S.setLatitude( 90);     moveLat(0);         break;
       // MacOS+Voiceover users need an alternative to arrow keys
-      case 'a': moveLat(-latStep); break; case 'A': moveLat(-latStep); break; 
-      case 'd': moveLat( latStep); break; case 'D': moveLat( latStep); break; 
-      case 'w': moveLat(-bigStep); break; case 'W': moveLat(-bigStep); break; 
-      case 's': moveLat( bigStep); break; case 'S': moveLat( bigStep); break; 
-      default: used = false;
+      case "ArrowLeft":  case "ArrowUp":   case 'A': case 'a': moveLat(-latStep); break;
+      case "ArrowRight": case "ArrowDown": case 'D': case 'd': moveLat( latStep); break;
+      case "PageUp":                       case 'W': case 'w': moveLat(-bigStep); break;
+      case "PageDown":                     case 'S': case 's': moveLat( bigStep); break;
+      case "Home":                                             moveLat(-180);     break;
+      case "End":                                              moveLat( 180);     break;
+     default: used = false;
     }
     if (used) ev.preventDefault();
     return;
   }
+  
   // Keyboard control for celestial sphere
   const step   = keyAccel(ev, 1);
   const stepBg =             15;
-  let handled  = true;
+  used         = true;
   let thetaDeg = S.theta * R2D, phiDeg = S.phi * R2D;
   let s0;
   switch (ev.key) {
-    case "ArrowLeft":  thetaDeg += step;   break;
-    case "ArrowRight": thetaDeg -= step;   break;
-    case "ArrowUp":    phiDeg   -= step;   break;
-    case "ArrowDown":  phiDeg   += step;   break;
+    // MacOS+Voiceover users need an alternative to arrow keys
+    case "ArrowLeft":  case 'A': case 'a': thetaDeg += step; break;
+    case "ArrowRight": case 'D': case 'd': thetaDeg -= step; break;
+    case "ArrowUp":    case 'W': case 'w': phiDeg   -= step; break;
+    case "ArrowDown":  case 'S': case 's': phiDeg   += step; break;
     case "PageUp":     phiDeg   -= stepBg; break;
     case "PageDown":   phiDeg   += stepBg; break;
-    // MacOS+Voiceover users need an alternative to arrow keys
-    case 'a': thetaDeg += step; break; case 'A': thetaDeg += step; break; 
-    case 'd': thetaDeg -= step; break; case 'D': thetaDeg -= step; break; 
-    case 'w': phiDeg   -= step; break; case 'W': phiDeg   -= step; break; 
-    case 's': phiDeg   += step; break; case 'S': phiDeg   += step; break; 
-    default: handled = false;
+    default: used = false;
   }
-  if (handled) {
+  if (used) {
     ev.preventDefault();
     S.setThetaAndPhi(thetaDeg, phiDeg);
     recompute(); updateCanvasDesc();
@@ -941,29 +1108,42 @@ canvas.addEventListener("keydown", function (ev) {
    Reset (from the KL-UNL masthead "sim-reset" event) + init
    ====================================================================== */
 function resetState() {
-  S.setThetaAndPhi(160, 30);
-  S.setLatitude(41);
+  S.setThetaAndPhi( INIT_THETA, INIT_PHI );
+  S.setLatitude( INIT_LAT );
   setDay(0);
+  applyURL();
   sun._altaz       = sunAltAz();
   sunsPath.setParameters(        { ra: 0, dec: sun.dec, tilt:  0   });
   celestialEquator.setParameters({ ra: 0, dec:       0, tilt:  0   });
   meridian.setParameters(        { az: 0, alt:       0, tilt: 90   });
   ecliptic.setParameters(        { ra: 0, dec:       0, tilt: 23.5 });
-  elLatInput.value = "41";
-  elLatNum.value   = "41";
   elLight.checked  = showTemperatures_0;
   showTemperatures = showTemperatures_0;
   initTemperatureBars();
+
   if (elAnimate.checked) { elAnimate.checked = false; }
   stopAnimateSilent();
   recompute();
   syncReadouts();
   updateCanvasDesc();
+  if ( INIT_ANM )  {
+    elAnimate.checked = true;
+    if (reduceMotion) {
+      setDay(day + 1);
+      sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+      recompute(); syncReadouts(); updateCanvasDesc();
+      announce("Reduced motion is on. Stepped one day to " + getDateString() + ".");
+      elAnimate.checked = false;
+    } else {
+      startAnimate();
+    }
+  }
 }
 
 document.addEventListener("sim-reset", function () {
   resetState();
   announce("Simulation reset to latitude " + latSpoken() + " on March 21.");
+  diagramDescription();
 });
 
 window.klunlInitEqn = function () { /* this demonstrator has no equations */ };

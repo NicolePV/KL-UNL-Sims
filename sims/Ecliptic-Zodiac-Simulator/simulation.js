@@ -1062,7 +1062,7 @@ function applyURL()  {
 
   if ( Object.keys(urlParams).length === 0 )  return;
 
-  let URL_THT, URL_PHI, URL_DAY, URL_CLN;
+  let URL_THT, URL_PHI, URL_DAY;
 
   // Define theta and phi of zodiacal constellation band, and date
   // (use simulation defaults for any unspecified values)

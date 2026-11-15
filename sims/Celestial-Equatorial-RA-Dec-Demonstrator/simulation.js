@@ -773,7 +773,7 @@ class App {
 
     if ( Object.keys(urlParams).length === 0 )  return;
 
-    let URL_THT, URL_PHI, URL_RAH, URL_DEC, URL_LBL, URL_CLN;
+    let URL_THT, URL_PHI, URL_RAH, URL_DEC, URL_LBL;
 
     // Define theta and phi of celestial sphere, and right ascension and
     // declination of star

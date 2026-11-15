@@ -152,97 +152,24 @@ body { line-height: 1.4; }
   margin:         0.85rem 1rem;
 }
 
-/* Latitude slider row: label + value on one line, slider full width below,
-   min/max endpoints under the ends of the track. */
-.sim-slider-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  row-gap:        0.15rem;
+/* DualControl mounts (date, latitude): fill the fieldset width. */
+.sim-dual-mount {
+  width:          100%;
   margin-top:     0.25rem;
 }
-.sim-slider-row .control-row__label { font-weight: bold; }
 
-.sim-cday-row {
-  margin-bottom: 2rem;
-}
-
-.sim-field-wrap {
-    display:       inline-flex;
-    align-items:   baseline;
-    gap:           0.1rem;
-    padding-right: 0.25rem; /* Insets the degree symbol */
+.sim-cday-mount {
+  margin-bottom:  1rem;
 }
 
-.sim-num {
-  width:          clamp(3.8rem, 10vw, 5.25rem);
-  box-sizing:     border-box;
-  text-align:     right;
-  font-variant-numeric: tabular-nums;
-  font-weight:    bold;
-}
-.sim-unit { font-size: 1.05rem; }
+.sim-dual-number .control-row__label { font-weight: bold; }
 
-/* Date spinbutton: month name + day, with stepper buttons like a number field */
-.sim-cday-wrap {
-  position:       relative;
-  display:        inline-flex;
-  align-items:    stretch;
-}
-.sim-cday-field {
-  width:          clamp(6.2rem, 15vw, 8.5rem);
-  box-sizing:     border-box;
-  padding-right:  1.3rem;
-  text-align:     left;
-  cursor:         default;
-}
-.sim-cday-spinners {
-  position:       absolute;
-  top:            1px;
-  right:          5px;
-  bottom:         1px;
-  display:        flex;
-  flex-direction: column;
-  width:          1.15rem;
-  border-left:    1px solid var(--border-color, #767676);
-}
-.sim-cday-step {
-  flex:           1;
-  margin:         0;
-  padding:        0;
-  border:         0;
-  background:     var(--panel-bg, #f5f5f5);
-  cursor:         pointer;
-  line-height:    0;
-}
-.sim-cday-step:hover  { background: var(--hover-bg, #e8e8e8); }
-.sim-cday-step:active { background: var(--active-bg, #d8d8d8); }
-.sim-cday-step--up::before,
-.sim-cday-step--down::before {
-  content:        '';
-  display:        block;
-  width:          0;
-  height:         0;
-  margin:         auto;
-  border-left:    0.28rem solid transparent;
-  border-right:   0.28rem solid transparent;
-}
-.sim-cday-step--up::before {
-  border-bottom:  0.38rem solid var(--foreground-color, #1a1a1a);
-}
-.sim-cday-step--down::before {
-  border-top:     0.38rem solid var(--foreground-color, #1a1a1a);
-}
-
-.sim-slider-stack {
-  grid-column:    1 / -1;
-  display:        grid;
-  grid-template-columns: 1fr auto;
-  row-gap:        0;
+.sim-dual-slider {
+  row-gap:        0.15rem;
 }
 
 /* Inset the right-aligned slider max label (e.g., 90° N, Dec. 31) */
-.sim-slider-stack .sim-slider-max {
-  grid-column:    2;
-  justify-self:   end;
+.sim-dual-slider .kl-dual__scale-max {
   padding-right:  0.15rem; /* insets the 'N' away from the clipping edge */
 }
 
@@ -277,32 +204,6 @@ body { line-height: 1.4; }
   color:          var(--foreground-color, #1a1a1a);
   white-space:    nowrap;
 }
-
-.sim-slider-stack .sim-slider {
-  grid-column:    1 / -1;
-  width:          100%;
-  min-height:     2.75rem;         /* >= 44px touch target */
-}
-
-.sim-slider--temp-track::-webkit-slider-runnable-track {
-  background:     var(--temp-track-gradient, #e0e0e0);
-}
-
-.sim-slider--temp-track::-moz-range-track {
-  background:     var(--temp-track-gradient, #e0e0e0);
-}
-
-.sim-slider--temp-track::-moz-range-progress {
-  background:     transparent;
-}
-
-.sim-slider-stack .sim-slider-min,
-.sim-slider-stack .sim-slider-max {
-  font-size:      0.9rem;
-  color:          var(--foreground-color, #1a1a1a);
-}
-.sim-slider-stack .sim-slider-min { grid-column: 1; justify-self: start; }
-.sim-slider-stack .sim-slider-max { grid-column: 2; justify-self: end; }
 
 .sim-check-row {
   display:        grid;

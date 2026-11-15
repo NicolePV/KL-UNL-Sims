@@ -9,16 +9,17 @@
   <!-- KL-UNL shared foundation -->
   <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
   <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-dual-control.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
   <link rel="apple-touch-icon"      href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
-  <script defer src="../foundation/js/kl-unl-masthead.js"></script>
+  <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
   <script type="module" src="simulation.js"></script>
 </head>
 <body>
-  <a href="#helpBtn-mh" class="sr-only sr-only-focusable">Skip to Help</a>
+  <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
 
   <!-- aria-live status region: announces state changes (on commit) with units/context -->
   <p id="sr-status" class="sr-only" aria-live="polite"></p>
@@ -31,7 +32,12 @@
 
       <!-- DIAGRAM PANEL (left, wide) : the horizon-diagram dome -->
       <section class="panel panel--size sim-diagram" aria-labelledby="diagram-heading">
-        <h2 id="diagram-heading" class="panel__heading">The Horizon Diagram</h2>
+        <h2 id="diagram-heading" class="panel__heading">The Horizon Diagram
+            <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
+            <img src="../foundation/images/klunl_gear.svg"
+            alt="Additional Keyboard Navigation" width="30"
+            height="30"></button>
+        </h2>
         <div class="panel__canvas-wrap">
           <div class="sim-canvas-box">
             <p id="light-index" class="sim-light-index" hidden>insolation: 0</p>
@@ -44,15 +50,18 @@
                     aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown A D W S Enter"
                     aria-describedby="canvas-desc canvas-help"></canvas>
           </div>
-          <p id="canvas-desc" class="sr-only" aria-live="polite"></p>
+          <!-- Not a live region: read via aria-describedby when the canvas has
+               focus; commits are announced once through #sr-status. -->
+          <p id="canvas-desc" class="sr-only"></p>
           <p id="canvas-help" class="sr-only">
             Interactive horizon diagram. Drag the celestial sphere, or use
             arrow keys, to rotate the view. Users may also use the A and D
             keys to rotate the view left and right, and the W and S keys to
             rotate the viewing angle up and down. Press Enter for arrow keys 
-            to move the sun (Page Up and Page Down jump by a week; Home and 
-            End jump to the ends of the year). Press Enter once more to change
-            observer's latitude. Press Enter again to return to rotating 
+            to move the sun (Page Up and Page Down jump by a week; Home 
+            jumps to Spring Equinox). Press Enter once more to change
+            observer's latitude (arrow keys move one degree; Page Up and Page
+            Down move ten degrees). Press Enter again to return to rotating 
             viewpoint. A date slider, latitude slider, and animate and 
             insolation controls are in the Settings panel.
           </p>
@@ -60,7 +69,7 @@
       </section>
 
       <!-- CONTROLS PANEL (right, narrow) -->
-      <section class="panel sim-controls" aria-labelledby="settings-heading">
+      <section class="panel sim-controls" id="control-panel" aria-labelledby="settings-heading">
         <h2 id="settings-heading" class="panel__heading">Settings</h2>
 
         <!-- Date readout — kept above the latitude control so it stays visible
@@ -88,82 +97,43 @@
             </div>
           </div>
           
-          <!-- Calendar day slider -->
-          <div class="control-row sim-slider-row sim-cday-row">
-            <label class="control-row__label" for="cday">date</label>
-            <span class="sim-field-wrap sim-cday-wrap">
-              <input class="control-row__input sim-num sim-cday-field" id="cday-value"
-                     type="text" readonly role="spinbutton"
-                     value="March 21" autocomplete="off"
-                     aria-label="Date"
-                     aria-valuemin="0" aria-valuemax="364"
-                     aria-valuenow="79" aria-valuetext="March 21">
-              <span class="sim-cday-spinners">
-                <button type="button" class="sim-cday-step sim-cday-step--up"
-                        tabindex="-1" aria-label="Earlier day"></button>
-                <button type="button" class="sim-cday-step sim-cday-step--down"
-                        tabindex="-1" aria-label="Later day"></button>
-              </span>
-            </span>
-            <div class="sim-slider-stack">
-              <p id="temp-desc-date" class="sr-only">
-                Track colors show relative temperature for the year at the current latitude.
-                Blue is colder; red is warmer.
-              </p>
-              <div class="sim-season-labels" aria-hidden="true">
-                <!-- Spacer 1: Jan.  1 to June 21 (171 days) -->
-                <div class="sim-label-spacer" style="flex: 171;">
-                  <span class="sim-season-label" id="season-jun">summer</span>
-                </div>
-                <!-- Spacer 2: June 21 to Dec. 21 (183 days) -->
-                <div class="sim-label-spacer" style="flex: 183;">
-                  <span class="sim-season-label" id="season-dec">winter</span>
-                </div>
-                <!-- Spacer 3: Dec. 21 to Dec. 31 ( 10 days) -->
-                <div class="sim-label-spacer" style="flex: 10;"></div>
-              </div>
-              <input class="control-row__slider sim-slider" type="range"
-                     id="cday" name="cday"
-                     min="0" max="364" step="1" value="79"
-                     aria-valuetext="March 21" aria-hidden="true" tabindex="-1">
-              <span class="sim-slider-min" aria-hidden="true">Jan. 1</span>
-              <span class="sim-slider-max" aria-hidden="true">Dec. 31</span>
+          <!-- Date: DualControl mounts the read-only date box + muted slider.
+               The season labels below are moved above its track (sliderDecor). -->
+          <div id="cday-dual-mount" class="sim-dual-mount sim-cday-mount"></div>
+          <p id="temp-desc-date" class="sr-only">
+            Track colors show relative temperature for the year at the current latitude.
+            Blue is colder; red is warmer.
+          </p>
+          <div class="sim-season-labels" id="cday-seasons" aria-hidden="true">
+            <!-- Spacer 1: Jan.  1 to June 21 (171 days) -->
+            <div class="sim-label-spacer" style="flex: 171;">
+              <span class="sim-season-label" id="season-jun">summer</span>
             </div>
+            <!-- Spacer 2: June 21 to Dec. 21 (183 days) -->
+            <div class="sim-label-spacer" style="flex: 183;">
+              <span class="sim-season-label" id="season-dec">winter</span>
+            </div>
+            <!-- Spacer 3: Dec. 21 to Dec. 31 ( 10 days) -->
+            <div class="sim-label-spacer" style="flex: 10;"></div>
           </div>
 
-          <!-- Latitude slider: native range = full keyboard support for free -->
-          <div class="control-row sim-slider-row">
-            <label class="control-row__label" for="latitude">latitude</label>
-            <span class="sim-field-wrap">
-              <input class="control-row__input sim-num" id="latitude-value" type="number"
-                     min="-90" max="90" step="1" value="41" autocomplete="off"
-                     inputmode="decimal" aria-label="Latitude, degrees">
-              <span class="sim-unit" aria-hidden="true">&nbsp;&#176;</span>
-            </span>
-            <div class="sim-slider-stack">
-              <p id="temp-desc-latitude" class="sr-only">
-                Track colors show relative temperature for all latitudes on the current day.
-                Blue is colder; red is warmer.
-              </p>
-              <div class="sim-season-labels" aria-hidden="true">
-                <!-- Spacer 1: -90   to -66.5 degrees ( 23.5 degrees) -->
-                <div class="sim-label-spacer" style="flex: 23.5;">
-                  <span class="sim-season-label" id="season-south">summer</span>
-                </div>
-                <!-- Spacer 2: -90   to -66.5 degrees ( 23.5 degrees)-->
-                <div class="sim-label-spacer" style="flex: 133;">
-                  <span class="sim-season-label" id="season-north">winter</span>
-                </div>
-                <!-- Spacer 3: -90   to -66.5 degrees ( 23.5 degrees) -->
-                <div class="sim-label-spacer" style="flex: 23.5;"></div>
-              </div>
-              <input class="control-row__slider sim-slider" type="range"
-                     id="latitude" name="latitude"
-                     min="-90" max="90" step="1" value="41"
-                     aria-valuetext="41 degrees north" aria-hidden="true" tabindex="-1">
-              <span class="sim-slider-min" aria-hidden="true">90&deg; S</span>
-              <span class="sim-slider-max" aria-hidden="true">90&deg; N</span>
+          <!-- Latitude: DualControl mounts the number box + muted slider. -->
+          <div id="latitude-dual-mount" class="sim-dual-mount"></div>
+          <p id="temp-desc-latitude" class="sr-only">
+            Track colors show relative temperature for all latitudes on the current day.
+            Blue is colder; red is warmer.
+          </p>
+          <div class="sim-season-labels" id="lat-seasons" aria-hidden="true">
+            <!-- Spacer 1: -90   to -66.5 degrees ( 23.5 degrees) -->
+            <div class="sim-label-spacer" style="flex: 23.5;">
+              <span class="sim-season-label" id="season-south">summer</span>
             </div>
+            <!-- Spacer 2: -66.5 to  66.5 degrees (133   degrees) -->
+            <div class="sim-label-spacer" style="flex: 133;">
+              <span class="sim-season-label" id="season-north">winter</span>
+            </div>
+            <!-- Spacer 3:  66.5 to  90   degrees ( 23.5 degrees) -->
+            <div class="sim-label-spacer" style="flex: 23.5;"></div>
           </div>
         </fieldset>
 
@@ -184,6 +154,23 @@
           <span class="sim-swatch" data-key="meridian" aria-hidden="true"></span>
           <span class="sim-legend-color">gray:</span>
           <span class="sim-legend-desc">north-south meridian</span>
+        </div>
+      </section>
+        
+      <section class="panel sim-panel" id="url-clean-panel" role="dialog"
+        aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
+        style="display:none">
+        <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
+          <p id="urlDesc">
+          Drag and use the arrow keys (or A, D, W, and S) to rotate the view,
+          amplifying the effect with the Shift or Caps Lock keys. Press enter
+          once to update the date similarly, and a second time to update the
+          observer's latitude. Play or pause the animation with P, toggle
+          insolation with I, and reset the simulation with R.</p>
+        <p id="sr-description-kn2" class="sr-only">Close description of keyboard
+        navigation options.</p>
+        <div class="div-closeKeyNavBtn">
+          <button id="closeKeyNavBtn" aria-describedby="sr-description-kn2">Close</button>
         </div>
       </section>
 
