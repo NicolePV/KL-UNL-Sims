@@ -117,6 +117,7 @@ export class DualControl {
     this._value           = this._quantize(
       opts.value != null ? Number(opts.value) : this.min
     );
+    this._enabled          = true;
     this._typing           = false;
     this._dragging         = false;
     this._spinning         = false;
@@ -203,6 +204,34 @@ export class DualControl {
   /** True while dragging, spinning, key-stepping, or typing an uncommitted value. */
   isBusy() {
     return this._typing || this._isContinuous();
+  }
+
+  /**
+   * Enable or disable the number field, spin ticks, and slider together
+   * (e.g. lock latitude while a celestial↔horizon morph is running).
+   * Blocks custom DualControl handlers (spins, armed slider keys, drag) as
+   * well as native disabled; silent setValue still works while locked.
+   * @param {boolean} on
+   */
+  setEnabled(on) {
+    const enabled  = !!on;
+    const disabled = !enabled;
+    this._enabled             = enabled;
+    this.numberInput.disabled = disabled;
+    this.slider.disabled      = disabled;
+    this.spinUp.disabled      = disabled;
+    this.spinDown.disabled    = disabled;
+    this.root.classList.toggle('kl-dual--disabled', disabled);
+
+    if (!enabled) {
+      this._clearSpinRepeat();
+      this._spinning       = false;
+      this._dragging       = false;
+      this._keyStepping    = false;
+      this._sliderKeyArmed = false;
+      this._syncActiveRing();
+      this._syncNumberAxMute();
+    }
   }
 
   destroy() {
@@ -335,6 +364,7 @@ export class DualControl {
     };
 
     const beginSliderGesture = () => {
+      if (!this._enabled) return;
       this._dragging         = true;
       this._sliderKeyArmed   = true;
       this._lastMilestone    = null;
@@ -387,6 +417,7 @@ export class DualControl {
     });
 
     this._listen(this.slider, 'input', () => {
+      if (!this._enabled) return;
       stealSliderFocus();
       const v = this._quantize(parseFloat(this.slider.value));
       this._applyContinuous(v, 'slider');
@@ -418,6 +449,11 @@ export class DualControl {
     });
 
     this._listen(this.numberInput, 'keydown', (evt) => {
+      if (!this._enabled) {
+        if (this._isStepKey(evt.key) || evt.key === 'Enter') evt.preventDefault();
+        return;
+      }
+
       if (!this.textValue && (evt.key === 'e' || evt.key === 'E')) {
         evt.preventDefault();
         return;
@@ -463,7 +499,8 @@ export class DualControl {
 
     this._listen(this.numberInput, 'blur', () => {
       if (this._keyStepping) this._endKeyStep('keyboard');
-      if (this._typing) this._commitTyped('blur');
+      if (this._typing && this._enabled) this._commitTyped('blur');
+      else if (this._typing) this._typing = false;
       this._collapseNumberSelection();
     });
 
@@ -518,7 +555,7 @@ export class DualControl {
   }
 
   _onSliderProxyKeyDown(evt) {
-    if (!this._sliderKeyArmed) return;
+    if (!this._enabled || !this._sliderKeyArmed) return;
     if (this._isEditableTarget(evt.target)) return;
     const delta = this._deltaForKey(evt);
     if (delta === 0) return;
@@ -528,7 +565,7 @@ export class DualControl {
   }
 
   _onSliderProxyKeyUp(evt) {
-    if (!this._sliderKeyArmed) return;
+    if (!this._enabled || !this._sliderKeyArmed) return;
     if (!this._keyStepping) return;
     if (!this._isStepKey(evt.key)) return;
     if (this._isEditableTarget(evt.target)) return;
@@ -539,6 +576,7 @@ export class DualControl {
     const start = (evt) => {
       /* Block default so the button does not take focus (VO thrash). */
       evt.preventDefault();
+      if (!this._enabled) return;
       if (typeof btn.blur === 'function') btn.blur();
       this._typing        = false;
       this._spinning      = true;
@@ -567,7 +605,7 @@ export class DualControl {
       this._spinning = false;
       this._syncNumberAxMute();
       this._syncActiveRing();
-      this._emitChange('spin', true);
+      if (this._enabled) this._emitChange('spin', true);
     };
 
     this._listen(btn, 'pointerdown', start);
@@ -580,6 +618,7 @@ export class DualControl {
     this._listen(btn, 'keydown', (evt) => {
       if (evt.key !== 'Enter' && evt.key !== ' ') return;
       evt.preventDefault();
+      if (!this._enabled) return;
       this._nudge(dir, 'spin');
       this._syncUI({ updateNumber: true, forceNumber: true });
       this._emitChange('spin', true);
@@ -696,6 +735,7 @@ export class DualControl {
   }
 
   _applyContinuous(next, source) {
+    if (!this._enabled) return;
     const raw  = (this.wrap && source !== 'slider') ? this._wrapValue(next) : next;
     const v    = this._quantize(raw);
     const prev = this._value;
@@ -712,6 +752,10 @@ export class DualControl {
 
   _commitTyped(source) {
     this._typing = false;
+    if (!this._enabled) {
+      this._syncUI({ updateNumber: true, forceNumber: true });
+      return;
+    }
     const raw     = String(this.numberInput.value).trim();
     const parsed  = parseFloat(raw.replace(/,/g, ''));
     const invalid = !Number.isFinite(parsed);

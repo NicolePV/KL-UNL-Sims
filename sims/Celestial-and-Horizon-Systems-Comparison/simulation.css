@@ -217,43 +217,54 @@ kl-unl-masthead {
 }
 
 /* --------------------------------------------------------------------------
-   Latitude row. Label column, value column and slider all align on a shared
-   grid; the number field uses the shared field metrics.
+   Latitude DualControl. Default is stacked (number above slider). Above the
+   narrow breakpoint, dissolve into one row: label | number | unit | slider.
    -------------------------------------------------------------------------- */
-.sim-control-row {
-  grid-template-columns: minmax(0, var(--sim-field-width)) auto 
-                         minmax(0, 1fr) auto;
-  gap:                   var(--sim-space-1) var(--sim-space-2);
-  align-items:           center;
-  margin-bottom:         var(--sim-space-2);
-}
-
-.sim-unit {
-  font-size:      1.125rem;
-  line-height:    1;
-  user-select:    none;
-}
-
-.sim-number {
+.sim-dual-mount {
   width:          100%;
+  margin-bottom:  var(--sim-space-2);
+}
+
+.sim-dual-mount .control-row__label {
+  font-weight:    600;
+}
+
+.sim-dual-mount .kl-dual__number-wrap {
   max-width:      var(--sim-field-width);
-  min-width:      0;
-  min-height:     var(--sim-field-height);
-  font-size:      1.0625rem;
-  text-align:     right;              /* decimal-aligned readout */
-  box-sizing:     border-box;
 }
 
-/* Foundation .control-row__slider already sizes the track/thumb; keep only
-   layout constraints for this grid. */
-.sim-slider {
-  min-width:      0;
-  box-sizing:     border-box;
+.sim-dual-num {
+  font-variant-numeric: tabular-nums;
 }
 
-.control-row__slider { grid-column: 3 / span 2; }
-.sim-scale-min       { grid-column: 3; justify-self: start; }
-.sim-scale-max       { grid-column: 4; justify-self: end;   }
+/* Wide: single-line DualControl (CoM / AltAz display:contents pattern). */
+@media (min-width: 34.01rem) {
+  #lat-fieldset {
+    display:               grid;
+    grid-template-columns: max-content minmax(0, var(--sim-field-width)) auto minmax(6rem, 1fr);
+    align-items:           center;
+    column-gap:            var(--sim-space-2);
+    row-gap:               var(--sim-space-1);
+  }
+
+  #lat-fieldset > legend {
+    grid-column: 1 / -1;
+  }
+
+  #lat-dual-mount,
+  #lat-dual-mount .kl-dual,
+  #lat-dual-mount .kl-dual__number-row,
+  #lat-dual-mount .kl-dual__slider-row {
+    display:        contents;
+  }
+
+  #lat-dual-mount .control-row__label   { grid-column: 1; justify-self: end; }
+  #lat-dual-mount .kl-dual__number-wrap { grid-column: 2; max-width: none; }
+  #lat-dual-mount .kl-dual__unit        { grid-column: 3; }
+  #lat-dual-mount .kl-dual__slider      { grid-column: 4 / span 2; width: 100%; min-width: 0; }
+  #lat-dual-mount .kl-dual__scale-min   { grid-column: 4; justify-self: start; }
+  #lat-dual-mount .kl-dual__scale-max   { grid-column: 5; justify-self: end;   }
+}
 
 .sim-eqn-row {
   min-height:     2rem;
@@ -302,13 +313,7 @@ kl-unl-masthead {
     gap:          var(--sim-space-2);
   }
 
-  .sim-control-row {
-    grid-template-columns: minmax(0, var(--sim-field-width)) auto;
-  }
-
-  .sim-slider {
-    grid-column:  1 / -1;
-  }
+  /* DualControl stays stacked (no display:contents) so the slider is full width. */
 
   /* Drop the connecting arrows so the two labels and the button keep
      comfortable touch-target spacing. */
@@ -341,9 +346,4 @@ kl-unl-masthead {
   }
 }
 
-/* Latitude locked while the celestial↔horizon transition is running. */
-#latNumber:disabled,
-#latSlider:disabled {
-  opacity: 0.55;
-  cursor:  not-allowed;
-}
+/* Latitude lock opacity comes from foundation .kl-dual--disabled. */

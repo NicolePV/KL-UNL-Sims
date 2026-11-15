@@ -7,8 +7,9 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
-  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"        type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css"      type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-dual-control.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
@@ -85,36 +86,13 @@
             <fieldset class="control-fieldset">
               <legend class="sr-only">Star position controls</legend>
 
-              <!-- Azimuth -->
-              <div class="control-row sim-slider-row">
-                <label class="control-row__label" for="azNumber">azimuth:</label>
-                <input class="control-row__input sim-num" id="azNumber" type="number"
-                       step="1" value="140" autocomplete="off"
-                       inputmode="decimal" aria-label="Azimuth" aria-describedby="azUnit">
-                <span class="sim-unit" id="azUnit" aria-label="degrees">&nbsp;&#176;</span>
-                <input class="control-row__slider sim-range" id="azSlider" type="range"
-                       min="0" max="360" step="1" value="140"
-                       aria-label="Azimuth" aria-valuetext="Azimuth 140 degrees"
-                       aria-hidden="true" tabindex="-1">
-                <span class="sim-scale-min" id="az-min" aria-hidden="true">0&deg;</span>
-                <span class="sim-scale-max" id="az-max" aria-hidden="true">360&deg;</span>
-              </div>
-
-              <!-- Altitude -->
-              <div class="control-row sim-slider-row">
-                <label class="control-row__label" for="altNumber">altitude:</label>
-                <input class="control-row__input sim-num" id="altNumber" type="number"
-                       step="1" value="45.0" autocomplete="off"
-                       inputmode="decimal" aria-label="Altitude" aria-describedby="altUnit">
-                <span class="sim-unit" id="altUnit" aria-label="degrees">&nbsp;&#176;</span>
-                <input class="control-row__slider sim-range" id="altSlider" type="range"
-                       min="-90" max="90" step="1" value="45"
-                       aria-label="Altitude" aria-valuetext="Altitude 45 degrees"
-                       aria-hidden="true" tabindex="-1">
-                <span class="sim-scale-min" id="alt-min" aria-hidden="true">-90&deg;</span>
-                <span class="sim-scale-max" id="alt-max" aria-hidden="true">+90&deg;</span>
-              </div>
+              <div id="az-dual-mount"  class="sim-dual-mount"></div>
+              <div id="alt-dual-mount" class="sim-dual-mount"></div>
             </fieldset>
+            <!-- Live regions sit outside the wide-layout grid so display:contents
+                 on DualControl rows does not place them in grid cells. -->
+            <p id="az-dual-live"  class="sr-only" aria-live="polite" aria-atomic="true"></p>
+            <p id="alt-dual-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
           </section>
 
           <section class="panel sim-panel" id="label-panel" aria-labelledby="labelsHeading">

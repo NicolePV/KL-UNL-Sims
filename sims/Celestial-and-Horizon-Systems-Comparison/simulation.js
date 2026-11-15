@@ -27,10 +27,12 @@ import {
 } from '../foundation/js/kl-unl-sphere-shading.js';
 
 import {
-  legToFixed, speak, pMod, noEinNumber, keyAccel,
-  updateSliderProgress, announceLive, VO_FIX_LGND, logAct,
+  speak, pMod, keyAccel,
+  announceLive, VO_FIX_LGND, logAct,
   descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
+
+import { DualControl } from '../foundation/js/kl-unl-dual-control.js';
 
 import { EARTH_SHORES } from '../foundation/js/kl-unl-earth-shores.js';
 
@@ -527,7 +529,7 @@ class Scene {
     // observer, and preference to skip transitions
     const theta = Math.round( window.mainScene.sphere.getTheta() );
     const phi   = Math.round( window.mainScene.sphere.getPhi()   );
-    const lat   = Math.round( document.getElementById('latNumber').value );
+    const lat   = Math.round( latDual ? latDual.getValue() : latVal );
     const skp   =            +document.getElementById('chkRdcMotion').checked;
     const dir   = direction;
 
@@ -627,6 +629,7 @@ let globeSize = 1, latFrac = 1;
 let transitionEpoch = 0, cancelActiveDelay = null;
 let direction, startTime, animating;
 let latVal, latValOld = 360;
+let latDual = null;
 let renderQueued = false;
 let dragging     = false, dragPointerId = null;
 let dragX = 0, dragY = 0, dragTheta = 0, dragPhi = 0;
@@ -926,9 +929,8 @@ async function shiftMode()  {
   const delta   = 1000;  // 1-second pause to let viewer absorb first change
   const myEpoch = ++transitionEpoch;
   
-  // Disable latitude controls during transitions
-  el.latSlider.disabled = true;
-  el.latNumber.disabled = true;
+  // Disable latitude DualControl during transitions
+  if (latDual) latDual.setEnabled(false);
 
   // Shift from celestial sphere to horizon plane view
   if        ( direction == -1 )  { 
@@ -961,10 +963,9 @@ async function shiftMode()  {
   }
 
   // The latest transition request completion triggers cleanup
-  if ( myEpoch === transitionEpoch )  { 
-    // Re-enable latitude controls 
-    el.latSlider.disabled = false;
-    el.latNumber.disabled = false;
+  if ( myEpoch === transitionEpoch )  {
+    // Re-enable latitude DualControl
+    if (latDual) latDual.setEnabled(true);
 
     animating = 0;
     announceMode(true)
@@ -1204,73 +1205,105 @@ function updateDescriptions() {
 
 window.klunlInitEqn = klunlInitEqn;
 
-/* ---- latitude controls ---- */
+/* ---- latitude controls (DualControl) ---- */
 
-function setLatitude(raw, announceIt) {
+/** NCP/SCP band cue when latitude crosses a pedagogical threshold (prev → v). */
+function latBandCue(v, prev) {
+  if (prev == null || !isFinite(prev) || v === prev) return false;
+
+  if        ( v ==  90 )  {
+    return 'North Celestial Pole directly overhead for observer, and celestial equator on horizon.';
+  } else if ( ( v >=  80 ) && ( prev <  80 ) )  {
+    return 'North Celestial Pole almost directly overhead for observer.';
+  } else if ( ( v >   10 ) && ( ( prev <   10 ) || ( prev >=  80 ) ) )  {
+    return 'North Celestial Pole well above horizon.';
+  } else if ( ( v    <=  10 ) && ( v    >   0 ) &&
+            ( ( prev <=   0 ) || ( prev >  10 ) ) )  {
+    return 'North Celestial Pole on observer\'s northern horizon.';
+  } else if ( v == 0 )  {
+    return 'North and South Celestial Poles on observer\'s northern and southern horizons, and celestial equator overhead.';
+  } else if ( v == -90 )  {
+    return 'South Celestial Pole directly overhead for observer, and celestial equator on horizon.';
+  } else if ( ( v <= -80 ) && ( prev > -80 ) )  {
+    return 'South Celestial Pole almost directly overhead for observer.';
+  } else if ( ( v <  -10 ) && ( ( prev >= -10 ) || ( prev <= -80 ) ) )  {
+    return 'South Celestial Pole well above horizon.';
+  } else if ( ( v    >= -10 ) && ( v    <   0 ) &&
+            ( ( prev >=   0 ) || ( prev < -10 ) ) )  {
+    return 'South Celestial Pole on observer\'s southern horizon.';
+  }
+  return false;
+}
+
+function latitudeAnnounceMessage(v, prev) {
+  let msg = 'Observer\'s ' + latitudeSpoken(v) + '.';
+  const cue = latBandCue(v, prev);
+  if (cue) msg += ' ' + cue;
+  return msg;
+}
+
+/**
+ * Apply a latitude value visually. DualControl onInput uses skipSync;
+ * canvas/reset/URL paths sync the DualControl afterward.
+ */
+function setLatitude(raw, announceIt, skipSync) {
   const v = sliderSetValue(raw);
   if (v === latVal) {
-    syncLatitudeControls();
+    if (!skipSync) syncLatitudeControls();
     return;
   }
-  latValOld = latVal;
-  latVal    = v;
+  const prev = latVal;
+  latValOld  = latVal;
+  latVal     = v;
   changeLatitude();
-  syncLatitudeControls();
+  if (!skipSync) syncLatitudeControls();
 
-  // Announce new latitude value, and place NCP/SCP in sky
-  let s0;
-  if (announceIt)  { 
-    s0 = 'Observer\'s ' + latitudeSpoken(latVal) + '.';
-    if        ( latVal ==  90 )  {
-      s0 += ' North Celestial Pole directly overhead for observer, and celestial equator on horizon.';
-    } else if ( ( latVal >=  80 ) && ( latValOld <  80 ) )  {
-      s0 += ' North Celestial Pole almost directly overhead for observer.';
-    } else if ( ( latVal >   10 ) && ( ( latValOld <   10 ) || ( latValOld >=  80 ) ) )  {
-      s0 += ' North Celestial Pole well above horizon.';
-    } else if ( ( latVal    <=  10 ) && ( latVal    >   0 ) &&
-              ( ( latValOld <=   0 ) || ( latValOld >  10 ) ) )  {
-      s0 += ' North Celestial Pole on observer\'s northern horizon.';
-    } else if ( latVal == 0 )  { 
-      s0 += ' North and South Celestial Poles on observer\'s northern and southern horizons, and celestial equator overhead.';
-    } else if ( latVal == -90 )  {
-      s0 += ' South Celestial Pole directly overhead for observer, and celestial equator on horizon.';
-    } else if ( ( latVal <= -80 ) && ( latValOld > -80 ) )  {
-      s0 += ' South Celestial Pole almost directly overhead for observer.';
-    } else if ( ( latVal <  -10 ) && ( ( latValOld >= -10 ) || ( latValOld <= -80 ) ) )  {
-      s0 += ' South Celestial Pole well above horizon.';
-    } else if ( ( latVal    >= -10 ) && ( latVal    <   0 ) &&
-              ( ( latValOld >=   0 ) || ( latValOld < -10 ) ) )  {
-      s0 += ' South Celestial Pole on observer\'s southern horizon.';
-    }
-    clearTimeout(announceTimer);
-    announceTimer = setTimeout(() => { announce( s0 ); }, 600);
+  // Canvas +/- and other non-DualControl paths speak via DualControl's live region.
+  if (announceIt && latDual) {
+    latDual.announce(latitudeAnnounceMessage(latVal, prev));
   }
-  
+
   setReferenceFrame();
 }
 
 function syncLatitudeControls() {
-  const txt = legToFixed(latVal, LAT_PRECISION);
-  // Don't update number box if user is partway through typing a number value
-  if (document.activeElement !== el.latNumber) el.latNumber.value = txt;
-  // Always update slider bar
-  el.latSlider.value = String(latVal);
-  updateSliderProgress(el.latSlider);
+  if (!latDual) return;
+  latDual.setValue(latVal, { silent: true, source: 'sync' });
+}
 
-  //if ( ( document.activeElement !== el.latNumber ) &&
-  //     ( document.activeElement !== el.latSlider ) )  {
+function buildLatDual() {
+  latDual = new DualControl({
+    mount:          '#lat-dual-mount',
+    id:             'lat',
+    label:          'latitude:',
+    min:            LAT_MIN,
+    max:            LAT_MAX,
+    step:           LAT_INCREMENT,
+    pageStep:       10,
+    value:          INIT_LATITUDE,
+    unit:           '°',
+    minLabel:       '-90&deg;',
+    maxLabel:       '+90&deg;',
+    liveRegion:     document.getElementById('lat-dual-live'),
+    numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+    sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+    numberClass:    'control-row__input  sim-dual-num kl-dual__number',
+    sliderClass:    'control-row__slider sim-dual-range kl-dual__slider',
+    formatAnnounce: (v) => 'Observer\'s ' + latitudeSpoken(v),
+    milestone:      (v, prev) => latBandCue(v, prev),
+    onInput:        (v) => { setLatitude(v, false, true); },
+    onChange:       (v, meta) => {
+      let msg = 'Observer\'s ' + latitudeSpoken(v) + '.';
+      if (meta.source === 'enter' || meta.source === 'blur') {
+        const cue = latBandCue(v, latValOld);
+        if (cue) msg += ' ' + cue;
+      }
+      return msg;
+    }
+  });
 
-  // Debounce aria-valuetext updates to prevent jitter when arrow key is
-  // depressed and held
-  clearTimeout( announceTimer );
-  announceTimer = setTimeout(() => {
-    const spoken = 'Observer\'s ' + latitudeSpoken(latVal);
-    el.latSlider.setAttribute('aria-valuetext', spoken);
-    el.latNumber.setAttribute('aria-valuetext', spoken);
-  }, 600);
-  
-  //el.latNumber.setAttribute('aria-label',     spoken);
-  //}
+  el.latNumber = latDual.numberEl;
+  el.latSlider = latDual.sliderEl;
 }
 
 /* ---- pointer / keyboard drag ---- */
@@ -1358,6 +1391,11 @@ function rotateView(dTheta, dPhi) {
 }
 
 function onStageKeyDown(ev) {
+
+  // Lock out keyboard controls during transitions (excepting resets)
+  if ( ( animating !== 0 ) &&
+       ( ev.key !== 'r' ) && ( ev.key !== 'R' ) )  return;
+  
   const dStp    =  1;
   const bigStep = 15;
   const step    = keyAccel(ev, dStp);
@@ -1402,7 +1440,7 @@ function onStageKeyDown(ev) {
       break;
     }
     case '+': case '=':
-      if (urlClean) {
+    if (urlClean)  {
         setLatitude(latVal+keyAccel(ev, dStp), true);
         /*
         clearTimeout(announceTimer);
@@ -1458,7 +1496,7 @@ function resetSim() {  // XXX
 /* ---- boot ---- */
 
 function cacheElements() {
-  ['stage', 'stageDesc', 'switchBtn', 'latNumber', 'latSlider', 
+  ['stage', 'stageDesc', 'switchBtn',
    'labelCelestial', 'labelHorizon', 'labelCelestialState', 'labelHorizonState',
    'headLeft', 'headRight', 'barLeft', 'barRight'].forEach((id) => {
     el[id]  = document.getElementById(id);
@@ -1491,6 +1529,7 @@ function boot() {
   animating = 0;
   latVal    = INIT_LATITUDE;
 
+  buildLatDual();
   initSphere();
   sizeCanvas();
   syncLatitudeControls();
@@ -1498,55 +1537,7 @@ function boot() {
 
   el.switchBtn.addEventListener('click', doTransition);
 
-  el.latSlider.addEventListener('input', () => {
-    setLatitude(el.latSlider.value, true);
-  });
-  el.latSlider.addEventListener('change', () => {
-    setLatitude(el.latSlider.value, true);
-  });
-
-  /*
-  // Let user enter multi-digit number without updating latitude with each digit
-  // (entering "65" should not update for both "6" and "65", for example)
-  el.latNumber.addEventListener('input', () => {
-    if (el.latNumber.value === '' || el.latNumber.value === '-') return;
-    setLatitude(el.latNumber.value, false);
-  });
-  */
-  el.latNumber.addEventListener('change', () => {
-    setLatitude(el.latNumber.value, true);
-    el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
-    const spoken = 'Observer\'s ' + latitudeSpoken(latVal);
-    el.latSlider.setAttribute('aria-valuetext', spoken);
-    el.latNumber.setAttribute('aria-valuetext', spoken);
-    el.latNumber.setAttribute('aria-label',     spoken);
-  });
-  el.latNumber.addEventListener('blur', () => {
-    el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
-    const spoken = 'Observer\'s ' + latitudeSpoken(latVal);
-    el.latSlider.setAttribute('aria-valuetext', spoken);
-    el.latNumber.setAttribute('aria-valuetext', spoken);
-    el.latNumber.setAttribute('aria-label',     spoken);
-  });
-  el.latNumber.addEventListener('keydown', noEinNumber);
-  /*
-  el.latNumber.addEventListener('wheel', (e) => {
-    if (document.activeElement !== el.latNumber) return;
-    e.preventDefault();
-    setLatitude(latVal + (e.deltaY < 0 ? LAT_INCREMENT : -LAT_INCREMENT), true);
-    el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
-  }, { passive: false });
-  */
-  el.latNumber.addEventListener('keydown', (e) => {
-    const big = 1;
-    if      (e.key === 'PageUp')   setLatitude(latVal + big, true);
-    else if (e.key === 'PageDown') setLatitude(latVal - big, true);
-    else if (e.key === 'Home')     setLatitude(LAT_MIN,      true);
-    else if (e.key === 'End')      setLatitude(LAT_MAX,      true);
-    else return;
-    el.latNumber.value = legToFixed(latVal, LAT_PRECISION);
-    e.preventDefault();
-  });
+  // DualControl owns latitude slider + number sync and live announcements.
 
   // Setting gear when only figure is shown
   /*

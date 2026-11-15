@@ -106,40 +106,28 @@ body { line-height: 1.4; }
   pointer-events: none;
 }
 
-/* --- Star Position controls --------------------------------------------- */
-/* Breathing room so the first row doesn't touch the heading's divider line */
+/* --- Star Position controls (DualControl) ------------------------------- */
+/* Breathing room so the first dual doesn't touch the heading's divider line */
 .right-col > .sim-panel:first-child .control-fieldset {
   padding-top:    0.85rem;
 }
 
-.sim-slider-row {
-  grid-template-columns: 5rem 5.5rem auto;
-  align-items:    center;
-  gap:            0.4rem 0.6rem;
+.sim-dual-mount {
+  width:          100%;
   margin-bottom:  0.9rem;
 }
 
-.sim-slider-row .control-row__label {
+.sim-dual-mount .control-row__label {
   text-align:     right;
   font-weight:    600;
 }
 
-.sim-num {
-  width:          5.25rem;
-  text-align:     right;
+.sim-dual-mount .kl-dual__number-wrap {
+  max-width:      5.5rem;
+}
+
+.sim-dual-num {
   font-variant-numeric: tabular-nums;
-}
-
-.sim-unit {
-  font-size:      1.05rem;
-}
-
-/* The slider spans the full width on its own row below the label/value, so the
-   number field and unit always line up in a tidy column. */
-.sim-range {
-  grid-column:    1 / -1;
-  width:          100%;
-  min-height:     2.75rem;   /* comfortable touch target */
 }
 
 /* --- Labels panel ------------------------------------------------------- */
@@ -192,8 +180,8 @@ body { line-height: 1.4; }
   .sim-button-row  { gap:       0.6rem; }
 }
 
-/* For wide widths (monitor screens), place linked number boxes and sliders 
-   on single line (and shorten label) */
+/* Wide: dissolve both DualControls into one shared grid so az and alt
+   columns align (label | number | unit | slider), CoM-style. */
 @media (min-width: 65rem) {
 
   .app-shell {
@@ -203,30 +191,35 @@ body { line-height: 1.4; }
   .app-layout.sim-layout {
     grid-template-columns: minmax(22rem, 1fr) minmax(24rem, 1.2fr);
   }
-  
-  .sim-slider-row {
-    grid-template-columns: 2rem 5.5rem auto 1fr;
+
+  #star-panel .control-fieldset {
+    display:               grid;
+    grid-template-columns: max-content 5.5rem auto minmax(6rem, 1fr);
+    align-items:           center;
+    column-gap:            0.6rem;
+    row-gap:               0.35rem;
   }
 
-  .sim-range {
-    grid-column: auto;
-    width: 100%;
+  .sim-dual-mount,
+  .sim-dual-mount .kl-dual,
+  .sim-dual-mount .kl-dual__number-row,
+  .sim-dual-mount .kl-dual__slider-row {
+    display:        contents;
   }
 
-  .sim-range     { grid-column: 4 / span 2; }
-  .sim-scale-min { grid-column: 4; justify-self: start; }
-  .sim-scale-max { grid-column: 5; justify-self: end;   }
+  .sim-dual-mount .control-row__label   { grid-column: 1; justify-self: end; }
+  .sim-dual-mount .kl-dual__number-wrap { grid-column: 2; max-width: none; }
+  .sim-dual-mount .kl-dual__unit        { grid-column: 3; }
+  .sim-dual-mount .kl-dual__slider      { grid-column: 4 / span 2; width: 100%; }
+  .sim-dual-mount .kl-dual__scale-min   { grid-column: 4; justify-self: start; margin-bottom: 0.55rem; }
+  .sim-dual-mount .kl-dual__scale-max   { grid-column: 5; justify-self: end;   margin-bottom: 0.55rem; }
 }
 
-/* For even wider widths, write out full control labels too */
+/* Wider: room for full "azimuth:" / "altitude:" labels (JS also expands text) */
 @media (min-width: 70rem) {
 
   .app-shell {
     max-width: 70rem;
-  }
-
-  .sim-slider-row {
-    grid-template-columns: 5rem 5.5rem auto 1fr;
   }
 
 }

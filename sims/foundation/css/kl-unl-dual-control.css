@@ -194,6 +194,30 @@
   outline-offset: 4px;
 }
 
+/* Locked as a unit (DualControl.setEnabled(false)), e.g. during a morph.
+   Do not use pointer-events:none — that prevents the not-allowed cursor from
+   showing; JS _enabled guards already block interaction.
+   Opacity is on descendants (not .kl-dual itself) so greying still works when
+   sims use display:contents on .kl-dual for wide single-line layout. */
+.kl-dual--disabled {
+  cursor: not-allowed;
+}
+
+.kl-dual--disabled .control-row__label,
+.kl-dual--disabled .kl-dual__number-wrap,
+.kl-dual--disabled .kl-dual__unit,
+.kl-dual--disabled .kl-dual__slider,
+.kl-dual--disabled .kl-dual__scale-min,
+.kl-dual--disabled .kl-dual__scale-max {
+  opacity: 0.55;
+}
+
+.kl-dual--disabled .kl-dual__number,
+.kl-dual--disabled .kl-dual__slider,
+.kl-dual--disabled .kl-dual__spin {
+  cursor: not-allowed;
+}
+
 @media (max-width: 30rem) {
   .kl-dual__number-wrap {
     max-width: none;

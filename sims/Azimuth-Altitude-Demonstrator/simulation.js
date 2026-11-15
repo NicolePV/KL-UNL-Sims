@@ -24,10 +24,12 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, stepToPrec, speak, listLabels, pMod, snapFixed, noEinNumber, keyAccel, 
-  updateSliderProgress, hexToRGBA, soon, announceLive, VO_FIX_LGND, logAct,
+  legToFixed, stepToPrec, speak, listLabels, pMod, snapFixed, keyAccel,
+  hexToRGBA, soon, announceLive, VO_FIX_LGND, logAct,
   updateShowHideLabelButtons, descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
+
+import { DualControl } from '../foundation/js/kl-unl-dual-control.js';
 
 // Log initialization, browser, platform, and screen size in server access log
 logAct("INIT_AltAz");
@@ -35,13 +37,24 @@ logAct("INIT_AltAz");
 // Assume vanilla URL (masthead and control panels shown)
 let urlClean = false;
 
-// Adjust control panel control labels for very width screens via two break-points
+const AZ_STEP   = 1;
+const ALT_STEP  = 1;
+const AZ_PREC   = stepToPrec(String(AZ_STEP ));
+const ALT_PREC  = stepToPrec(String(ALT_STEP));
+
+// Adjust DualControl labels for mid-wide screens via two breakpoints
 const brkpt1      = 65;  // first  breakpoint, at 65rem
 const brkpt2      = 75;  // second breakpoint, at 75rem
 const mediaCheck1 = window.matchMedia('(min-width: ' + brkpt1 + 'rem)');
 const mediaCheck2 = window.matchMedia('(min-width: ' + brkpt2 + 'rem)');
-updateControlLabels(mediaCheck1);
-updateControlLabels(mediaCheck2);
+
+/** Announce once when altitude crosses the horizon (0°). */
+function altHorizonCrossing(v, prev) {
+  if (prev == null || !isFinite(prev) || v === prev) return false;
+  if ((prev < 0 && v >= 0) || (prev > 0 && v <= 0))
+    return 'Crossing the horizon.';
+  return false;
+}
 
 // Update screen reader help for MacOS+Voiceover issues
 document.getElementById('skyHelp').innerHTML =
@@ -74,6 +87,7 @@ class App {
     this.buildCircles();
     this.buildLines();
     this.cacheDom();
+    this.buildDualControls();
     this.loadAssets();
     this.bindEvents();
 
@@ -143,10 +157,6 @@ class App {
     this.canvas.height = this.STAGE * this.dpr;
     this.ctx.scale(this.dpr, this.dpr);
 
-    this.azSlider  = document.getElementById('azSlider' );
-    this.altSlider = document.getElementById('altSlider');
-    this.azNumber  = document.getElementById('azNumber' );
-    this.altNumber = document.getElementById('altNumber');
     this.chk = {
       zenith:   document.getElementById('chkZenith'  ),
       horizon:  document.getElementById('chkHorizon' ),
@@ -155,6 +165,76 @@ class App {
     };
     this.desc       = document.getElementById('diagramDesc');
     this.starHandle = document.getElementById('starHandle' );
+  }
+
+  buildDualControls() {
+    const app = this;
+
+    this.azDual = new DualControl({
+      mount:          '#az-dual-mount',
+      id:             'az',
+      label:          'azimuth:',
+      min:            0,
+      max:            360,
+      step:           AZ_STEP,
+      pageStep:       10,
+      value:          140,
+      unit:           '°',
+      minLabel:       '0&deg;',
+      maxLabel:       '360&deg;',
+      wrap:           true,
+      liveRegion:     document.getElementById('az-dual-live'),
+      numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+      sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+      numberClass:    'control-row__input  sim-dual-num kl-dual__number',
+      sliderClass:    'control-row__slider sim-dual-range kl-dual__slider',
+      formatAnnounce: (v) => 'Azimuth ' + speak(v, AZ_PREC, 'degree'),
+      onInput:        (v) => {
+        app.setStarLocation({ az: v, alt: app.altDual.getValue() }, true);
+        app.render();
+      },
+      onChange:       (v) => {
+        app.syncStarChrome();
+        return 'Azimuth ' + speak(v, AZ_PREC, 'degree') + '.';
+      }
+    });
+
+    this.altDual = new DualControl({
+      mount:          '#alt-dual-mount',
+      id:             'alt',
+      label:          'altitude:',
+      min:            -90,
+      max:             90,
+      step:           ALT_STEP,
+      pageStep:       10,
+      value:          45,
+      unit:           '°',
+      minLabel:       '-90&deg;',
+      maxLabel:       '+90&deg;',
+      liveRegion:     document.getElementById('alt-dual-live'),
+      numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+      sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+      numberClass:    'control-row__input  sim-dual-num kl-dual__number',
+      sliderClass:    'control-row__slider sim-dual-range kl-dual__slider',
+      formatAnnounce: (v) => 'Altitude ' + speak(v, ALT_PREC, 'degree'),
+      milestone:      altHorizonCrossing,
+      onInput:        (v) => {
+        app.setStarLocation({ az: app.azDual.getValue(), alt: v }, true);
+        app.render();
+      },
+      onChange:       (v) => {
+        app.syncStarChrome();
+        return 'Altitude ' + speak(v, ALT_PREC, 'degree') + '.';
+      }
+    });
+
+    this.azNumber  = this.azDual.numberEl;
+    this.altNumber = this.altDual.numberEl;
+    this.azSlider  = this.azDual.sliderEl;
+    this.altSlider = this.altDual.sliderEl;
+
+    updateControlLabels(mediaCheck1);
+    updateControlLabels(mediaCheck2);
   }
 
   loadAssets() {
@@ -218,10 +298,14 @@ class App {
   showAllLabels() { this.setAllLabelsVisibility(true);  }
   hideAllLabels() { this.setAllLabelsVisibility(false); }
 
-  onPositionSliderChanged() {
-    this.setStarLocation({ az:  Number(this.azSlider.value),
-                           alt: Number(this.altSlider.value) }, true);
-    this.render();
+  /** Update canvas / star-handle names without writing #diagramDesc (DualControl owns commit speech). */
+  syncStarChrome() {
+    this.updateCanvasDescription();
+    if (document.activeElement !== this.starHandle) {
+      this.starHandle.setAttribute('aria-label',
+        'Star position. Azimuth ' + speak(this.star.az,  AZ_PREC,  'degree') +
+                    ', altitude ' + speak(this.star.alt, ALT_PREC, 'degree') + '.');
+    }
   }
 
   setStarLocation(pt, skipSliderSync) {
@@ -252,26 +336,10 @@ class App {
     }
     this.altCircle.setParameters({ az: 0,     alt: pt.alt, tilt:  0 });
 
-    if (!skipSliderSync) {
-      this.azSlider.value  = pt.az;
-      this.altSlider.value = pt.alt;
-      this.azNumber.value  = legToFixed(pt.az,  stepToPrec(azNumber.step  ) );
-      this.altNumber.value = legToFixed(pt.alt, stepToPrec(altNumber.step ) );
+    if (!skipSliderSync && this.azDual && this.altDual) {
+      this.azDual.setValue( pt.az,  { silent: true, source: 'sync' });
+      this.altDual.setValue(pt.alt, { silent: true, source: 'sync' });
     }
-    // Spoken values include angle name and degrees unit.
-    // 
-    // Note that slider bars now announce value in degrees and cite degree unit
-    // under both Chrome and Safari on MacOS, but that for number boxes while both
-    // browsers announce value in degrees, only Chrome cites the degree unit
-    // while Safari+Voiceover omits it. This is system-level behavior, and so  
-    // we do not and should not attempt to change it.
-    // Note these updates were redundant
-    /*
-    this.azSlider.setAttribute ('aria-valuetext', 'Azimuth '  + speak(pt.az,  0, 'degree'));
-    this.azNumber.setAttribute ('aria-valuetext', 'Azimuth '  + speak(pt.az,  0, 'degree'));
-    this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 0, 'degree'));
-    this.altNumber.setAttribute('aria-valuetext', 'Altitude ' + speak(pt.alt, 0, 'degree'));
-    */
   }
 
   // ----------------------------------------------------------------------
@@ -291,10 +359,6 @@ class App {
     const zenithSp = {}; S.WtoSz({ x: 0, y: 0, z:  1 }, zenithSp);
     const nadirSp  = {}; S.WtoSz({ x: 0, y: 0, z: -1 }, nadirSp );
     this.computeLabelAnchors(zenithSp, nadirSp);
-
-    // Fill slider from 0 to thumb position
-    updateSliderProgress(document.getElementById('azSlider' ));
-    updateSliderProgress(document.getElementById('altSlider'));
 
     ctx.clearRect(0, 0, this.STAGE, this.STAGE);
     ctx.save();
@@ -477,10 +541,10 @@ class App {
     const S = this.S;
     const specs = [
       { pt: { az: this.star.az - 13, alt: 5 },
-        text:  legToFixed(this.star.az,  stepToPrec(azNumber.step  ) ) + '°',
+        text:  legToFixed(this.star.az,  AZ_PREC ) + '°',
         color: this.S.CSC.AZ_LABEL  },
       { pt: { az: this.star.az + 13, alt: this.star.alt / 2 },
-        text:  legToFixed(this.star.alt, stepToPrec(altNumber.step ) ) + '°',
+        text:  legToFixed(this.star.alt, ALT_PREC) + '°',
         color: this.S.CSC.ALT_LABEL }
     ];
     for (const s of specs) {
@@ -818,12 +882,12 @@ class App {
     // for star, and visibility of four labels.
     const theta = Math.round( R2D*this.S.theta );
     const phi   = Math.round( R2D*this.S.phi   );
-    const azi   = Math.round( document.getElementById('azNumber').value  );
-    const alt   = Math.round( document.getElementById('altNumber').value );
-    const zen   =            +document.getElementById('chkZenith').checked;
-    const ndr   =            +document.getElementById('chkNadir').checked;
-    const hor   =            +document.getElementById('chkHorizon').checked;
-    const mrd   =            +document.getElementById('chkMeridian').checked;
+    const azi   = Math.round( this.azDual.getValue()  );
+    const alt   = Math.round( this.altDual.getValue() );
+    const zen   = +document.getElementById('chkZenith').checked;
+    const ndr   = +document.getElementById('chkNadir').checked;
+    const hor   = +document.getElementById('chkHorizon').checked;
+    const mrd   = +document.getElementById('chkMeridian').checked;
 
     let s0 = 'Azimuth-Altitude-Demonstrator/index.html';    
     s0    += '?theta=' + theta + '&phi=' + phi;
@@ -848,52 +912,8 @@ class App {
     // Masthead Reset (sim-reset bubbles up from the component)
     document.addEventListener('sim-reset', () => this.reset());
 
-    // Sliders + number fields (both mutate the same state)
-    const syncFromSlider = (slider, number) => {
-      number.value = legToFixed(Number(slider.value), stepToPrec(number.step) );
-      this.onPositionSliderChanged();
-      // Our announcements of the celestial sphere and star state are wrapped 
-      // in a timeout so that we don't get stuttering as a screen reader
-      // attempts to read one for every change in a sequence of updates (as in 
-      // when a user holds down or rapidly taps an arrow key to swoosh up or
-      // down the slider), triggering a sequence of screen reader content updates.
-      //
-      // Note that there may still be a stuttered attempt to read out bare
-      // updates for every change to the slider bar value. This is a native
-      // response to a standard input, and we should not alter it because we
-      // would be violating established user expectations.
-      const name = ( number.id === 'azNumber' ) ? 'Azimuth ' : 'Altitude ';
-      clearTimeout(this.announceTimer);
-      this.announceTimer = setTimeout(() => {
-        number.setAttribute ('aria-valuetext', name + speak(number.value,  0, 'degree'));
-        slider.setAttribute ('aria-valuetext', name + speak(number.value,  0, 'degree'));
-        this.announceStar();
-      }, 600);
-    };
-    this.azSlider.addEventListener( 'input', () => syncFromSlider(this.azSlider,  this.azNumber ));
-    this.altSlider.addEventListener('input', () => syncFromSlider(this.altSlider, this.altNumber));
-
-    const syncFromNumber = (number, slider) => {
-      let v = Number(number.value);
-      if (!isFinite(v)) return;
-      v = Math.max(Number(slider.min), Math.min(Number(slider.max), v));
-      number.value = legToFixed(v, stepToPrec(number.step) );
-      slider.value = v;
-      this.onPositionSliderChanged();
-      // See above note on slider bar screen reader updates
-      const name = ( number.id === 'azNumber' ) ? 'Azimuth ' : 'Altitude ';
-      clearTimeout(this.announceTimer);
-      this.announceTimer = setTimeout(() => {
-        number.setAttribute ('aria-valuetext', name + speak(slider.value,  0, 'degree'));
-        slider.setAttribute ('aria-valuetext', name + speak(slider.value,  0, 'degree'));
-        this.announceStar();
-      }, 600);
-    };
-    this.azNumber.addEventListener( 'change',  () => syncFromNumber(this.azNumber,  this.azSlider) );
-    this.altNumber.addEventListener('change',  () => syncFromNumber(this.altNumber, this.altSlider));
-
-    this.azNumber.addEventListener(  'keydown', noEinNumber );
-    this.altNumber.addEventListener( 'keydown', noEinNumber );
+    // DualControls own slider + number sync and single-axis live announcements.
+    // Canvas / star-handle paths still call announceStar() via #diagramDesc.
 
     // Buttons + checkboxes
     document.getElementById('showAllBtn').addEventListener('click', () => this.showAllLabels());
@@ -1030,8 +1050,8 @@ class App {
   // Arrow keys move star (alt/az), mirroring star drag. Same step scheme 
   // as view rotation: 1deg arrows, 10deg with Shift/CapsLock, 15deg Page keys.
   onStarKey(ev) {
-    let dStp   = Number(altNumber.step);
-    if ( ( ev.key == 'ArrowLeft' ) || ( ev.key == 'ArrowRight' ) )  { dStp = Number(azNumber.step); }
+    let dStp = ALT_STEP;
+    if ( ( ev.key == 'ArrowLeft' ) || ( ev.key == 'ArrowRight' ) )  { dStp = AZ_STEP; }
     const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10*dStp : dStp;
     let dAz = 0, dAlt = 0;
     switch (ev.key) {
@@ -1051,21 +1071,14 @@ class App {
       default: return;
     }
     ev.preventDefault();
-    if ( (dAz != 0 ) || (dAlt != 0) )  { 
+    if ( (dAz != 0 ) || (dAlt != 0) )  {
       let alt = this.star.alt + dAlt;
-      if (alt > 90) alt = 90; else if (alt < -90) alt = -90;   // slider range
-      // setStarLocation normalizes azimuth mod 360 and syncs sliders/boxes.
+      if (alt > 90) alt = 90; else if (alt < -90) alt = -90;
+      // setStarLocation normalizes azimuth mod 360 and syncs DualControls.
       this.setStarLocation({ az: this.star.az + dAz, alt: alt });
       this.render();
-      // Clear cascade of repeated keyboard-driven announcement calls with a debounce mechanism
       clearTimeout(this.announceTimer);
-      this.announceTimer = setTimeout(() => {
-        this.azSlider.setAttribute ('aria-valuetext', 'Azimuth '  + speak(this.star.az,  0, 'degree'));
-        this.azNumber.setAttribute ('aria-valuetext', 'Azimuth '  + speak(this.star.az,  0, 'degree'));
-        this.altSlider.setAttribute('aria-valuetext', 'Altitude ' + speak(this.star.alt, 0, 'degree'));
-        this.altNumber.setAttribute('aria-valuetext', 'Altitude ' + speak(this.star.alt, 0, 'degree'));
-        this.announceStar();
-      }, 600);
+      this.announceTimer = setTimeout(() => { this.announceStar(); }, 600);
     }
   }
 
@@ -1086,19 +1099,23 @@ class App {
   }
 }
 
-// Update control panel labels for very wide screens
+// Abbreviate DualControl labels in the mid-wide band; full labels otherwise.
 mediaCheck1.addEventListener('change', updateControlLabels);
 mediaCheck2.addEventListener('change', updateControlLabels);
 function updateControlLabels(ev) {
+  const azLabel  = document.querySelector('label[for="az-number"]' );
+  const altLabel = document.querySelector('label[for="alt-number"]');
+  if (!azLabel || !altLabel) return;
+
   const remToPx = parseFloat( getComputedStyle( document.documentElement ).fontSize );
-  const wid     = document.documentElement.scrollWidth / remToPx;  // convert px to rem
+  const wid     = document.documentElement.scrollWidth / remToPx;
 
   if ( (brkpt1 <= wid) && (wid <= brkpt2) ) {
-    document.querySelector('label[for="azNumber"]' ).innerHTML = 'az:';
-    document.querySelector('label[for="altNumber"]').innerHTML = 'alt:';
-  } else  {
-    document.querySelector('label[for="azNumber"]' ).innerHTML = 'azimuth:';
-    document.querySelector('label[for="altNumber"]').innerHTML = 'altitude:';
+    azLabel.textContent  = 'az:';
+    altLabel.textContent = 'alt:';
+  } else {
+    azLabel.textContent  = 'azimuth:';
+    altLabel.textContent = 'altitude:';
   }
 }
 

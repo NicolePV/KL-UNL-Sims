@@ -7,8 +7,9 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
-  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"        type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css"      type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-dual-control.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png" sizes="32x32">
@@ -99,43 +100,25 @@
           </div>
         </fieldset>
 
-        <fieldset class="control-fieldset">
+        <fieldset class="control-fieldset" id="lat-fieldset">
           <legend class="control-fieldset__legend" id="latLgnd">Observer's latitude</legend>
-
-          <div class="control-row sim-control-row">
-            <!-- <label class="control-row__label" for="latNumber">latitude:</label> -->
-            <!-- <label class="control-row__label"
-            for="latNumber">latitude:</label> -->
-            <input class="control-row__input sim-number" id="latNumber"
-                   type="number" step="1" value="41"
-                   inputmode="decimal" autocomplete="off" aria-labelledby="latLgnd">
-            <span class="sim-unit" aria-hidden="true">&deg;</span>
-            <input class="control-row__slider sim-slider" id="latSlider"
-                   type="range" min="-90" max="90" step="1" value="41"
-                   aria-hidden="true" tabindex="-1">
-            <span class="sim-scale-min" id="lat-min" aria-hidden="true">-90&deg;</span>
-            <span class="sim-scale-max" id="lat-max" aria-hidden="true">+90&deg;</span>
-          </div>
-
-          <!--
-          <div class="sim-eqn-row">
-            <div id="latEqn" class="sim-eqn" tabindex="-1" aria-hidden="true"></div>
-            <p id="latEqnMsg" class="sr-only"></p>
-          </div>
-          -->  
+          <div id="lat-dual-mount" class="sim-dual-mount"></div>
         </fieldset>
+        <!-- Live region outside DualControl mount so wide display:contents
+             layout does not place it in grid cells. -->
+        <p id="lat-dual-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
       </section>
 
       <section class="panel sim-panel" id="url-clean-panel" role="dialog" 
         aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
         style="display:none">
         <h2 class="panel__heading" id="urlHeading">Keyboard Navigation</h2>
-        <p id="urlDesc">  
-          Drag and use the arrow keys (or A, D, W, and S) to rotate the
-          view, amplifying the effect with the Shift or Caps Lock keys. 
-          Adjust observer latitude similarly with the plus and minus keys. 
-          Skip or restore transitions by typing T, and reset the simulation with
-          R.</p>
+          <p id="urlDesc">
+          Drag and use the arrow keys (or A, D, W, and S) to rotate the view,
+          amplifying the effect with the Shift or Caps Lock keys.  Adjust
+          observer latitude similarly with the plus and minus keys.  Change
+          the view with V, skip or restore transitions by typing T, and reset
+          the simulation with R.</p>
         <p id="sr-description-kn2" class="sr-only">Close description of keyboard
         navigation options.</p>
         <div class="div-closeKeyNavBtn">
