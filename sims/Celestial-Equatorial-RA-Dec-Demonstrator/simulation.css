@@ -92,32 +92,35 @@ body { line-height: 1.45; }
   background:      #f3f4f6;
 }
 
-/* ---- Star Position sliders (a sim-specific accessible slider component,
-   layered on top of the foundation, never editing it). -------------------- */
-.sim-slider-row {
-  grid-template-columns: 9rem 5.5rem 1fr;
-  align-items:     center;
-  gap:             0.4rem 0.6rem;
-  margin-bottom:   0.8rem;
+/* ---- Star Position controls (DualControl) ------------------------------- */
+#star-panel .control-fieldset {
+  padding-top:    0.85rem;
 }
-.sim-slider-row .control-row__label { font-weight: 700; }
-.sim-field      { font-size: 1rem; width: 100%; min-height: 2.25rem; }
 
-.sim-field-wrap { display: inline-flex; align-items: baseline; gap: 0.15rem; }
-.sim-units      { font-size: 1rem; }
+.sim-dual-mount {
+  width:          100%;
+  margin-bottom:  0.9rem;
+}
+
+.sim-dual-mount .control-row__label {
+  text-align:     right;
+  font-weight:    600;
+}
+
+.sim-dual-mount .kl-dual__number-wrap {
+  max-width:      5.5rem;
+}
+
+.sim-dual-num {
+  font-variant-numeric: tabular-nums;
+}
+
 .sim-readout {
   margin:          0.25rem 1rem 0;
   font-size:       1.1rem;
   padding:         0.4rem 0.6rem;
   background:      #f3f4f6;
   border-radius:   0.25rem;
-}
-
-.sim-slider {
-  grid-column:     1 / -1;
-  width:           100%;
-  min-height:      2.25rem;
-  accent-color:    var(--button-background-color, #005a9c);
 }
 
 /* ---- Labels panel ---- */
@@ -152,7 +155,8 @@ body { line-height: 1.45; }
   }
 }
 
-/* For wide widths (monitor screens), place list of labels 2 per row */
+/* Wide: DualControls flatten into one shared grid (label | number | unit | slider);
+   labels checklist stays two-per-row. */
 @media (min-width: 65rem) {
 
   .app-shell {
@@ -162,14 +166,34 @@ body { line-height: 1.45; }
   .app-layout.sim-layout {
     grid-template-columns: minmax(22rem, 1fr) minmax(24rem, 1.2fr);
   }
-  
-  /* Place list of labels two per row */
-  .sim-checkbox-list {
-    display:        grid;
-    grid-template-columns: 1.15fr 0.85fr;
-    gap:            0.5rem 1rem;
+
+  #star-panel .control-fieldset {
+    display:               grid;
+    grid-template-columns: max-content 5.5rem auto minmax(6rem, 1fr);
+    align-items:           center;
+    column-gap:            0.6rem;
+    row-gap:               0.35rem;
   }
-  
+
+  .sim-dual-mount,
+  .sim-dual-mount .kl-dual,
+  .sim-dual-mount .kl-dual__number-row,
+  .sim-dual-mount .kl-dual__slider-row {
+    display:        contents;
+  }
+
+  .sim-dual-mount .control-row__label   { grid-column: 1; justify-self: end; }
+  .sim-dual-mount .kl-dual__number-wrap { grid-column: 2; max-width: none; }
+  .sim-dual-mount .kl-dual__unit        { grid-column: 3; }
+  .sim-dual-mount .kl-dual__slider      { grid-column: 4 / span 2; width: 100%; }
+  .sim-dual-mount .kl-dual__scale-min   { grid-column: 4; justify-self: start; margin-bottom: 0.55rem; }
+  .sim-dual-mount .kl-dual__scale-max   { grid-column: 5; justify-self: end;   margin-bottom: 0.55rem; }
+
+  .sim-checkbox-list {
+    display:               grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap:                   0.5rem 1rem;
+  }
 }
 
 /* For narrowest screens, two columns of labels are too long to fit on a single 

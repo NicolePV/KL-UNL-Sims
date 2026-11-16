@@ -65,14 +65,22 @@
 
 .kl-dual__spins {
   position:        absolute;
-  right:           1px;
-  top:             1px;
-  bottom:          1px;
+  right:           0;
+  top:             0;
+  bottom:          0;
   width:           1.15rem;
+  box-sizing:      border-box;
   display:         flex;
   flex-direction:  column;
+  /* Transparent edges leave the input border visible beside the ticks.
+     Prefer border inset over top/right: 1px so Chrome zoom does not
+     round the gap away and clip the field border. */
+  border-top:      1px solid transparent;
+  border-right:    1px solid transparent;
+  border-bottom:   1px solid transparent;
   border-left:     1px solid #dbdbdb;
   background:      #f0f0f0;
+  background-clip: padding-box;
   user-select:     none;
   border-radius:   0 3px 3px 0;
   overflow:        hidden;

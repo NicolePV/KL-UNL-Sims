@@ -26,9 +26,16 @@
 
 .right-col {
   display:               grid;
-  grid-template-columns: minmax(16rem, 1fr) minmax(22rem, 1.35fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap:                   0.75rem;
   align-items:           start;
+  min-width:             0;
+}
+
+/* Allow View Orientation (and DualControls) to shrink beside the table. */
+.right-col > .sim-panel,
+.sim-dual-mount,
+.sim-dual-mount .kl-dual__slider {
   min-width:             0;
 }
 
@@ -61,44 +68,36 @@
   touch-action:          none;
 }
 
-/* --- View orientation controls ------------------------------------------ */
-.sim-slider-row {
-  grid-template-columns: 9.5rem 5.25rem auto;
-  gap:                   0.4rem 0.6rem;
+/* --- View orientation controls (DualControl) ---------------------------- */
+.sim-dual-mount {
+  width:                 100%;
   margin-bottom:         0.9rem;
 }
 
-.sim-slider-row .control-row__label {
+.sim-dual-mount .control-row__label {
   text-align:            right;
   font-weight:           600;
 }
 
-.sim-num {
-  width:                 5.25rem;
-  min-height:            2.75rem;
-  text-align:            right;
+.sim-dual-mount .kl-dual__number-wrap {
+  max-width:             5.5rem;
+}
+
+.sim-dual-num {
   font-variant-numeric:  tabular-nums;
 }
 
-.sim-unit {
-  font-size:             1.05rem;
-}
-
-.sim-range {
-  grid-column:           1 / -1;
-}
-
 .sim-check-row {
-  margin-top:     0.75rem;
+  margin-top:            0.75rem;
 }
 .sim-check-row .control-choice {
-  min-height:     2.75rem;
-  margin-top:     0;
-  width:          100%;
+  min-height:            2.75rem;
+  margin-top:            0;
+  width:                 100%;
 }
 .sim-check-row label {
-  font-weight: bold;
-  cursor:      pointer;
+  font-weight:           bold;
+  cursor:                pointer;
 }
 
 /* --- Star table --------------------------------------------------------- */
@@ -181,22 +180,47 @@
   .right-col > .sim-panel {
     min-width:             0;
   }
+}
 
-  .sim-slider-row {
-    grid-template-columns: minmax(0, 1fr) minmax(4.5rem, 5.25rem) auto;
+/* Wide: dissolve both DualControls into one shared grid
+   (label | number | unit | slider); sightlines span full width. */
+@media (min-width: 65rem) {
+
+  #controls-panel .control-fieldset {
+    display:               grid;
+    /* Five tracks: label | number | unit | slider | scale-max (explicit so
+       the slider span does not create an implicit auto column that won't shrink). */
+    grid-template-columns: max-content minmax(0, 5.5rem) auto minmax(0, 1fr) max-content;
+    align-items:           center;
+    column-gap:            0.6rem;
+    row-gap:               0.35rem;
   }
 
-  .sim-slider-row .control-row__label {
-    min-width:             0;
+  .sim-dual-mount,
+  .sim-dual-mount .kl-dual,
+  .sim-dual-mount .kl-dual__number-row,
+  .sim-dual-mount .kl-dual__slider-row {
+    display:               contents;
   }
 
-  .sim-num {
+  .sim-dual-mount .control-row__label   { grid-column: 1; justify-self: end; }
+  .sim-dual-mount .kl-dual__number-wrap {
+    grid-column:           2;
+    max-width:             none;
     width:                 100%;
-    min-width:             0;
     box-sizing:            border-box;
   }
-
-  .sim-range {
+  .sim-dual-mount .kl-dual__unit        { grid-column: 3; }
+  .sim-dual-mount .kl-dual__slider {
+    grid-column:           4 / span 2;
+    width:                 100%;
     min-width:             0;
+  }
+  .sim-dual-mount .kl-dual__scale-min   { grid-column: 4; justify-self: start; margin-bottom: 0.55rem; }
+  .sim-dual-mount .kl-dual__scale-max   { grid-column: 5; justify-self: end;   margin-bottom: 0.55rem; }
+
+  .sim-check-row {
+    grid-column:           1 / -1;
+    margin-top:            0.5rem;
   }
 }

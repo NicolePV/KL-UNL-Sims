@@ -18,15 +18,48 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, stepToPrec, speak, pMod, findMinMaxMid, clamp, noEinNumber, 
-  keyAccel, updateSliderProgress, hexToRGBA, announceLive, logAct,
+  legToFixed, stepToPrec, speak, pMod, findMinMaxMid, clamp,
+  keyAccel, hexToRGBA, announceLive, logAct,
   descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
+
+import { DualControl } from '../foundation/js/kl-unl-dual-control.js';
 
 logAct('INIT_BigDipper');
 
 // Assume vanilla URL (masthead and control panels shown)
 let urlClean = false;
+
+const THETA_STEP = 1;
+const PHI_STEP   = 1;
+const THETA_PREC = stepToPrec(String(THETA_STEP));
+const PHI_PREC   = stepToPrec(String(PHI_STEP));
+
+/**
+ * Dormant: announce when display horizontal angle crosses face-on (0°).
+ * Off by default — asterisms sit at arbitrary sky positions, so the mid-range
+ * zero has no special astronomy meaning, and learners usually keep the patch
+ * offset from Earth so (0,0) is uncommon.
+ * Enable later on thetaDual:  milestone: thetaFaceOnCrossing,
+ */
+function thetaFaceOnCrossing(v, prev) {
+  if (prev == null || !isFinite(prev) || v === prev) return false;
+  if ((prev < 0 && v >= 0) || (prev > 0 && v <= 0))
+    return 'Face-on view.';
+  return false;
+}
+
+/**
+ * Dormant: announce when vertical tilt crosses untilted (0°).
+ * Off by default — same rationale as thetaFaceOnCrossing.
+ * Enable later on phiDual:  milestone: phiUntiltedCrossing,
+ */
+function phiUntiltedCrossing(v, prev) {
+  if (prev == null || !isFinite(prev) || v === prev) return false;
+  if ((prev < 0 && v >= 0) || (prev > 0 && v <= 0))
+    return 'Untilited view.';
+  return false;
+}
 
 /* --- stage and sphere (frame_1/DoAction_2.as) --------------------------- */
 const STAGE_W            =  650;
@@ -240,6 +273,7 @@ class App {
 
     this.buildScene();
     this.cacheDom();
+    this.buildDualControls();
     this.captureCopy();
     this.installConstellationSelect();
     this.populateTable();
@@ -446,14 +480,70 @@ class App {
     this.canvas         = document.getElementById('sky');
     this.ctx            = this.canvas.getContext('2d');
     this.desc           = document.getElementById('diagramDesc');
-    this.thetaNumber    = document.getElementById('thetaNumber');
-    this.phiNumber      = document.getElementById('phiNumber');
-    this.thetaSlider    = document.getElementById('thetaSlider');
-    this.phiSlider      = document.getElementById('phiSlider');
     this.sightlinesCBox = document.getElementById('sightlines');
     this.diagramHeading = document.getElementById('diagramHeading');
     this.asterismName   = document.getElementById('asterism-name');
     this.tableCaption   = document.querySelector('.sim-table caption');
+  }
+
+  buildDualControls() {
+    const app = this;
+
+    this.thetaDual = new DualControl({
+      mount:          '#theta-dual-mount',
+      id:             'theta',
+      label:          'horizontal angle:',
+      min:            -60,
+      max:             60,
+      step:           THETA_STEP,
+      pageStep:       10,
+      value:          20,
+      unit:           '°',
+      minLabel:       '-60&deg;',
+      maxLabel:       '+60&deg;',
+      liveRegion:     document.getElementById('theta-dual-live'),
+      numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+      sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+      numberClass:    'control-row__input  sim-dual-num kl-dual__number',
+      sliderClass:    'control-row__slider sim-dual-range kl-dual__slider',
+      formatAnnounce: (v) => 'Horizontal angle ' + speak(v, THETA_PREC, 'degree'),
+    //milestone:    thetaFaceOnCrossing,   // dormant — see helper comment
+      onInput:        (v) => {
+        app.setView(v + THETA_OFFSET, app.phiDual.getValue());
+        app.render();
+      },
+      onChange:       (v) => {
+        return 'Horizontal angle ' + speak(v, THETA_PREC, 'degree') + '.';
+      }
+    });
+
+    this.phiDual = new DualControl({
+      mount:          '#phi-dual-mount',
+      id:             'phi',
+      label:          'vertical tilt:',
+      min:            -35,
+      max:             35,
+      step:           PHI_STEP,
+      pageStep:       10,
+      value:          -20,
+      unit:           '°',
+      minLabel:       '-35&deg;',
+      maxLabel:       '+35&deg;',
+      liveRegion:     document.getElementById('phi-dual-live'),
+      numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+      sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+      numberClass:    'control-row__input  sim-dual-num kl-dual__number',
+      sliderClass:    'control-row__slider sim-dual-range kl-dual__slider',
+      formatAnnounce: (v) => 'Vertical tilt ' + speak(v, PHI_PREC, 'degree'),
+    //milestone:    phiUntiltedCrossing,   // dormant — see helper comment
+      onInput:        (v) => {
+        app.setView(app.thetaDual.getValue() + THETA_OFFSET, v);
+        app.render();
+      },
+      onChange:       (v) => {
+        return 'Vertical tilt ' + speak(v, PHI_PREC, 'degree') + '.';
+      }
+    });
   }
 
   /* Remember the Big Dipper wording so a later choice can restore it. */
@@ -545,14 +635,7 @@ class App {
     applyFigure(figure);
     this.rewriteCopy();
     this.rebuildScene();
-    this.thetaSlider.min = THETA_MIN - THETA_OFFSET;
-    this.thetaSlider.max = THETA_MAX - THETA_OFFSET;
-    this.thetaNumber.min = THETA_MIN - THETA_OFFSET;
-    this.thetaNumber.max = THETA_MAX - THETA_OFFSET;
-    this.phiSlider.min   = PHI_MIN;
-    this.phiSlider.max   = PHI_MAX;
-    this.phiNumber.min   = PHI_MIN;
-    this.phiNumber.max   = PHI_MAX;
+    // DualControl display ranges stay ±60° / ±35°; THETA_OFFSET maps via setView.
     this.sortKey         = null;
     this.sortDir         = 'asc';
     this.populateTable();
@@ -561,6 +644,7 @@ class App {
       this.setView(THETA_URL, PHI_URL);
       newInit = false;
     }
+    this.syncControls();
     this.render();
     // Update figure announcement for Canis Major asterism 
     // (note Chrome+Voiceover ignores update)
@@ -1106,52 +1190,13 @@ class App {
   /* =======================================================================
      Controls
      ======================================================================= */
+  /** Push display θ/φ into DualControls without writing DualControl live regions. */
   syncControls() {
-    const t                = Math.round(this.theta - THETA_OFFSET);
-    const p                = Math.round(this.phi);
-    const tPrec            = stepToPrec(this.thetaNumber.step);
-    const pPrec            = stepToPrec(this.phiNumber.step);
-    this.thetaNumber.value = legToFixed(t, tPrec);
-    this.phiNumber.value   = legToFixed(p, pPrec);
-    this.thetaSlider.value = t;
-    this.phiSlider.value   = p;
-    updateSliderProgress(this.thetaSlider);
-    updateSliderProgress(this.phiSlider);
-
-    clearTimeout(this.announceTimer);
-    this.announceTimer = setTimeout(() => {
-      this.thetaSlider.setAttribute('aria-valuetext', 'Horizontal angle ' + speak(t, 0, 'degree'));
-      this.phiSlider.setAttribute(  'aria-valuetext', 'Vertical tilt '    + speak(p, 0, 'degree'));
-    }, 600);
-  }
-
-  readNumber(input, slider, label) {
-    let v               = Number(input.value);
-    if (!isFinite(v)) v = Number(slider.value);
-    v                   = clamp(v, Number(slider.min), Number(slider.max));
-    input.value         = legToFixed(v, stepToPrec(input.step));
-    slider.value        = v;
-    updateSliderProgress(slider);
-    /*
-    // Abandoned aria-valuetext announcement because Chrome+Voiceover read  
-    // every change and produced a strong stutter due to the overlapping values
-    // (so we defaulted to the native HTML behavior, though we removed the  
-    // min/max limits in the elements to prevent Chrome from reporting values 
-    // as percentages)
-    clearTimeout(this.announceAngleTimer);
-    this.announceAngleTimer = setTimeout(() => {
-      if (document.activeElement !== input) {
-        input.setAttribute('aria-valuetext', label + ' ' + speak(v, 0, 'degree'));
-      }
-    }, 600);
-    */
-    
-    return v;
-  }
-
-  applyControls() {
-    this.setView(Number(this.thetaSlider.value) + THETA_OFFSET, Number(this.phiSlider.value));
-    this.render();
+    if (!this.thetaDual || !this.phiDual) return;
+    const t = Math.round(this.theta - THETA_OFFSET);
+    const p = Math.round(this.phi);
+    this.thetaDual.setValue(t, { silent: true, source: 'sync' });
+    this.phiDual.setValue(  p, { silent: true, source: 'sync' });
   }
 
   announceState(prefix) {
@@ -1203,10 +1248,6 @@ class App {
   }
 
   bindEvents() {
-    const thetaNumber    = this.thetaNumber;
-    const phiNumber      = this.phiNumber;
-    const thetaSlider    = this.thetaSlider;
-    const phiSlider      = this.phiSlider;
     const sightlinesCBox = this.sightlinesCBox;
 
     document.addEventListener('sim-reset', () => this.reset());
@@ -1218,43 +1259,9 @@ class App {
       });
     }
 
-    const onSliderInput = (slider, number) => {
-      this.setView(Number(thetaSlider.value) + THETA_OFFSET, Number(phiSlider.value));
-      number.value = legToFixed(Number(slider.value), stepToPrec(number.step));
-      updateSliderProgress(thetaSlider);
-      updateSliderProgress(phiSlider);
-      this.render();
-    };
-    thetaSlider.addEventListener(    'input',  () => onSliderInput(thetaSlider, thetaNumber));
-    phiSlider.addEventListener(      'input',  () => onSliderInput(phiSlider,   phiNumber));
-    thetaSlider.addEventListener(    'change', () => this.syncControls());
-    phiSlider.addEventListener(      'change', () => this.syncControls());
-    sightlinesCBox.addEventListener( 'change', () => { this.announceSightlines(); this.render() });
-
-    // Apply a number box only when the typed value is already inside the
-    // slider range, so a half-finished entry such as "1" of "130" is left alone.
-    const onNumberInput = (number, slider) => {
-      const v  = Number(number.value);
-      const lo = Number(slider.min);
-      const hi = Number(slider.max);
-      if (!isFinite(v) || v < lo || v > hi) return;
-      slider.value = v;
-      updateSliderProgress(slider);
-      this.applyControls();
-    };
-    const onNumberChange = (number, slider, label) => {
-      this.readNumber(number, slider, label);
-      this.applyControls();
-      this.syncControls();
-    };
-    /*
-    thetaNumber.addEventListener('input',  () => onNumberInput(thetaNumber,  thetaSlider));
-    phiNumber.addEventListener(  'input',  () => onNumberInput(phiNumber,    phiSlider));
-    */
-    thetaNumber.addEventListener('change', () => onNumberChange(thetaNumber, thetaSlider, 'horizontal angle'));
-    phiNumber.addEventListener(  'change', () => onNumberChange(phiNumber,   phiSlider,   'vertical tilt'   ));
-    thetaNumber.addEventListener('keydown', noEinNumber);
-    phiNumber.addEventListener(  'keydown', noEinNumber);
+    // DualControls own horizontal / vertical slider + number sync and
+    // single-axis live announcements. Canvas paths still use #diagramDesc.
+    sightlinesCBox.addEventListener('change', () => { this.announceSightlines(); this.render(); });
 
     this.canvas.addEventListener('pointerdown',   (ev) => this.onPointerDown(ev));
     this.canvas.addEventListener('pointermove',   (ev) => this.onPointerMove(ev));
@@ -1263,21 +1270,6 @@ class App {
     this.canvas.addEventListener('keydown',       (ev) => this.onCanvasKey(ev));
     this.canvas.addEventListener('keyup',         (ev) => this.onCanvasKeyUp(ev));
 
-    // Insure that if user updates a number box via up/down ticks and then tabs to 
-    // another element and then shift-tabs back, the number box aria-valuetext is 
-    // updated as soon as focus leaves. Part of abandoned attempt (defaulted to
-    // native HTML to satisfy Chrome+Voiceover).
-    /*
-    this.thetaNumber.addEventListener('blur', () => {
-      this.thetaNumber.setAttribute('aria-valuetext', 'horizontal angle ' +
-                                    speak(this.thetaNumber.value, 0, 'degree'));s
-    });
-    this.phiNumber.addEventListener('blur', () => {
-      this.phiNumber.setAttribute('aria-valuetext', 'vertical tilt ' +
-                                  speak(this.phiNumber.value, 0, 'degree'));
-    });
-    */
-    
     // Setting gear when only figure is shown
     document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
     document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());

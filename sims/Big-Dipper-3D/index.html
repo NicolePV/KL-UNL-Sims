@@ -7,8 +7,9 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
-  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"        type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css"      type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-dual-control.css" type="text/css" rel="stylesheet" media="all">
   <!-- Simulation-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
@@ -55,37 +56,9 @@
             <fieldset class="control-fieldset">
               <legend class="sr-only">Rotate the diagram</legend>
 
-              <div class="control-row sim-slider-row">
-                <label class="control-row__label" for="thetaNumber">horizontal angle:</label>
-                <input class="control-row__input sim-num" id="thetaNumber" type="number"
-                       step="1" value="20" autocomplete="off"
-                       inputmode="decimal" aria-label="Horizontal angle" aria-describedby="thetaUnit">
-                <span class="sim-unit" id="thetaUnit" aria-label="degrees">&nbsp;&#176;</span>
-                <input class="control-row__slider sim-range" id="thetaSlider" type="range"
-                       min="-60" max="60" step="1" value="20"
-                       aria-label="Horizontal angle" aria-valuetext="Horizontal angle 20 degrees"
-                       aria-hidden="true" tabindex="-1">
-                <span class="sim-scale-min" id="theta-min" aria-hidden="true">-60&deg;</span>
-                <span class="sim-scale-max" id="theta-max" aria-hidden="true">+60&deg;</span>
-              </div>
-                  <!-- min="122" max="247" step="1" value="221" autocomplete="off" -->
-                  <!-- min="122" max="247" step="1" value="221" -->
-                  <!-- aria-label="Horizontal angle" aria-valuetext="Horizontal angle 221 degrees" -->
+              <div id="theta-dual-mount" class="sim-dual-mount"></div>
+              <div id="phi-dual-mount"   class="sim-dual-mount"></div>
 
-              <div class="control-row sim-slider-row">
-                <label class="control-row__label" for="phiNumber">vertical tilt:</label>
-                <input class="control-row__input sim-num" id="phiNumber" type="number"
-                       step="1" value="-20" autocomplete="off"
-                       inputmode="decimal" aria-label="Vertical tilt" aria-describedby="phiUnit">
-                <span class="sim-unit" id="phiUnit" aria-label="degrees">&nbsp;&#176;</span>
-                <input class="control-row__slider sim-range" id="phiSlider" type="range"
-                       min="-35" max="35" step="1" value="-20"
-                       aria-label="Vertical tilt" aria-valuetext="Vertical tilt minus 20 degrees"
-                       aria-hidden="true" tabindex="-1">
-                <span class="sim-scale-min" id="phi-min" aria-hidden="true">-35&deg;</span>
-                <span class="sim-scale-max" id="phi-max" aria-hidden="true">+35&deg;</span>
-              </div>
-              
               <!-- Sightline checkbox -->
               <div class="sim-check-row">
                 <div class="control-choice sim-sightline-row">
@@ -93,8 +66,12 @@
                   <label for="sightlines">sightlines</label>
                 </div>
               </div>
-          
+
             </fieldset>
+            <!-- Live regions sit outside the wide-layout grid so display:contents
+                 on DualControl rows does not place them in grid cells. -->
+            <p id="theta-dual-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+            <p id="phi-dual-live"   class="sr-only" aria-live="polite" aria-atomic="true"></p>
           </section>
 
           <section class="panel sim-panel" id="stars-panel" aria-labelledby="dataHeading">

@@ -7,8 +7,9 @@
   <meta name="description" content="College-level astronomy materials">
   <meta name="keywords" content="Astronomy education, undergraduate astronomy">
   <!-- KL-UNL shared foundation -->
-  <link href="../foundation/css/kl-unl-utils.css"   type="text/css" rel="stylesheet" media="all">
-  <link href="../foundation/css/kl-unl-cursors.css" type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-utils.css"        type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-cursors.css"      type="text/css" rel="stylesheet" media="all">
+  <link href="../foundation/css/kl-unl-dual-control.css" type="text/css" rel="stylesheet" media="all">
   <!-- Sim-specific style -->
   <link rel="stylesheet" href="simulation.css" type="text/css" media="all">
   <link rel="icon" type="image/png" href="../foundation/images/klunl_favicon_32.png"  sizes="32x32">
@@ -72,55 +73,15 @@
       <section id="star-panel" class="panel sim-area-star" aria-labelledby="star-position-heading">
         <h2 id="star-position-heading" class="panel__heading">Star Position</h2>
 
-        <fieldset class="control-fieldset">
+        <fieldset class="control-fieldset" id="star-coord-fieldset">
           <legend class="control-fieldset__legend sr-only">Star equatorial coordinates</legend>
-
-          <!-- Right ascension -->
-          <div class="control-row sim-slider-row">
-            <label class="control-row__label" for="ra-range">
-              <span aria-hidden="true">right ascension:</span>
-            </label>
-            <span class="sim-field-wrap">
-              <!--
-              <input class="control-row__input sim-field" type="text" inputmode="decimal" autocomplete="off"
-                     id="ra-field" value="4.0" maxlength="6"
-                     aria-label="Right ascension, hours">
-              -->
-              <input class="control-row__input sim-num" id="ra-field" type="number" 
-                     step="0.1" value="4.0" autocomplete="off"
-                     inputmode="decimal" aria-label="Right ascension, hours">
-              <span class="sim-units" aria-hidden="true">&nbsp;h</span>
-            </span>
-            <input class="control-row__slider sim-slider" type="range" autocomplete="off"
-                   id="ra-range" min="0" max="24" step="0.1" value="4.0"
-                   aria-label="Right ascension" aria-hidden="true" tabindex="-1">
-            <span class="sim-scale-min" id="ra-min" aria-hidden="true">0&#x02b0;</span>
-            <span class="sim-scale-max" id="ra-max" aria-hidden="true">24&#x02b0;</span>
-          </div>
-
-          <!-- Declination -->
-          <div class="control-row sim-slider-row">
-            <label class="control-row__label" for="dec-range">
-              <span aria-hidden="true">declination:</span>
-            </label>
-            <span class="sim-field-wrap">
-              <!--
-              <input class="control-row__input sim-field" type="text" inputmode="decimal" autocomplete="off"
-                     id="dec-field" value="60.0" maxlength="6"
-                     aria-label="Declination, degrees">
-              -->
-              <input class="control-row__input sim-num" id="dec-field" type="number" 
-                     step="1" value="60" autocomplete="off"
-                     inputmode="decimal" aria-label="Declination, degrees">
-              <span class="sim-units" aria-hidden="true">&nbsp;&deg;</span>
-            </span>
-            <input class="control-row__slider sim-slider" type="range" autocomplete="off"
-                   id="dec-range" min="-90" max="90" step="1" value="60"
-                   aria-label="Declination" aria-hidden="true" tabindex="-1">
-            <span class="sim-scale-min" id="ra-min" aria-hidden="true">-90&deg;</span>
-            <span class="sim-scale-max" id="ra-max" aria-hidden="true">+90&deg;</span>
-          </div>
+          <div id="ra-dual-mount"  class="sim-dual-mount"></div>
+          <div id="dec-dual-mount" class="sim-dual-mount"></div>
         </fieldset>
+        <!-- Live regions sit outside the wide-layout grid so display:contents
+             on DualControl rows does not place them in grid cells. -->
+        <p id="ra-dual-live"  class="sr-only" aria-live="polite" aria-atomic="true"></p>
+        <p id="dec-dual-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
 
         <!-- MathJax readout of the current star coordinates (typeset, right-click
           opens the MathJax menu). Paired with a spoken description. -->

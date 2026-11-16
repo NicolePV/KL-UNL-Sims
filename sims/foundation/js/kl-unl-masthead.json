@@ -106,7 +106,7 @@
   "bigdipper": {
     "meta": {
       "title": "Constellations in Three Dimensions",
-      "version": "2.1.0 (2026-11-04)"
+      "version": "2.1.0 (2026-11-15)"
     },
     "masthead": {
       "help": {
@@ -1840,7 +1840,7 @@
   "zodiac": {
     "meta": {
       "title": "Ecliptic (Zodiac) Simulator",
-      "version": "2.2.0 (2026-11-04)"
+      "version": "2.2.0 (2026-11-13)"
     },
     "masthead": {
       "help": {

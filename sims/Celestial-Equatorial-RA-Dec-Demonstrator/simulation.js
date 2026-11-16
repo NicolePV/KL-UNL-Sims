@@ -16,10 +16,11 @@ import {
 } from '../foundation/js/kl-unl-celestial-sphere.js';
 
 import {
-  legToFixed, stepToPrec, speak, listLabels, pMod, noEinNumber, keyAccel,
-  updateSliderProgress, hexToRGBA, VO_FIX_LGND, logAct,
+  legToFixed, stepToPrec, speak, listLabels, pMod, hexToRGBA, VO_FIX_LGND, logAct,
   descMoreKeys, hideMoreKeys, updateShowHideLabelButtons
 } from '../foundation/js/kl-unl-utils.js';
+
+import { DualControl } from '../foundation/js/kl-unl-dual-control.js';
 
 import { EARTH_SHORES } from '../foundation/js/kl-unl-earth-shores.js';
 
@@ -31,6 +32,33 @@ logAct('INIT_CEQ');
 
 // Assume vanilla URL (masthead and control panels shown)
 let urlClean = false;
+
+const RA_STEP   = 0.1;
+const DEC_STEP  = 1;
+const RA_PREC   = stepToPrec(String(RA_STEP ));
+const DEC_PREC  = stepToPrec(String(DEC_STEP));
+
+/** Announce once when declination crosses the celestial equator (0°). */
+function decEquatorCrossing(v, prev) {
+  if (prev == null || !isFinite(prev) || v === prev) return false;
+  if ((prev < 0 && v >= 0) || (prev > 0 && v <= 0))
+    return 'Crossing the celestial equator.';
+  return false;
+}
+
+/**
+ * Announce when RA crosses the 0h or 12h circle during continuous motion.
+ * Skip wrap jumps (24↔0); those are not treated as crossing 0h.
+ */
+function raHourCircleCrossing(v, prev) {
+  if (prev == null || !isFinite(prev) || v === prev) return false;
+  if (Math.abs(v - prev) > 12) return false;   // wrap discontinuity
+  if ((prev < 12 && v >= 12) || (prev > 12 && v <= 12))
+    return 'Crossing the 12-hour circle.';
+  if ((prev <  0 && v >=  0) || (prev >  0 && v <=  0))
+    return 'Crossing the 0-hour circle.';
+  return false;
+}
 
 // Intrinsic image sizes — fallback when naturalWidth === 0 (Safari).
 const IMG_DIM = {
@@ -79,6 +107,7 @@ class App {
     this.buildObjects();
     this.loadAssets();
     this.cacheDom();
+    this.buildDualControls();
     this.bindEvents();
     this.setupMathJaxTabStrip();
     this.reset();
@@ -177,10 +206,6 @@ class App {
     this.ctx    = this.canvas.getContext('2d');
     this.fitCanvas();
 
-    this.raRange  = document.getElementById('ra-range');
-    this.decRange = document.getElementById('dec-range');
-    this.raField  = document.getElementById('ra-field');
-    this.decField = document.getElementById('dec-field');
     this.chk = {
       earthPoles: document.getElementById('cb-earthpoles'),
       equator:    document.getElementById('cb-equator'),
@@ -195,6 +220,70 @@ class App {
     this.live       = document.getElementById('sr-status');
     this.skyDesc    = document.getElementById('sky-desc');
     this.starHandle = document.getElementById('star-handle');
+  }
+
+  buildDualControls() {
+    const app = this;
+
+    this.raDual = new DualControl({
+      mount:          '#ra-dual-mount',
+      id:             'ra',
+      label:          'right ascension:',
+      min:            0,
+      max:            24,
+      step:           RA_STEP,
+      pageStep:       1.5,
+      value:          4,
+      unit:           'h',
+      minLabel:       '0<sup>h</sup>',
+      maxLabel:       '24<sup>h</sup>',
+      wrap:           true,
+      liveRegion:     document.getElementById('ra-dual-live'),
+      numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+      sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+      numberClass:    'control-row__input  sim-dual-num kl-dual__number',
+      sliderClass:    'control-row__slider sim-dual-range kl-dual__slider',
+      formatAnnounce: (v) => 'Right ascension ' + speak(v, RA_PREC, 'hour'),
+      milestone:      raHourCircleCrossing,
+      onInput:        (v) => {
+        app.setStarLocation(v, app.decDual.getValue(), true);
+        app.render();
+      },
+      onChange:       (v) => {
+        app.syncStarChrome();
+        return 'Right ascension ' + speak(v, RA_PREC, 'hour') + '.';
+      }
+    });
+
+    this.decDual = new DualControl({
+      mount:          '#dec-dual-mount',
+      id:             'dec',
+      label:          'declination:',
+      min:            -90,
+      max:             90,
+      step:           DEC_STEP,
+      pageStep:       15,
+      value:          60,
+      unit:           '°',
+      minLabel:       '-90&deg;',
+      maxLabel:       '+90&deg;',
+      liveRegion:     document.getElementById('dec-dual-live'),
+      numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
+      sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
+      numberClass:    'control-row__input  sim-dual-num kl-dual__number',
+      sliderClass:    'control-row__slider sim-dual-range kl-dual__slider',
+      formatAnnounce: (v) => 'Declination ' + speak(v, DEC_PREC, 'degree'),
+      milestone:      decEquatorCrossing,
+      onInput:        (v) => {
+        app.setStarLocation(app.raDual.getValue(), v, true);
+        app.render();
+      },
+      onChange:       (v) => {
+        app.syncStarChrome();
+        return 'Declination ' + speak(v, DEC_PREC, 'degree') + '.';
+      }
+    });
+
   }
 
   fitCanvas() {
@@ -263,13 +352,13 @@ class App {
   }
 
   setStarLocation(ra, dec, skipSliderSync) {
+    if (ra !== 24) ra = pMod(ra, 24);
     this.star.ra  = ra;
     this.star.dec = dec;
-    const CSC     = this.S.CSC;
-    this.LBL.raLabel.text  = legToFixed(ra,  stepToPrec( this.raField.step  )) + 'h';
+    this.LBL.raLabel.text  = legToFixed(ra,  RA_PREC ) + 'h';
     this.LBL.raLabel.setPosition( { ra: ra - 0.9, dec: 5,       r: 1.001 });
     this.LBL.raLabel.setOrientationAbsolute();
-    this.LBL.decLabel.text = legToFixed(dec, stepToPrec( this.decField.step )) + '°';
+    this.LBL.decLabel.text = legToFixed(dec, DEC_PREC) + '°';
     this.LBL.decLabel.setPosition({ ra: ra + 0.9, dec: dec / 2, r: 1.001 });
     this.LBL.decLabel.setOrientationAbsolute();
     this.OBJ.star.setPosition({ ra, dec });
@@ -293,13 +382,11 @@ class App {
     }
     this.C.decCircle.setParameters({ ra: 0, dec,    tilt: 0 });
 
-    if (!skipSliderSync) {
-      this.raRange.value  = ra;
-      this.decRange.value = dec;
-      this.raField.value  = legToFixed( ra,  stepToPrec( this.raField.step  ) );
-      this.decField.value = legToFixed( dec, stepToPrec( this.decField.step ) );
+    if (!skipSliderSync && this.raDual && this.decDual) {
+      this.raDual.setValue( ra,  { silent: true, source: 'sync' });
+      this.decDual.setValue(dec, { silent: true, source: 'sync' });
     }
-    this.syncReadouts();
+    this.syncStarChrome();
     this.updateStarScreen();
   }
 
@@ -624,8 +711,18 @@ class App {
     };
   }
 
-  clampRa(v)  { v = parseFloat(v); if (isNaN(v)) return this.star.ra;  return Math.max(0, Math.min(24, v)); }
-  clampDec(v) { v = parseFloat(v); if (isNaN(v)) return this.star.dec; return Math.max(-90, Math.min(90, v)); }
+  /** Wrap RA into [0, 24); keep 24 as a distinct end (matches DualControl wrap). */
+  clampRa(v) {
+    v = parseFloat(v);
+    if (isNaN(v)) return this.star.ra;
+    if (v === 24) return 24;
+    return pMod(v, 24);
+  }
+  clampDec(v) {
+    v = parseFloat(v);
+    if (isNaN(v)) return this.star.dec;
+    return Math.max(-90, Math.min(90, v));
+  }
 
   labelName(k) {
     return {
@@ -637,8 +734,8 @@ class App {
   }
 
   starDescription() {
-    return 'Star at right ascension ' + speak(this.star.ra,  stepToPrec( this.raField.step  ), 'hour')   +
-                     ', declination ' + speak(this.star.dec, stepToPrec( this.decField.step ), 'degree') + ', ' + 
+    return 'Star at right ascension ' + speak(this.star.ra,  RA_PREC,  'hour')   +
+                     ', declination ' + speak(this.star.dec, DEC_PREC, 'degree') + ', ' +
                      locateStar(this.star.ra, this.star.dec, 1);
   }
 
@@ -669,8 +766,8 @@ class App {
     return 'Celestial sphere with the Earth at its center, rotated by '    +
       speak(pMod(this.S.getTheta(), 360), 0, 'degree') + ' and tilted by ' +
       speak(     this.S.getPhi(),         0, 'degree') +
-      '. A star is shown at right ascension ' + speak(this.star.ra,  stepToPrec( this.raField.step  ), ' hour') +
-                             ', declination ' + speak(this.star.dec, stepToPrec( this.decField.step ), 'degree') +
+      '. A star is shown at right ascension ' + speak(this.star.ra,  RA_PREC,  'hour') +
+                             ', declination ' + speak(this.star.dec, DEC_PREC, 'degree') +
       ', both drawn as coloured arcs. ' +
       this.addLabels() + 
     //(shown.length ? 'Labels shown: ' + shown.join(', ') + '.' : 'none.') +
@@ -707,42 +804,28 @@ class App {
     }
   }
 
-  syncReadouts() {
+  /** Update MathJax readout / star-handle name without writing DualControl live regions. */
+  syncStarChrome() {
     const decSign = this.star.dec >= 0 ? '+' : '';
     if (window.klunlShowEquation) {
       window.klunlShowEquation(
         ['star-eqn', '\\(\\mathrm{RA} = ' +
-         legToFixed(this.star.ra,  stepToPrec( this.raField.step  )) + '^{\\mathrm{h}}, ' +
+         legToFixed(this.star.ra,  RA_PREC ) + '^{\\mathrm{h}}, ' +
          '\\quad \\mathrm{dec} = ' + decSign +
-         legToFixed(this.star.dec, stepToPrec( this.decField.step )) + '^{\\circ}\\)'],
+         legToFixed(this.star.dec, DEC_PREC) + '^{\\circ}\\)'],
         ['star-eqn-sr', 'Star position: right ascension ' +
-         speak(this.star.ra,  stepToPrec( this.raField.step  ), 'hour') +
+         speak(this.star.ra,  RA_PREC,  'hour') +
          ', declination ' +
-         speak(this.star.dec, stepToPrec( this.decField.step ), 'degree') + '.']);
+         speak(this.star.dec, DEC_PREC, 'degree') + '.']);
     }
 
-    // Update slider bars
-    this.raRange.value  = this.star.ra;
-    this.decRange.value = this.star.dec;
-    updateSliderProgress(this.raRange);
-    updateSliderProgress(this.decRange);
-    
-    // Debounce scene updates
-    clearTimeout(this.announceTimer);
-    this.announceTimer = setTimeout(() => {
-      this.raRange.setAttribute( 'aria-valuetext',
-        speak(this.star.ra,  stepToPrec( this.raField.step  ), 'hour'));
-      this.decRange.setAttribute('aria-valuetext',
-        speak(this.star.dec, stepToPrec( this.decField.step ), 'degree'));
-
-      if (this.starHandle) {
-        this.starHandle.setAttribute('aria-label',
-          'Star at right ascension ' + speak(this.star.ra,  stepToPrec( this.raField.step  ), 'hour') +
-          ', declination ' + speak(this.star.dec, stepToPrec( this.decField.step ), 'degree') +
-          '. Use the arrow keys to move it: left and right change right ascension, ' +
-          'up and down change declination.');
-      }
-    }, 600);
+    if (this.starHandle && document.activeElement !== this.starHandle) {
+      this.starHandle.setAttribute('aria-label',
+        'Star at right ascension ' + speak(this.star.ra,  RA_PREC,  'hour') +
+        ', declination ' + speak(this.star.dec, DEC_PREC, 'degree') +
+        '. Use the arrow keys to move it: left and right change right ascension, ' +
+        'up and down change declination.');
+    }
   }
 
   setupMathJaxTabStrip() {
@@ -865,8 +948,8 @@ class App {
     // for star, and visibility of four labels.
     const theta =       Math.round( R2D*this.S.theta );
     const phi   =       Math.round( R2D*this.S.phi   );
-    const rah   = 0.1 * Math.round( 10*document.getElementById('ra-field').value  );
-    const dec   =       Math.round(    document.getElementById('dec-field').value );
+    const rah   = 0.1 * Math.round( 10 * (this.raDual  ? this.raDual.getValue()  : this.star.ra ) );
+    const dec   =       Math.round(      (this.decDual ? this.decDual.getValue() : this.star.dec) );
     const nsp   =                     +document.getElementById('cb-earthpoles').checked;
     const equ   =                     +document.getElementById('cb-equator').checked;
     const nscp  =                     +document.getElementById('cb-celpoles').checked;
@@ -991,8 +1074,8 @@ class App {
     if (this.starHandle) {
       this.starHandle.addEventListener('keydown', (ev) => {
         let used = true;
-        let dStp = Number(this.decField.step);
-        if ( ( ev.key == 'ArrowLeft' ) || ( ev.key == 'ArrowRight' ) )  { dStp = Number(this.raField.step); }
+        let dStp = DEC_STEP;
+        if ( ( ev.key == 'ArrowLeft' ) || ( ev.key == 'ArrowRight' ) )  { dStp = RA_STEP; }
         const step = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 10*dStp : dStp;
       //const raStep  = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 0.5 : 0.1;
       //const decStep = ( ev.shiftKey || ev.getModifierState('CapsLock') ) ? 5   : 1;
@@ -1070,63 +1153,8 @@ class App {
       rObs.observe(this.canvas);
     }
     
-    this.raRange.addEventListener('input', () => {
-      this.setStarLocation(this.clampRa(this.raRange.value), this.star.dec, true);
-      this.raField.value  = legToFixed( this.star.ra,  stepToPrec( this.raField.step  ) );
-      this.render();
-    });
-    this.decRange.addEventListener('input', () => {
-      this.setStarLocation(this.star.ra, this.clampDec(this.decRange.value), true);
-      this.decField.value = legToFixed( this.star.dec, stepToPrec( this.decField.step ) );
-      this.render();
-    });
-
-    this.raRange.addEventListener( 'change', () => this.announce(this.starDescription()));
-    this.decRange.addEventListener('change', () => this.announce(this.starDescription()));
-
-    const commitField = (field, isRa) => {
-      const v = isRa ? this.clampRa(field.value) : this.clampDec(field.value);
-      if (isRa) this.setStarLocation(v, this.star.dec, false);
-      else      this.setStarLocation(this.star.ra, v,  false);
-      this.render();
-      this.announce(this.starDescription());
-    };
-    this.raField.addEventListener( 'keydown', noEinNumber );
-    this.decField.addEventListener('keydown', noEinNumber );
-
-    this.raField.addEventListener( 'change', () => commitField(this.raField,  true ));
-    this.decField.addEventListener('change', () => commitField(this.decField, false));
-
-    const stepField = (field, isRa, delta) => {
-      const cur = isRa ? this.clampRa(field.value) : this.clampDec(field.value);
-      const v   = isRa ? this.clampRa(cur + delta) : this.clampDec(cur + delta);
-      if (isRa) this.setStarLocation(v, this.star.dec, false);
-      else      this.setStarLocation(this.star.ra,  v, false);
-      this.render();
-      this.announce(this.starDescription());
-    };
-    const wireFieldStepping = (field, isRa) => {
-      field.addEventListener('keydown', (ev) => {
-        const dir = (ev.key === 'ArrowUp'   || ev.key === 'ArrowRight' || ev.key === 'PageUp'  ) ?  1
-                  : (ev.key === 'ArrowDown' || ev.key === 'ArrowLeft'  || ev.key === 'PageDown') ? -1 : 0;
-        if (!dir) return;
-        ev.preventDefault();
-
-        const step = isRa ? Number(this.raField.step) : Number(this.decField.step);
-        stepField(field, isRa,
-          dir * ( ( ev.key === 'PageUp' || ev.key === 'PageDown'           ) ? 15*step : 
-                  ( ev.shiftKey         || ev.getModifierState('CapsLock') ) ? 10*step : step ) );
-      });
-      field.addEventListener('wheel', (ev) => {
-        if (document.activeElement !== field) return;
-        ev.preventDefault();
-        const step = isRa ? Number(this.raField.step) : Number(this.decField.step);
-        stepField(field, isRa,
-          (ev.deltaY < 0 ? 1 : -1) * (ev.shiftKey || ev.getModifierState('CapsLock') ? 10*step : step ) );
-      }, { passive: false });
-    };
-    wireFieldStepping(this.raField,  true );
-    wireFieldStepping(this.decField, false);
+    // DualControls own RA/Dec slider + number sync and single-axis live announcements.
+    // Canvas / star-handle paths still call announce() via #sr-status.
 
     for (const k in this.chk) {
       this.chk[k].addEventListener('change', () => {
@@ -1144,10 +1172,10 @@ class App {
 function boot() {
   if (!window.ceqApp) {
     window.ceqApp = new App();
-    window.ceqApp.syncReadouts();
+    window.ceqApp.syncStarChrome();
     if (window.MathJax && MathJax.startup && MathJax.startup.promise) {
       MathJax.startup.promise.then(() => {
-        window.ceqApp.syncReadouts();
+        window.ceqApp.syncStarChrome();
         if (MathJax.typesetPromise) MathJax.typesetPromise().catch((e) => console.error(e));
       });
     }
