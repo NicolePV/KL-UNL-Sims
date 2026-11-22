@@ -1,0 +1,156 @@
+/* ==========================================================================
+   Full Moon Declination Demonstrator — sim-specific styles only.
+   Trimmed against kl-unl-utils.css, kl-unl-cursors.css, kl-unl-dual-control.css.
+   ========================================================================== */
+
+:root { --sim-panel-gap: 0.6rem; }
+
+body {
+  font-family: Verdana, "DejaVu Sans", Geneva, sans-serif;
+  font-size:   1.125rem;
+  line-height: 1.45;
+}
+
+html, body {
+  max-width:  100%;
+  overflow-x: hidden;
+}
+
+/* Two panels side by side (plot wider), day panel full width below.
+   Collapses to a single stacked column below the foundation 56rem breakpoint. */
+.sim-layout.app-layout {
+  grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 1fr);
+  gap:                   var(--sim-panel-gap);
+  align-items:           stretch;
+  padding:               0.5rem;
+}
+
+/* The diagram panel (left) is driven to the same height as the right-hand
+   column: it becomes a flex column whose canvas area fills the leftover space,
+   and the square canvas scales (centred) to fit that space. */
+.app-layout.sim-layout > .sim-panel {
+  display:        flex;
+  flex-direction: column;
+  min-width:      0;
+}
+
+.app-layout.sim-layout > .sim-panel .panel__canvas-wrap {
+  flex:           1 1 auto;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  min-width:      0;
+  min-height:     0;        /* allow the canvas to shrink so it never forces
+                               the column taller than the controls column */
+}
+
+.right-col {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.75rem;
+  min-width:      0;
+}
+
+/* .sim-area-plot { grid-column: 1; grid-row: 1; } */
+/* .sim-area-sky  { grid-column: 2; grid-row: 1; } */
+.sim-area-day  { grid-column: 1 / -1; grid-row: 2; }
+
+.panel {
+  border-radius:    0.25rem;
+  margin-bottom:    0;
+  display:          flex;
+  flex-direction:   column;
+}
+.panel__heading { font-size: 1.15rem; }
+
+.sim-canvas-wrap {
+  padding:         0.5rem 0.75rem 0.75rem;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  box-sizing:      border-box;
+  width:           100%;
+  min-width:       0;
+}
+
+.plot-stage {
+  position:     relative;
+  width:        100%;
+  max-width:    34rem;
+  aspect-ratio: 470 / 320;
+}
+
+.sim-canvas {
+  display:       block;
+  width:         100%;
+  max-width:     100%;
+  height:        auto;
+  margin:        0 auto;
+  background:    #ffffff;
+  /*
+  border:        1px solid var(--border-color, #767676);
+  border-radius: 0.25rem;
+  */
+  touch-action:  none;
+}
+.sim-area-sky  .sim-canvas { aspect-ratio: 1 / 1;     max-width: 26rem; }
+.plot-stage    .sim-canvas { aspect-ratio: 470 / 320; }
+/* .sim-plot-wrap .sim-canvas { aspect-ratio: 470 / 320; max-width: 34rem; } */
+
+.sim-canvas:focus-visible {
+  outline-width:  0.125rem;
+  outline-style:  solid;
+  outline-color:  var(--outline-color, #005fcc);
+  outline-offset: 2px;
+}
+
+/*
+.sim-plot-wrap {
+  position : relative;
+}
+*/
+
+.stage-overlay {
+  position       : absolute;
+  inset          : 0;
+  pointer-events : none;
+}
+
+.stage-label {
+  position : absolute;
+  margin:    0;
+}
+
+/* Prevent MathJax display-math vertical margins from shifting the overlay */
+.stage-label mjx-container {
+  margin: 0 !important;
+}
+
+.sim-dual-mount { margin: 0.25rem 0 0.5rem; }
+
+.sim-readout {
+  margin:        0.5rem 1rem 0.75rem;
+  font-size:     1.1rem;
+  padding:       0.4rem 0.6rem;
+  background:    #f3f4f6;
+  border-radius: 0.25rem;
+  min-height:    1.6em;
+}
+
+@media (max-width: 56rem) {
+  .sim-layout.app-layout { grid-template-columns: 1fr; }
+  /*
+  .sim-area-plot { grid-column: 1; grid-row: auto; }
+  .sim-area-sky  { grid-column: 1; grid-row: auto; }
+  */
+  .sim-area-day  { grid-column: 1; grid-row: auto; }
+  .sim-area-sky .sim-canvas { max-width: 24rem; }
+  .app-shell     { max-width: 56rem; }
+  /* .stage         { max-width: 24rem; } */
+}
+
+@media (max-width: 30rem) {
+  body { font-size: 1.0625rem; }
+  .sim-layout.app-layout { padding: 0.35rem; }
+}

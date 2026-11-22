@@ -253,13 +253,77 @@ export function soon(callback, timeoutMs=60) {
   window.setTimeout(run, timeoutMs);
 };
 
-export function announceLive(liveEl, message, delayMs=100) {
+// Screen reader timing: gap between emptying and refilling a live region, and
+// quiet period after the last continuous input (held key, rapid taps).
+export const SR_FLUSH_MS  = 100;
+export const SR_SETTLE_MS = 600;
+
+export function announceLive(liveEl, message, delayMs=SR_FLUSH_MS) {
   // Flush a polite live region so identical consecutive strings still announce.
   if (!liveEl) { return; }
   liveEl.textContent = '';
   window.setTimeout(function () {
     liveEl.textContent = message;
   }, delayMs);
+};
+
+const settleTimers = new WeakMap();
+
+export function announceSettled(liveEl, message, settleMs=SR_SETTLE_MS) {
+  // Announce once continuous input stops: each call restarts this live
+  // region's timer, so a held key or rapid taps produce one announcement.
+  if (!liveEl) { return; }
+  window.clearTimeout(settleTimers.get(liveEl));
+  settleTimers.set(liveEl, window.setTimeout(function () {
+    settleTimers.delete(liveEl);
+    announceLive(liveEl, message);
+  }, settleMs));
+};
+
+export function createFlashLimiter({ maxPerSecond=3, intermediate='twilight' } = {}) {
+  // Keep large-area luminance toggles (e.g. day/night sky) at or below
+  // maxPerSecond (WCAG 2.3.1), regardless of prefers-reduced-motion.
+  // States are compared with ===, so use primitives such as 'day' / 'night'.
+  // request(state) returns the state to draw; once the limit is reached it
+  // returns the intermediate state until settle() is called at the end of
+  // the input (pointerup, keyup, pause), which returns the true state.
+  const windowMs = 1000;
+  const changes  = [];
+  let shown      = undefined;
+  let pending    = undefined;
+  let held       = false;
+  let lastCall   = 0;
+
+  function prune(now) {
+    while (changes.length && now - changes[0] > windowMs) { changes.shift(); }
+  }
+
+  function release(now) {
+    held  = false;
+    if (pending !== shown) { changes.push(now); }
+    shown = pending;
+    return shown;
+  }
+
+  return {
+    request(state) {
+      const now = performance.now();
+      prune(now);
+      // Input idle for a full window counts as settled
+      if (held && now - lastCall > windowMs)      { pending = state; lastCall = now; return release(now); }
+      lastCall = now;
+      if (held)                                   { pending = state; return intermediate; }
+      if (shown === undefined || state === shown) { shown   = state; return state; }
+      if (changes.length < maxPerSecond)          { changes.push(now); shown = state; return state; }
+      held    = true;
+      pending = state;
+      return intermediate;
+    },
+    settle() {
+      return held ? release(performance.now()) : shown;
+    },
+    isHeld() { return held; }
+  };
 };
 
 export function listLabels( onLabels='', head='Visible labels: ', tail='. ' )  {

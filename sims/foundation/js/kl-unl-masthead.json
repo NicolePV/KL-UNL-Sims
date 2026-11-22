@@ -553,7 +553,7 @@
     "masthead": {
       "help": {
         "title": "Help and Instructions",
-        "content": "<p>This demonstrator shows the declination range of the full moon over the course of a year, and the corresponding changes in altitude for a northern hemisphere observer.</p>"
+        "content": "<p>This demonstrator shows how the declination (&delta;) of the full moon changes over the course of a year, and the corresponding changes in its observed altitude from a given latitude. The green horizon plane surrounds an observer, with the cardinal directions marked on the ground. Blue lines trace the local meridian, the Celestial Equator, and the North and South Celestial Poles, while a pink band indicates the ecliptic path of the sun and moon.</p><p>You can click on the celestial sphere and then drag it around to change the orientation of the horizon, or use the left and right arrow keys on the keyboard to rotate it in place and the up and down arrow keys to change your viewing angle to and from edge-on to face-on. (Pressing the shift or caps lock key as well results in larger steps, and the page up and down keys change the viewing angle in even larger steps. Arrow key alternatives are A-D-W-S.) </p><p>Click on the declination plot instead of the sphere to shift the day of the year back and forth and use the left and right arrow keys to the same effect. </p><p>You may also use the slider bars or number boxes for day of the year and for latitude (to shift the observer north and south).</p>"
       },
       "about": {
         "title": "About this Demonstrator",

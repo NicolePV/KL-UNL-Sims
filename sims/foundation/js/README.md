@@ -8,6 +8,9 @@ common functions, and set up MathJax for displayed equations.
     * Masthead:                         kl-unl-masthead.json
     * Equations:                        kl-unl-mathjax.js
     * Utilities:                        kl-unl-utils.js
+      (screen reader timing: SR_FLUSH_MS, SR_SETTLE_MS, announceLive,
+       announceSettled; flash safety: createFlashLimiter;
+       URL saving: descMoreKeys, hideMoreKeys, buildURL)
                                         kl-unl-dual-control.js
     * Celestial Sphere:                 kl-unl-celestial-sphere.js
       (includes drawCircleArcBack, projectPointScreen / isScreenFront,

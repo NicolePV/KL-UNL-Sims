@@ -30,7 +30,8 @@
       },
       chtml: {
         // Slightly smaller scale reduces top-of-glyph clipping on mass labels.
-        scale: 0.97
+        scale: 0.97, 
+        matchFontHeight: false  // stops Safari+MathJax v3 CHTML from applying zoom twice
       },
       options: {
         renderActions: {
