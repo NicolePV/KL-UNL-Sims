@@ -28,7 +28,7 @@ import {
 
 import {
   speak, pMod, keyAccel,
-  announceLive, VO_FIX_LGND, logAct,
+  announceLive, announceSettled, VO_FIX_LGND, logAct,
   descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
@@ -65,8 +65,8 @@ const STAGE             =  380;
 const ORIGIN            = STAGE / 2;
 
 /* Transition Arrow */
-const ARROW_MIN_COLOR  = 0x767676;
-const ARROW_MAX_COLOR  = 0x1a1a1a;
+const ARROW_MIN_COLOR  = '#767676';
+const ARROW_MAX_COLOR  = '#1a1a1a';
 const ARROW_MIN_FACTOR = 0.001;
 const ARROW_MAX_FACTOR = 1;
 const ARROW_HALF_RANGE = (ARROW_MAX_FACTOR - ARROW_MIN_FACTOR) / 2;
@@ -481,7 +481,12 @@ class Scene {
 
     // Hide masthead and control panels (everything except canvas)
     // (hide if clean=true or clean=1)
-    if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+    let URL_CLN = false;
+    if ( urlParams.clean !== undefined )  {
+      try        { URL_CLN = (JSON.parse(urlParams.clean) == true); }
+      catch (e)  { URL_CLN = false; }
+    }
+    if ( URL_CLN )  {
       urlClean = true;
       document.getElementById('canvas-more-keys').style.display = 'block';
       document.getElementById('controls-panel').style.display   = 'none';
@@ -500,9 +505,9 @@ class Scene {
         'restore showing transitions, V will change the view, and R will reset the '  +
         'simulation.';
 
-      // Update screen reader help for keyboard control over canvas
-      document.getElementById('stage').ariaLabeKeyshortcuts =
-        'ArrowLeft ArrowRight ArrowUp ArrowDown A D W S ' + 'plus minus V T R';
+      // Advertise the clean-mode keys (UI Events key values)
+      document.getElementById('stage').setAttribute('aria-keyshortcuts',
+        'ArrowLeft ArrowRight ArrowUp ArrowDown A D W S Shift+= - V T R');
 
       // Re-direct skip link to new help (gear button) and strip masthead event listener
       const oldSkipLink = document.querySelector('.sr-only-focusable');
@@ -561,16 +566,22 @@ class TangentPlaneInst extends Instance {
     if (this._xscale <= 0.01) return;
     drawArt(ctx, this._frame === 1 ? ART.horizonAbove : ART.horizonBelow);
 
-    const labelColor = (this._frame === 1) ? '#ffffff' : '#999999';
+    const labelColor  = (this._frame === 1) ? '#ffffff' : '#999999';
+    const labelStroke = (this._frame === 1) ? '#000000' : '#333333';
     ctx.save();
+    ctx.strokeStyle  = labelStroke;
     ctx.fillStyle    = labelColor;
     ctx.font         = '12px Sans-Serif, Arial, Helvetica, sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('N',   0, -88);
-    ctx.fillText('S',   0,  88);
-    ctx.fillText('E',  88,   0);
-    ctx.fillText('W', -88,   0);
+    ctx.strokeText('N',   0, -88);
+    ctx.strokeText('S',   0,  88);
+    ctx.strokeText('E',  88,   0);
+    ctx.strokeText('W', -88,   0);
+    ctx.fillText(  'N',   0, -88);
+    ctx.fillText(  'S',   0,  88);
+    ctx.fillText(  'E',  88,   0);
+    ctx.fillText(  'W', -88,   0);
     ctx.restore();
         
   }
@@ -633,7 +644,6 @@ let latDual = null;
 let renderQueued = false;
 let dragging     = false, dragPointerId = null;
 let dragX = 0, dragY = 0, dragTheta = 0, dragPhi = 0;
-let announceTimer, announceViewTimer;
 
 const el = {};
 
@@ -666,13 +676,13 @@ function initSphere() {
   mainScene.addShadingClip('Sphere Shading', 'back',  'inner', 'both');
 
   mainScene.addCircle('horizonCircle',
-    { thickness: 2, color: CSC.HOR_MRK,    alpha: 0.30 },
+    { thickness: 2, color: CSC.HOR_MRK,    alpha: 0.80 },
     { az: 0, alt: 0, tilt: 0 });
   mainScene.addCircle('meridianCircle1',
-    { thickness: 2, color: CSC.HOR_MRK,    alpha: 0.30 },
+    { thickness: 2, color: CSC.HOR_MRK,    alpha: 0.80 },
     { az: 0, alt: 0, tilt: 0 });
   mainScene.addCircle('meridianCircle2',
-    { thickness: 2, color: CSC.HOR_MRK,    alpha: 0.30 },
+    { thickness: 2, color: CSC.HOR_MRK,    alpha: 0.80 },
     { az: 0, alt: 0, tilt: 0 });
   mainScene.addCircle('zeroHoursCircle',
     { thickness: 2, color: CSC.CEL_EQUTR2, alpha: 0.70 },
@@ -806,6 +816,8 @@ function applyMorphTransforms() {
       { alt: 0, az:  90, tilt:  180 - altValue, gammaStart:   0,      gammaEnd: 180      });
   }
   mainScene.horizonCircle.setParameters({ alt: 0, az: 90, tilt: 90 - altValue });
+  if ( globeSize === 0.001 )  { mainScene.horizonCircle.setStyle(undefined, undefined, 0.30); }
+  else                        { mainScene.horizonCircle.setStyle(undefined, undefined, 0.80); }
 
   // Update celestial sphere
   if ( animating != 1 )  { 
@@ -873,6 +885,7 @@ function doTransition() {
   if ( (prefersReducedMotion() ) || ( document.getElementById('chkRdcMotion').checked ) )  {
     // Shift between celestial sphere and horizon plane
     globeSize = (direction === 1) ? 1 : 0.001;
+    latFrac   = (direction === 1) ? 1 : 0.001;
     animating = 1;
     updateCelestialDiagram();
     
@@ -972,10 +985,6 @@ async function shiftMode()  {
   }
 }
 
-// Add pause in between shifting between celestial sphere and horizon plane
-// and rotating horizon plane, to let viewer absorb the change in orientation
-const delay = (ms) => new Promise( (resolve) => setTimeout(resolve, ms) );
-
 // Add interruptible pause as user can reverse transition during either
 // transition phase or during the pause in between them.
 function interruptibleDelay(ms) {
@@ -1001,6 +1010,7 @@ function setReferenceFrame()  {
   if ( direction == 1 )  {
     mainScene.sphere.setLatitude( 90 );
     mainScene.horizonCircle.setParameters({ alt: 0, az: 90, tilt: 90 - lat });
+    mainScene.horizonCircle.setStyle(undefined, undefined, 0.80);  // thickness, color, alpha
     mainScene.meridianCircle1.setParameters(
       { alt: 0, az: 180, tilt:   90,       gammaStart: lat - 90, gammaEnd: lat + 90 });
     mainScene.meridianCircle2.setParameters(
@@ -1010,6 +1020,7 @@ function setReferenceFrame()  {
   } else if ( direction == -1 )  {
     mainScene.sphere.setLatitude( lat );
     mainScene.horizonCircle.setParameters({ alt: 0, az: 0, tilt: 0 });
+    mainScene.horizonCircle.setStyle(undefined, undefined, 0.30);
     mainScene.meridianCircle1.setParameters(
       { alt: 0, az: 180, tilt:  90, gammaStart: 0, gammaEnd: 180 });
     mainScene.meridianCircle2.setParameters(
@@ -1055,12 +1066,8 @@ function onEnterFrameFunc() {
 function setTransitionFactor(arg) {
   // Style arrow pointing to new view
   
-  const maxR       = (ARROW_MAX_COLOR >> 16) & 255;
-  const maxG       = (ARROW_MAX_COLOR >>  8) & 255;
-  const maxB       =  ARROW_MAX_COLOR        & 255;
-  const minR       = (ARROW_MIN_COLOR >> 16) & 255;
-  const minG       = (ARROW_MIN_COLOR >>  8) & 255;
-  const minB       =  ARROW_MIN_COLOR        & 255;
+  const [maxR, maxG, maxB] = [1, 3, 5].map((i) => parseInt(ARROW_MAX_COLOR.slice(i, i + 2), 16));
+  const [minR, minG, minB] = [1, 3, 5].map((i) => parseInt(ARROW_MIN_COLOR.slice(i, i + 2), 16));
   const halfRangeR = (maxR - minR) / 2;
   const halfRangeG = (maxG - minG) / 2;
   const halfRangeB = (maxB - minB) / 2;
@@ -1164,11 +1171,7 @@ function announce(text) {
 
 function announceMode(atEnd) {
   if (atEnd) {
-  //announce('Now showing the ' + modeName() + ' for an observer at ' +
-  //         latitudeSpoken(latVal) + '.');
-    const s0 = 'Now showing the ' + modeName() + ' for an observer at ' + latitudeSpoken(latVal) + '.';
-    clearTimeout(announceTimer);
-    announceTimer = setTimeout(() => { announce( s0 ); }, 600);
+    announce('Now showing the ' + modeName() + ' for an observer at ' + latitudeSpoken(latVal) + '.');
   }
 }
 
@@ -1202,8 +1205,6 @@ function updateDescriptions() {
       'with an observer positioned at its center. ' + view;
   }
 }
-
-window.klunlInitEqn = klunlInitEqn;
 
 /* ---- latitude controls (DualControl) ---- */
 
@@ -1364,18 +1365,17 @@ function onPointerUp(e) {
   dragging      = false;
   dragPointerId = null;
   try { el.canvas.releasePointerCapture(e.pointerId); } catch (_err) { /* already released */ }
-//announceView();
-  // Use same debounce timer as keyboard rotation to dodge native event noise
-  // competition for Chrome to announce
-  clearTimeout(announceTimer);
-  announceTimer = setTimeout(() => { announceView(); }, 600);
+  announceView();
 }
 
-function announceView() {
+/** @param {boolean} [settled] - true for held keys (announce once input stops). */
+function announceView(settled = false) {
   const az  = mainScene.sphere.getViewerAzimuth();
   const alt = mainScene.sphere.getPhi();
-  announce('Celestial sphere rotated by '  + speak( az, 0, 'degree') +
-                        ', and tilted by ' + speak(alt, 0, 'degree') + '.');
+  const msg = 'Celestial sphere rotated by '  + speak( az, 0, 'degree') +
+                           ', and tilted by ' + speak(alt, 0, 'degree') + '.';
+  if (settled) announceSettled(el.live, msg);
+  else         announce(msg);
 }
 
 function rotateView(dTheta, dPhi) {
@@ -1383,11 +1383,7 @@ function rotateView(dTheta, dPhi) {
   S.setThetaAndPhi(S.getTheta() + dTheta, S.getPhi() + dPhi);
   syncGlobeView();
   requestRender();
-//announceView();
-  // Clear cascade of repeated keyboard-driven announcement calls with a
-  // debounce mechanism
-  clearTimeout(announceTimer);
-  announceTimer = setTimeout(() => { announceView(); }, 600);
+  announceView(true);
 }
 
 function onStageKeyDown(ev) {
@@ -1412,50 +1408,40 @@ function onStageKeyDown(ev) {
       S.setThetaAndPhi(180, 2);  // Face-on figure, horizon tilted 2 deg for visibility
       syncGlobeView();
       requestRender();
-    //announceView();
-      // Clear cascade of repeated keyboard-driven announcement calls with a
-      // debounce mechanism
-      clearTimeout(this.announceViewTimer);
-      this.announceViewTimer = setTimeout(() => { this.announceView(); }, 600);
+      announceView();
       break;
     case 'End':
       S.setThetaAndPhi(92, 2);  // Edge-on figure, horizon tilted 2 deg for visibility
       syncGlobeView();
       requestRender();
-    //announceView();
-      // Clear cascade of repeated keyboard-driven announcement calls with a
-      // debounce mechanism
-      clearTimeout(this.announceViewTimer);
-      this.announceViewTimer = setTimeout(() => { this.announceView(); }, 600);
+      announceView();
       break;
     // If control panels are hidden, enable keyboard controls to reset simulation or
-    // change view, skip transitions, or change observer latitude
-    case 'r': case 'R': if (urlClean) { resetSim();     break; }
-    case 'v': case 'V': if (urlClean) { doTransition(); break; }
-    case 't': case 'T':
-    if (urlClean) {
+    // change view, skip transitions, or change observer latitude. Otherwise
+    // return without preventDefault so the keys keep their browser meaning
+    // (e.g. Cmd/Ctrl + and - zoom).
+    case 'r': case 'R':
+      if (!urlClean) return;
+      resetSim();
+      break;
+    case 'v': case 'V':
+      if (!urlClean) return;
+      doTransition();
+      break;
+    case 't': case 'T': {
+      if (!urlClean) return;
       const chk = document.getElementById('chkRdcMotion');
       chk.checked = !chk.checked;
       announce( chk.checked ? 'Skipping transitions. ' : 'Restoring transitions. ' );
       break;
     }
     case '+': case '=':
-    if (urlClean)  {
-        setLatitude(latVal+keyAccel(ev, dStp), true);
-        /*
-        clearTimeout(announceTimer);
-        announceTimer = setTimeout(() => { setLatitude(el.latSlider.value, true); }, 600);
-        */
-      };
+      if (!urlClean) return;
+      setLatitude(latVal + keyAccel(ev, dStp), true);
       break;
     case '-': case '_':
-      if (urlClean) {
-        setLatitude(latVal-keyAccel(ev, dStp), true);
-        /*
-        clearTimeout(announceTimer);
-        announceTimer = setTimeout(() => { setLatitude(el.latSlider.value, true); }, 600);
-        */
-      };
+      if (!urlClean) return;
+      setLatitude(latVal - keyAccel(ev, dStp), true);
       break;
     default: return;
   }
@@ -1464,7 +1450,7 @@ function onStageKeyDown(ev) {
 
 /* ---- reset ---- */
 
-function resetSim() {  // XXX
+function resetSim() {
   direction = 1;
   globeSize = 1;
   latFrac   = 1;
@@ -1486,7 +1472,6 @@ function resetSim() {  // XXX
   mainScene.globeSphere.inst._yscale = 100 * globeSize;
   changeLatitude();
   syncLatitudeControls();
-  console.log( "rst 1", direction, globeSize );  // XXX preserve hor view if that is start
 //setTransitionFactor(1);
   setTransitionFactor(globeSize);
   announce('Simulation reset. Showing the celestial sphere for an observer at ' +
@@ -1540,21 +1525,6 @@ function boot() {
   // DualControl owns latitude slider + number sync and live announcements.
 
   // Setting gear when only figure is shown
-  /*
-  function kybRmndrX()  { 
-    document.getElementById('stage').ariaLabel = 
-      'Celestial sphere diagram. Drag, or use the arrow keys, to rotate the view. ' +
-      'Users may also use the A and D keys to rotate the view left and right, and ' +
-      'the W and S keys to rotate the viewing angle up and down, adding the Shift ' +
-      'or Caps Lock keys to increase the effect. The observer latitude can be '     +
-      'changed similarly with the plus and minus keys. Typing T will skip or '      +
-      'restore showing transitions, V will change the view, and R will reset the '  +
-      'simulation.';
-    document.getElementById('stage').ariaLabeKeyshortcuts =
-      'ArrowLeft ArrowRight ArrowUp ArrowDown A D W S ' + 'plus minus V T R';
-    descMoreKeys(urlClean);
-  }
-  */
   document.getElementById('canvas-more-keys').addEventListener('click', () => descMoreKeys(urlClean));
   document.getElementById('closeKeyNavBtn').addEventListener(  'click', () => hideMoreKeys());
 

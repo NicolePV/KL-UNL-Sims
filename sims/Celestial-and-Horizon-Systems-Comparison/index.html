@@ -16,7 +16,6 @@
   <link rel="apple-touch-icon" href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
   <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
-  <script defer src="../foundation/js/kl-unl-mathjax.js"></script>
   <script type="module" src="simulation.js"></script>
 </head>
 
@@ -24,15 +23,16 @@
 
   <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
 
+  <main id="main-content">
   <div class="app-shell">
 
     <kl-unl-masthead sim-id="celestialhorizon" json-url="../foundation/js/kl-unl-masthead.json"></kl-unl-masthead>
 
-    <main class="app-layout sim-layout">
+    <div class="app-layout sim-layout">
 
       <!-- ================= diagram panel ================= -->
       <section class="panel sim-panel sim-panel--diagram" aria-labelledby="diagramHeading">
-        <h2 class="panel__heading" id="diagramHeading" aria-hidden="true">Sky Diagram
+        <h2 class="panel__heading" id="diagramHeading">Sky Diagram
           <button id="canvas-more-keys" aria-label="Show description of keyboard navigation options">
           <img src="../foundation/images/klunl_gear.svg"
           alt="Additional Keyboard Navigation" width="30" height="30"></button>
@@ -58,7 +58,7 @@
 
       <!-- ================= controls panel ================= -->
       <section id="controls-panel" class="panel sim-panel sim-panel--controls" aria-labelledby="controlsHeading">
-        <h2 class="panel__heading" id="controlsHeading" aria-hidden="true">Controls</h2>
+        <h2 class="panel__heading" id="controlsHeading">Controls</h2>
 
         <fieldset class="control-fieldset">
           <legend class="control-fieldset__legend" aria-hidden="true">Change view</legend>
@@ -126,11 +126,12 @@
         </div>
       </section>
 
-    </main>
+    </div>
 
     <p id="sr-status" class="sr-only" aria-live="polite"></p>
 
   </div>
+  </main>
 
 </body>
 </html>

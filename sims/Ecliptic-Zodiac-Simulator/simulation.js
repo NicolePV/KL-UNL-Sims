@@ -1313,7 +1313,7 @@ function resetSim() {
   cancelDayTween();
   applyURL();
   const viewer = state.viewer;
-  viewer.sphere.setThetaAndPhi(INIT_THETA, INIT_PHI);
+  viewer.sphere.setThetaAndPhi(-INIT_THETA, INIT_PHI);
   viewer.setDayOfYear( day_0 );
 
   // Let visual updates and coordinate updates finish first

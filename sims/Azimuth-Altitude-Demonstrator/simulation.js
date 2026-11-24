@@ -8,7 +8,7 @@
    
    Math (rotation matrices, great/small-circle front/back splitting,
    screen<->horizon conversion, drag + snapping) is kept identical to legacy 
-   source so positions, arcs and drag behaviour match original.
+   source so positions, arcs and drag behavior match original.
    =========================================================================== */
 
 // Import celestial sphere and utilities module components
@@ -25,7 +25,7 @@ import {
 
 import {
   legToFixed, stepToPrec, speak, listLabels, pMod, snapFixed, keyAccel,
-  hexToRGBA, soon, announceLive, VO_FIX_LGND, logAct,
+  hexToRGBA, soon, announceLive, announceSettled, VO_FIX_LGND, logAct,
   updateShowHideLabelButtons, descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
@@ -119,8 +119,18 @@ class App {
     this.azArc.setParameters    ({ az:  0, alt: 0, tilt:  0 });
     this.altArc.setParameters   ({ az:  0, alt: 0, tilt: 90 });
 
+    // Halos increase contrast of arcs against multiple backgrounds (e.g., grey sphere and green plane)
+    // Not needed for non-essential arcs meridian2, azCircle, and altCircle
+    this.meridianH = new Circle(S, { thickness: 4, color: this.S.CSC.AZ_ARC_BCK, alpha: 1   });
+    this.azArcH    = new Circle(S, { thickness: 5, color: this.S.CSC.AZ_ARC_BCK, alpha: 1   });
+    this.altArcH   = new Circle(S, { thickness: 5, color: this.S.CSC.AZ_ARC_BCK, alpha: 1   });
+    this.meridianH.setParameters ({ az:  0, alt: 0, tilt: 90 });
+    this.azArcH.setParameters    ({ az:  0, alt: 0, tilt:  0 });
+    this.altArcH.setParameters   ({ az:  0, alt: 0, tilt: 90 });
+
     // Draw guides first, and then stellar coordinates
-    this.circles = [this.meridian2, this.azCircle, this.altCircle,
+    this.circles = [this.meridianH, this.azArcH,   this.altArcH, 
+                    this.meridian2, this.azCircle, this.altCircle,
                     this.meridian,  this.azArc,    this.altArc];
 
     // Test hatching of a celestial sphere circle (checking implementation and format)
@@ -163,7 +173,7 @@ class App {
       nadir:    document.getElementById('chkNadir'   ),
       meridian: document.getElementById('chkMeridian')
     };
-    this.desc       = document.getElementById('diagramDesc');
+    this.srStatus   = document.getElementById('sr-status'  );
     this.starHandle = document.getElementById('starHandle' );
   }
 
@@ -298,7 +308,7 @@ class App {
   showAllLabels() { this.setAllLabelsVisibility(true);  }
   hideAllLabels() { this.setAllLabelsVisibility(false); }
 
-  /** Update canvas / star-handle names without writing #diagramDesc (DualControl owns commit speech). */
+  /** Update canvas / star-handle names without writing #sr-status (DualControl owns commit speech). */
   syncStarChrome() {
     this.updateCanvasDescription();
     if (document.activeElement !== this.starHandle) {
@@ -317,22 +327,30 @@ class App {
 
     // azArc: horizon arc from (360-az) back to 0, hidden when az == 0
     if (pt.az !== 0) {
-      this.azArc.setParameters({   az: 0,     alt: 0,      tilt:  0, gammaStart: 360 - pt.az, gammaEnd:  0     });
-      this.azArc.visible = true;
+      this.azArcH.setParameters({   az: 0,     alt: 0,      tilt:  0, gammaStart: 360 - pt.az, gammaEnd:  0     });
+      this.azArcH.visible = true;
+      this.azArc.setParameters({    az: 0,     alt: 0,      tilt:  0, gammaStart: 360 - pt.az, gammaEnd:  0     });
+      this.azArc.visible  = true;
     } else {
-      this.azArc.visible = false;
+      this.azArcH.visible = false;
+      this.azArc.visible  = false;
     }
     this.azCircle.setParameters({  az: pt.az, alt: 0,      tilt: 90, gammaStart: -90,         gammaEnd: 90     });
 
     // altArc: vertical arc from horizon up (or down) to the star
     if (pt.alt < 0) {
-      this.altArc.setParameters({  az: pt.az, alt: 0,      tilt: 90, gammaStart: pt.alt,      gammaEnd:  0     });
-      this.altArc.visible = true;
+      this.altArcH.setParameters({  az: pt.az, alt: 0,      tilt: 90, gammaStart: pt.alt,      gammaEnd:  0     });
+      this.altArcH.visible = true;
+      this.altArc.setParameters({   az: pt.az, alt: 0,      tilt: 90, gammaStart: pt.alt,      gammaEnd:  0     });
+      this.altArc.visible  = true;
     } else if (pt.alt > 0) {
-      this.altArc.setParameters({  az: pt.az, alt: 0,      tilt: 90, gammaStart:   0,         gammaEnd: pt.alt });
-      this.altArc.visible = true;
+      this.altArcH.setParameters({  az: pt.az, alt: 0,      tilt: 90, gammaStart:   0,         gammaEnd: pt.alt });
+      this.altArcH.visible = true;
+      this.altArc.setParameters({   az: pt.az, alt: 0,      tilt: 90, gammaStart:   0,         gammaEnd: pt.alt });
+      this.altArc.visible  = true;
     } else {
-      this.altArc.visible = false;
+      this.altArcH.visible = false;
+      this.altArc.visible  = false;
     }
     this.altCircle.setParameters({ az: 0,     alt: pt.alt, tilt:  0 });
 
@@ -701,11 +719,14 @@ class App {
   }
 
   updateCanvasDescription() {
+    // Chrome speaks aria-label changes on the focused element and Safari
+    // ignores them; refresh on blur instead (see bindEvents).
+    if (document.activeElement === this.canvas) return;
     this.canvas.setAttribute('aria-label',
       'Horizon diagram. Cardinal directions N, E, S, and W shown on the horizon. ' +
       'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
            ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' + 
-       locateStar(this.star.az,this.star.alt, 0) + listLabels() );
+       locateStar(this.star.az,this.star.alt, 0) + this.addLabels() );
   }
 
   updateLabelDescription() {
@@ -714,13 +735,7 @@ class App {
     // Update canvas aria-label (full state) silently
     this.updateLabels();
 
-    // Send transient announcement to dedicated live region,
-    // first zeroing out content to force Chrome to read it
-    const liveRegion = document.getElementById('diagramDesc');
-    if (liveRegion) {
-      liveRegion.textContent = '';
-      setTimeout(() => { liveRegion.textContent = this.addLabels(); }, 50);
-    }
+    announceLive(this.srStatus, this.addLabels());
   }
 
   addLabels()  {
@@ -748,10 +763,8 @@ class App {
     msg    += 'Celestial sphere rotated by ' + speak( az,  0, 'degree' ) +
                            ' and tilted by ' + speak( alt, 0, 'degree' ) + '. ';
     msg    += this.addLabels();
-    
-  //this.desc.textContent = msg;
-    this.desc.textContent = '';
-    setTimeout(() => { this.desc.textContent = msg; }, 600);
+
+    announceLive(this.srStatus, msg);
 
     // Update aria-label contents for view of celestial sphere and star
     this.updateCanvasDescription();
@@ -766,16 +779,16 @@ class App {
     }
   }
 
-  announceStar() {
+  /** @param {boolean} [settled] - true for held keys (announce once input stops). */
+  announceStar(settled = false) {
     // Announce state of star
-    
+
     let msg = 'Star at azimuth ' + speak(this.star.az,  0, 'degree') +
                    ', altitude ' + speak(this.star.alt, 0, 'degree') + '. ' +
                locateStar(this.star.az,this.star.alt, 0);
-    
-  //this.desc.textContent = msg;
-    clearTimeout(this.announceTimer);
-    this.announceTimer = setTimeout(() => { this.desc.textContent = msg; }, 600);
+
+    if (settled) announceSettled(this.srStatus, msg);
+    else         announceLive(   this.srStatus, msg);
 
     // Update aria-label contents for view of celestial sphere and star
     this.updateCanvasDescription();
@@ -825,8 +838,9 @@ class App {
     // Show/hide zenith, nadir, horizon, and meridian labels if label
     // parameter is a defined array with four elements
     // (ignore any values but 1 or 0)
-    if ( urlParams.labels !== undefined )  { 
-      URL_LBL = JSON.parse(urlParams.labels);
+    if ( urlParams.labels !== undefined )  {
+      try        { URL_LBL = JSON.parse(urlParams.labels); }
+      catch (e)  { URL_LBL = null; }
       if ( Array.isArray(URL_LBL) && (URL_LBL.length === 4) )  {
         if      ( URL_LBL[0] == 1 )  { this.chk.zenith.checked   = true;  }
         else if ( URL_LBL[0] == 0 )  { this.chk.zenith.checked   = false; }
@@ -842,7 +856,12 @@ class App {
 
     // Hide masthead and control panels (everything except canvas)
     // (hide if clean=true or clean=1)
-    if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+    let URL_CLN = false;
+    if ( urlParams.clean !== undefined )  {
+      try        { URL_CLN = (JSON.parse(urlParams.clean) == true); }
+      catch (e)  { URL_CLN = false; }
+    }
+    if ( URL_CLN )  {
       urlClean = true;
       document.getElementById('canvas-more-keys').style.display = 'block';
       document.getElementById('star-panel').style.display       = 'none';
@@ -913,13 +932,14 @@ class App {
     document.addEventListener('sim-reset', () => this.reset());
 
     // DualControls own slider + number sync and single-axis live announcements.
-    // Canvas / star-handle paths still call announceStar() via #diagramDesc.
+    // Canvas / star-handle paths announce through #sr-status.
 
-    // Buttons + checkboxes
+    // Buttons announce the visible labels; checkboxes rely on native
+    // semantics and only update the canvas aria-label silently.
     document.getElementById('showAllBtn').addEventListener('click', () => this.showAllLabels());
     document.getElementById('hideAllBtn').addEventListener('click', () => this.hideAllLabels());
     for (const k of Object.keys(this.chk)) {
-      this.chk[k].addEventListener('change', () => { this.updateLabels(); this.updateLabelDescription()} );
+      this.chk[k].addEventListener('change', () => this.updateLabels());
     }
 
     // Setting gear when only figure is shown
@@ -949,6 +969,7 @@ class App {
         'Star position. Azimuth ' + speak(this.star.az,  0, 'degree') +
                     ', altitude ' + speak(this.star.alt, 0, 'degree') + '.');
     });
+    this.canvas.addEventListener('blur', () => this.updateCanvasDescription());
   }
 
   nearStar(stage) {
@@ -1039,11 +1060,7 @@ class App {
     if ( (dTheta != 0 ) || (dPhi != 0) )  { 
       this.S.setThetaAndPhi(this.S.getTheta() + dTheta, this.S.getPhi() + dPhi);
       this.onSphereOrientationChanged();
-      
-      // Clear cascade of repeated keyboard-driven announcement calls with a
-      // debounce mechanism
-      clearTimeout(this.announceViewTimer);
-      this.announceViewTimer = setTimeout(() => { this.announceView(); }, 600);
+      this.announceView(true);
     }
   }
 
@@ -1077,22 +1094,19 @@ class App {
       // setStarLocation normalizes azimuth mod 360 and syncs DualControls.
       this.setStarLocation({ az: this.star.az + dAz, alt: alt });
       this.render();
-      clearTimeout(this.announceTimer);
-      this.announceTimer = setTimeout(() => { this.announceStar(); }, 600);
+      this.announceStar(true);
     }
   }
 
-  announceView() {
+  /** @param {boolean} [settled] - true for held keys (announce once input stops). */
+  announceView(settled = false) {
     const az  = pMod(360 - this.S.getTheta(), 360);   // viewer azimuth
     const alt = this.S.getPhi();                      // viewer altitude
-    /*
-    this.desc.textContent = 'View rotated. ' +
-         'Viewing azimuth ' + speak(az,  0, 'degree') +
-      ', viewing altitude ' + speak(alt, 0, 'degree') + '.';
-    */
-    this.desc.textContent =
-      'Celestial sphere rotated by ' + speak( az,  0, 'degree' ) +
-                   ' and tilted by ' + speak( alt, 0, 'degree' ) + '. ';
+    const msg = 'Celestial sphere rotated by ' + speak( az,  0, 'degree' ) +
+                             ' and tilted by ' + speak( alt, 0, 'degree' ) + '. ';
+
+    if (settled) announceSettled(this.srStatus, msg);
+    else         announceLive(   this.srStatus, msg);
 
     // Update aria-label content for view of celestial sphere
     this.updateCanvasDescription();
@@ -1119,12 +1133,9 @@ function updateControlLabels(ev) {
   }
 }
 
-// Initialise once the foundation helper (kl-unl.js) is ready. We redefine
-// klunlInitEqn (per the foundation convention) to boot the sim.
+// Initialize once the DOM is ready (this sim has no equations, so it does
+// not load kl-unl-mathjax.js or use its klunlInitEqn hook).
 function boot() { if (!window.altAzApp) window.altAzApp = new App(); }
-if (typeof window.klunlInitEqn === 'function') {
-  window.klunlInitEqn = boot;
-}
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', boot);
 } else {

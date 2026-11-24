@@ -16,7 +16,6 @@
   <link rel="apple-touch-icon"      href="../foundation/images/klunl_favicon_180.png" sizes="180x180">
 
   <script defer type="module" src="../foundation/js/kl-unl-masthead.js"></script>
-  <!-- <script defer src="../foundation/js/kl-unl-mathjax.js"></script> -->
   <script type="module" src="simulation.js"></script>
 </head>
 <body id="body">
@@ -74,8 +73,8 @@
           -->
           <p id="skyHelp" class="sr-only">Drag, or use the arrow keys, to rotate the view.</p>
           <p id="starHandleHelp" class="sr-only">Drag, or use the arrow keys, to move star in azimuth and altitude.</p>
-          <!-- Live, screen-reader-only description of the current diagram state -->
-          <p id="diagramDesc" class="sr-only" aria-live="polite"></p>
+          <!-- Sim-level live region (canvas gestures, canvas keys, reset) -->
+          <p id="sr-status" class="sr-only" aria-live="polite"></p>
         </section>
 
         <!-- RIGHT: controls -->

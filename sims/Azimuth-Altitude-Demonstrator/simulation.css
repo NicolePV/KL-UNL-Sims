@@ -20,7 +20,7 @@ body { line-height: 1.4; }
 
 /* The diagram panel (left) is driven to the same height as the right-hand
    column: it becomes a flex column whose canvas area fills the leftover space,
-   and the square canvas scales (centred) to fit that space. */
+   and the square canvas scales (centered) to fit that space. */
 .app-layout.sim-layout > .sim-panel {
   display:        flex;
   flex-direction: column;
@@ -62,8 +62,6 @@ body { line-height: 1.4; }
   margin-top:      -0.25rem;
   margin-bottom:   -0.25rem;
 }
-
-#url-clean-panel { padding: 10px; }
 
 /* --- Canvas stage ------------------------------------------------------- */
 /* Keep the original internal coordinate system; CSS scales the canvas to fit
@@ -135,8 +133,12 @@ body { line-height: 1.4; }
   padding:        0.75rem 1rem 1rem;
 }
 
+/* Place list of labels two per row */
 .sim-checks {
-  padding:        0;
+  padding:               0;
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   0.5rem 1rem;
 }
 
 .sim-checks .control-fieldset__legend {
@@ -147,13 +149,6 @@ body { line-height: 1.4; }
 .sim-checks .control-choice {
   min-height:     2.25rem;     /* roomy, touch-friendly rows */
   gap:            0.5rem;
-}
-
-/* Place list of labels two per row */
-.sim-checks {
-  display:        grid;
-  grid-template-columns: 1fr 1fr;
-  gap:            0.5rem 1rem;
 }
 
 .sim-checks .control-choice label {

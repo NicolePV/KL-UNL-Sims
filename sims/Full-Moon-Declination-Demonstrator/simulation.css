@@ -27,7 +27,7 @@ html, body {
 
 /* The diagram panel (left) is driven to the same height as the right-hand
    column: it becomes a flex column whose canvas area fills the leftover space,
-   and the square canvas scales (centred) to fit that space. */
+   and the square canvas scales (centered) to fit that space. */
 .app-layout.sim-layout > .sim-panel {
   display:        flex;
   flex-direction: column;

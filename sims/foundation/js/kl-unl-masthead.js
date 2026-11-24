@@ -27,10 +27,9 @@ class KLUNLMasthead extends HTMLElement {
     }
 
     // Check for URL parameter requesting masthead be hidden (clean=1)
-    const urlParams = Object.fromEntries( new URLSearchParams(window.location.search) );
-    if ( (Object.keys(urlParams).length > 0) &&
-         (urlParams.clean !== undefined)     &&
-         (JSON.parse(urlParams.clean) == true) )  { return; }
+    const urlParams  = Object.fromEntries( new URLSearchParams(window.location.search) );
+    const cleanParam = urlParams.clean?.toLowerCase();
+    if (cleanParam === '1' || cleanParam === 'true') { return; }
 
     try {
       const response  = await fetch(jsonUrl);

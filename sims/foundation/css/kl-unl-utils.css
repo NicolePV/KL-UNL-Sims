@@ -481,7 +481,7 @@ body {
 
 #canvas-more-keys:hover,
 #canvas-more-keys:focus-visible {
-  outline:          2px solid var(--button-outline-color, #ffbc00);  #ffbc00;
+  outline:          2px solid var(--button-outline-color, #ffbc00);
   outline-offset:   2px;
 }
 

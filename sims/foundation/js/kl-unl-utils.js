@@ -423,7 +423,7 @@ export function buildURL( flag )  {
 
   // For example, 
   // http://astronomy.nmsu.edu/geas/klunl/sims/Azimuth-Altitude-Demonstrator/index.html?
-  // theta=190&phi=28&alt=140&azi=45&labels=[0,0,0,0]&clean=1
+  // theta=190&phi=28&azi=140&alt=45&labels=[0,0,0,0]&clean=1
 
   let i;
   let s0;

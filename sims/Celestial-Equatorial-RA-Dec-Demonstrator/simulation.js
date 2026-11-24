@@ -898,7 +898,6 @@ class App {
         else if ( URL_LBL[5] == 0 )  { this.labels.eastArrow  = false; document.getElementById('cb-eastarrow').checked  = false; }
         if      ( URL_LBL[6] == 1 )  { this.labels.ecliptic   = true;  document.getElementById('cb-ecliptic').checked   = true;  }
         else if ( URL_LBL[6] == 0 )  { this.labels.ecliptic   = false; document.getElementById('cb-ecliptic').checked   = false; }
-        this.labels.earthPoles = 
         this.updateLabels();
       }
     }

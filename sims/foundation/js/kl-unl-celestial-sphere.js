@@ -635,7 +635,8 @@ export class CelestialSphere {
 export class Circle {
   /**
    * @param {CelestialSphere} sphere - Parent projection engine.
-   * @param {{thickness?: number, color?: number, alpha?: number}} [style] - Stroke style.
+   * @param {{thickness?: number, color?: string, alpha?: number}} [style] - Stroke style:
+   *   `color` as '#rrggbb', `alpha` 0–1 (not AS decimal colors / alpha 0–100).
    * @param {object} [def] - Optional initial {@link Circle#setParameters} argument.
    */
   constructor(sphere, style, def) {
@@ -684,7 +685,7 @@ export class Circle {
 
   /**
    * @param {number} [t]   - Stroke thickness.
-   * @param {number} [col] - Decimal RGB colour.
+   * @param {string} [col] - Stroke color, '#rrggbb'.
    * @param {number} [a]   - Alpha 0–1.
    */
   setStyle(t, col, a) {
@@ -1037,7 +1038,8 @@ export class Circle {
 export class Line {
   /**
    * @param {CelestialSphere} sphere - Parent projection engine.
-   * @param {{thickness?: number, color?: number, alpha?: number}} [style] - Stroke style.
+   * @param {{thickness?: number, color?: string, alpha?: number}} [style] - Stroke style:
+   *   `color` as '#rrggbb', `alpha` 0–1 (not AS decimal colors / alpha 0–100).
    * @param {object} [head] - Head point (same forms as parsePointInput).
    * @param {object} [tail] - Tail point.
    */
@@ -1067,7 +1069,7 @@ export class Line {
 
   /**
    * @param {number} [t]   - Stroke thickness.
-   * @param {number} [col] - Decimal RGB colour.
+   * @param {string} [col] - Stroke color, '#rrggbb'.
    * @param {number} [a]   - Alpha 0–1.
    */
   setStyle(t, col, a) {
@@ -2487,11 +2489,11 @@ export function locateStar(coord1,coord2,mode=0)  {
     } else if ( dec <  -66.5 )  {
       s0 += 'almost directly above the South Pole. ';
     } else if ( dec <  -23.5 )  {
-      s0 += 'visible from the southern hemisphere. ';
+      s0 += 'in the southern hemisphere sky. ';
     } else if ( dec <   23.5 )  {
       s0 += 'above the equator. ';
     } else if ( dec <   66.5 )  {
-      s0 += 'visible from the northern hemisphere. ';
+      s0 += 'in the northern hemisphere sky. ';
     } else if ( dec <   90   )  {
       s0 += 'almost directly above the North Pole. ';
     } else  {
