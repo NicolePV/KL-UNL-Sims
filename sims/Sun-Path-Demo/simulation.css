@@ -252,9 +252,9 @@ body { line-height: 1.4; }
   overflow-wrap:         anywhere;
 }
 
-/* Swatches are small filled bars in the EXACT diagram line colours, with a thin
+/* Swatches are small filled bars in the EXACT diagram line colors, with a thin
    outline so the light ones stay visible on the white panel. The text label
-   always names the colour AND the feature, so colour is never the only signal. */
+   always names the color AND the feature, so color is never the only signal. */
 .sim-swatch {
   display:        inline-block;
   width:          2rem;

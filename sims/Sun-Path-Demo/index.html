@@ -21,10 +21,8 @@
 <body>
   <a href="#helpBtn-mh" class="sr-only sr-only-focusable" id="skip-to-help">Skip to Help</a>
 
-  <!-- aria-live status region: announces state changes (on commit) with units/context -->
-  <p id="sr-status" class="sr-only" aria-live="polite"></p>
-
-  <main class="app-shell">
+  <main id="main-content">
+  <div class="app-shell">
     <!-- Title bar + Reset / Help / About / Feedback supplied by shared masthead component -->
     <kl-unl-masthead sim-id="sunpaths" json-url="../foundation/js/kl-unl-masthead.json"></kl-unl-masthead>
 
@@ -42,27 +40,25 @@
           <div class="sim-canvas-box">
             <p id="light-index" class="sim-light-index" hidden>insolation: 0</p>
             <!-- Focusable diagram: pointer-drag OR arrow keys rotate the view.
-                 The canvas is the visual layer only; the text equivalent below
-                 (and the live region) carry the accessible description. -->
+                 The canvas is the visual layer only; aria-label carries state;
+                 canvas-help carries static how-to via aria-describedby. -->
             <canvas id="sky-canvas" class="sim-canvas" width="360" height="268"
                     role="img"
                     tabindex="0"
+                    aria-label="Horizon diagram showing the Sun's daily path."
                     aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown A D W S Enter"
-                    aria-describedby="canvas-desc canvas-help"></canvas>
+                    aria-describedby="canvas-help"></canvas>
           </div>
-          <!-- Not a live region: read via aria-describedby when the canvas has
-               focus; commits are announced once through #sr-status. -->
-          <p id="canvas-desc" class="sr-only"></p>
           <p id="canvas-help" class="sr-only">
             Interactive horizon diagram. Drag the celestial sphere, or use
             arrow keys, to rotate the view. Users may also use the A and D
             keys to rotate the view left and right, and the W and S keys to
-            rotate the viewing angle up and down. Press Enter for arrow keys 
-            to move the sun (Page Up and Page Down jump by a week; Home 
+            rotate the viewing angle up and down. Press Enter for arrow keys
+            to move the sun (Page Up and Page Down jump by a week; Home
             jumps to Spring Equinox). Press Enter once more to change
             observer's latitude (arrow keys move one degree; Page Up and Page
-            Down move ten degrees). Press Enter again to return to rotating 
-            viewpoint. A date slider, latitude slider, and animate and 
+            Down move ten degrees). Press Enter again to return to rotating
+            viewpoint. A date slider, latitude slider, and animate and
             insolation controls are in the Settings panel.
           </p>
         </div>
@@ -78,10 +74,6 @@
         <p class="sim-date" id="date-string" aria-live="off" style="display:none;">March 21</p>
         <p class="sr-only"  id="date-sr"></p>
 
-        <!--
-        <hr class="sim-rule">
-        -->
-
         <fieldset class="control-fieldset">
           <legend class="control-fieldset__legend sr-only">Date, latitude, and animation</legend>
 
@@ -96,7 +88,7 @@
               <label for="light">insolation</label>
             </div>
           </div>
-          
+
           <!-- Date: DualControl mounts the read-only date box + muted slider.
                The season labels below are moved above its track (sliderDecor). -->
           <div id="cday-dual-mount" class="sim-dual-mount sim-cday-mount"></div>
@@ -136,10 +128,12 @@
             <div class="sim-label-spacer" style="flex: 23.5;"></div>
           </div>
         </fieldset>
+        <!-- Live regions outside DualControl mounts so wide display:contents
+             layout does not place them in grid cells. -->
+        <p id="cday-live"     class="sr-only" aria-live="polite" aria-atomic="true"></p>
+        <p id="latitude-live" class="sr-only" aria-live="polite" aria-atomic="true"></p>
 
-        <!-- <hr class="sim-rule"> -->
-
-        <!-- Legend: colour swatch + text label (never colour alone) -->
+        <!-- Legend: color swatch + text label (never color alone) -->
         <h2 id="lines-heading" class="panel__heading sim-legend-heading">Sky Arcs</h2>
         <div class="sim-legend" aria-labelledby="lines-heading">
           <span class="sim-swatch" data-key="equator" aria-hidden="true"></span>
@@ -156,7 +150,7 @@
           <span class="sim-legend-desc">north-south meridian</span>
         </div>
       </section>
-        
+
       <section class="panel sim-panel" id="url-clean-panel" role="dialog"
         aria-labelledby="urlHeading" aria-describedby="urlDesc" tabindex="-1"
         style="display:none">
@@ -175,6 +169,10 @@
       </section>
 
     </div>
+
+    <p id="sr-status" class="sr-only" aria-live="polite"></p>
+
+  </div>
   </main>
 </body>
 </html>

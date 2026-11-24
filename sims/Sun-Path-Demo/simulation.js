@@ -1,7 +1,7 @@
 /* ==========================================================================
    Paths of the Sun Demonstrator  —  accessible HTML5 port
    --------------------------------------------------------------------------
-   Behaviour is a faithful port of the decompiled ActionScript (AS1) celestial
+   Behavior is a faithful port of the decompiled ActionScript (AS1) celestial
    sphere engine (scripts/CelestialSphere.as + "CS *" prototype files) and the
    controller (scripts/frame_1/DoAction.as, scripts/DoInitAction.as).
 
@@ -20,6 +20,7 @@ import {
 
 import {
   pMod, speak, hexToRGBA, logAct, keyAccel,
+  announceLive, announceSettled,
   descMoreKeys, hideMoreKeys
 } from '../foundation/js/kl-unl-utils.js';
 
@@ -29,8 +30,6 @@ logAct('INIT_sunpaths');
 
 // Assume vanilla URL (masthead and control panels shown)
 let urlClean = false;
-
-let announceTimer;
 
 const S = new CelestialSphere(120);   // radius 120 (AS sphere.size = 240)
 S.showUnder = false;
@@ -56,13 +55,21 @@ const STAGE_W  = 360, STAGE_H  = 268;
 const CENTER_X = 180, CENTER_Y = 150;
 
 /* ======================================================================
-   The circles used by this sim (colours/tilts VERBATIM from DoAction.as)
+   The circles used by this sim (colors/tilts VERBATIM from DoAction.as)
    ====================================================================== */
-const celestialEquator = new Circle(S, { thickness: 1,   color: CSC.CEL_EQUTR,  alpha: 1 });
-const sunsPath         = new Circle(S, { thickness: 1.6, color: CSC.SUN_PATH,   alpha: 1 });
-const meridian         = new Circle(S, { thickness: 1,   color: CSC.MRDN3_CIRC, alpha: 1 });
-const ecliptic         = new Circle(S, { thickness: 1,   color: CSC.ECLPTC_3,   alpha: 1 });
-const allCircles = [celestialEquator, sunsPath, meridian, ecliptic];
+const meridian         = new Circle(S, { thickness: 2, color: CSC.MRDN3_CIRC, alpha: 1 });
+const celestialEquator = new Circle(S, { thickness: 2, color: CSC.CEL_EQUTR,  alpha: 1 });
+const sunsPath         = new Circle(S, { thickness: 2, color: CSC.SUN_PATH,   alpha: 1 });
+const ecliptic         = new Circle(S, { thickness: 2, color: CSC.ECLPTC_3,   alpha: 1 });
+
+// Add halos for contrast
+const meridianH         = new Circle(S, { thickness: 3, color: CSC.MRDN4_CIRC, alpha: 1 });
+const celestialEquatorH = new Circle(S, { thickness: 3, color: CSC.AZ_ARC_BCK, alpha: 1 });
+const sunsPathH         = new Circle(S, { thickness: 3, color: CSC.MRDN4_CIRC, alpha: 1 });
+const eclipticH         = new Circle(S, { thickness: 3, color: CSC.MRDN4_CIRC, alpha: 1 });
+
+const allCircles = [ meridianH, celestialEquatorH, sunsPathH, eclipticH, 
+                     meridian,  celestialEquator,  sunsPath,  ecliptic ];
 
 /* ======================================================================
    Sun + date  (ported from "10 CS Experimental.as" / "2 CS Getter Setter")
@@ -278,7 +285,7 @@ function sunAltAz() {
 }
 
 /* ======================================================================
-   Sky colour (ported from DoInitAction.as). The shadow is computed in
+   Sky color (ported from DoInitAction.as). The shadow is computed in
    drawShadow() from the sun's altitude/azimuth.
    ====================================================================== */
 const SKY = CSC.SKY_1;
@@ -544,7 +551,6 @@ function render() {
 const elDate         = document.getElementById("date-string");
 const elDateSr       = document.getElementById("date-sr");
 const elStatus       = document.getElementById("sr-status");
-const elCanvasDesc   = document.getElementById("canvas-desc");
 const elAnimate      = document.getElementById("animate");
 const elLight        = document.getElementById("light");
 const elLightIndex   = document.getElementById("light-index");
@@ -567,8 +573,8 @@ function dateMessage(cd) {
 }
 
 /* ---- Paired number box + muted slider (DualControl) ------------------- */
-/* Both controls announce through #sr-status so control speech, canvas
-   keyboard speech, and animation speech share one polite live region. */
+/* DualControls own cday-live / latitude-live. Canvas keys, animation, reset,
+   and clean-mode keys speak through #sr-status. */
 const cdayDual = new DualControl({
   mount:          '#cday-dual-mount',
   id:             'cday',
@@ -585,7 +591,7 @@ const cdayDual = new DualControl({
   maxLabel:       'Dec. 31',
   spinUpLabel:    'Later day',
   spinDownLabel:  'Earlier day',
-  liveRegion:     elStatus,
+  liveRegion:     document.getElementById('cday-live'),
   sliderDecor:    document.getElementById('cday-seasons'),
   numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
   sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
@@ -608,7 +614,7 @@ const latDual = new DualControl({
   unit:           '°',
   minLabel:       '90&deg;&nbsp;S',
   maxLabel:       '90&deg;&nbsp;N',
-  liveRegion:     elStatus,
+  liveRegion:     document.getElementById('latitude-live'),
   sliderDecor:    document.getElementById('lat-seasons'),
   numberRowClass: 'control-row sim-dual-number kl-dual__number-row',
   sliderRowClass: 'control-row sim-dual-slider kl-dual__slider-row',
@@ -677,11 +683,13 @@ function diagramDescription() {
     getDateString() + ". " + sunDesc + insDesc;
 }
 
-function announce(msg)      {
-  clearTimeout(announceTimer);
-  announceTimer = setTimeout(() => { elStatus.textContent = msg;}, 600);
+/** Update canvas aria-label (full state) silently when the canvas is not focused. */
+function updateCanvasDesc() {
+  const msg = diagramDescription();
+  if (document.activeElement !== canvas) {
+    canvas.setAttribute('aria-label', msg);
+  }
 }
-function updateCanvasDesc() { elCanvasDesc.textContent = diagramDescription(); }
 
 function applyURL()  {
   // Check loaded URL for initial setup parameters, allowing user to specify
@@ -735,10 +743,16 @@ function applyURL()  {
 
   // Hide masthead and control panels (everything except canvas)
   // (hide if clean=true or clean=1)
-  if ( (urlParams.clean !== undefined) && (JSON.parse(urlParams.clean) == true) )  {
+  let URL_CLN = false;
+  if (urlParams.clean !== undefined) {
+    try        { URL_CLN = (JSON.parse(urlParams.clean) == true); }
+    catch (_e) { URL_CLN = false; }
+  }
+  if (URL_CLN)  {
     urlClean = true;
     document.getElementById('canvas-more-keys').style.display = 'block';
-    document.getElementById('control-panel').style.display    = 'none';
+    // !important: simulation.css media queries force .sim-controls { display: block !important }
+    document.getElementById('control-panel').style.setProperty('display', 'none', 'important');
     document.querySelectorAll('.app-layout').forEach((el) => {
       el.style.display        = 'flex';
       el.style.justifyContent = 'center';
@@ -797,9 +811,8 @@ function updateURL()  {
    Controls
    ====================================================================== */
 /* DualControl onInput: visuals only. Speech comes from the control on commit
-   (onChange) or at milestones; drop any pending sim message mid-gesture. */
+   (onChange) or at milestones. */
 function applyLatitude(v) {
-  clearTimeout(announceTimer);
   S.setLatitude(v);
   applyLatChange();
 }
@@ -828,7 +841,6 @@ function stopAnimateIfRunning() {
 
 /* DualControl onInput for the date (see applyLatitude). */
 function applyCalendarDay(cd) {
-  clearTimeout(announceTimer);
   stopAnimateIfRunning();
   setDay(calendarDayToSimDay(wrapCalendarDay(cd)));
   applyDayChange();
@@ -843,7 +855,8 @@ function tick(t) {
   if ( whole >= 1 ) {
     dayAcc   -= whole;
     setDay(day + whole);
-    sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+    sunsPathH.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+    sunsPath.setParameters( { ra: 0, dec: sun.dec, tilt: 0 });
     recompute();
     syncReadouts();
   }
@@ -854,7 +867,7 @@ function startAnimate() {
   if (animating) return;
   animating = true; lastT = null; dayAcc = 0;
   rafId     = window.requestAnimationFrame(tick);
-  announce("Animation started.");
+  announceLive(elStatus, "Animation started.");
 }
 
 function stopAnimate() {
@@ -862,16 +875,18 @@ function stopAnimate() {
   if (rafId) window.cancelAnimationFrame(rafId);
   rafId     = null;
   updateCanvasDesc();
-  announce("Animation stopped on " + getDateString() + ".");
+  announceLive(elStatus, "Animation stopped on " + getDateString() + ".");
 }
 
 elAnimate.addEventListener("change", function () {
   if (elAnimate.checked) {
     if (reduceMotion) {
       setDay(day + 1);
-      sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+      sunsPathH.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+      sunsPath.setParameters( { ra: 0, dec: sun.dec, tilt: 0 });
       recompute(); syncReadouts(); updateCanvasDesc();
-      announce("Reduced motion is on. Stepped one day to " + getDateString() + ".");
+      announceLive(elStatus,
+        "Reduced motion is on. Stepped one day to " + getDateString() + ".");
       elAnimate.checked = false;
     } else {
       startAnimate();
@@ -885,9 +900,12 @@ elLight.addEventListener("change", function () {
   showTemperatures = elLight.checked;
   initTemperatureBars();
   syncReadouts();
-  if ( showTemperatures )  { announce("Showing insolation index. "); }
-  else                     { announce("Hiding insolation index. ");  }
-
+  updateCanvasDesc();
+  // Normal mode: native checkbox semantics only. Clean mode (I key): announce.
+  if (urlClean) {
+    if ( showTemperatures )  { announceLive(elStatus, "Showing insolation index."); }
+    else                     { announceLive(elStatus, "Hiding insolation index.");  }
+  }
 });
 
 /* ---- Pointer drag + keyboard rotation of the view -------------------- */
@@ -913,7 +931,8 @@ function hitSun(p) {
 }
 
 function applyDayChange() {
-  sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+  sunsPathH.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+  sunsPath.setParameters( { ra: 0, dec: sun.dec, tilt: 0 });
   recompute();
   syncReadouts();
   updateCanvasDesc();
@@ -925,8 +944,12 @@ function applyLatChange() {
   updateCanvasDesc();
 }
 
-function announceSun() {
-  announce("Solar declination " + speak(sun.dec, 0, "degree") + " on " + getDateString() + ".");
+/** @param {boolean} [settled] - true for held keys (announce once input stops). */
+function announceSun(settled = false) {
+  const msg = "Solar declination " + speak(sun.dec, 0, "degree") +
+              " on " + getDateString() + ".";
+  if (settled) announceSettled(elStatus, msg);
+  else         announceLive(   elStatus, msg);
 }
 
 function sunDragToCursor(px, py) {
@@ -951,7 +974,7 @@ function sunDragToCursor(px, py) {
 function moveDay(delta) {
   setDay(((day + delta) % 365 + 365) % 365);
   applyDayChange();
-  announceSun();
+  announceSun(true);
 }
 
 function moveLat(delta) {
@@ -960,7 +983,8 @@ function moveLat(delta) {
   S.setLatitude( lat );
   applyLatChange();
   const cross = latCrossing(lat, prev);
-  announce( (cross ? cross + " " : "") + "Latitude " + latSpoken() + "." );
+  announceSettled(elStatus,
+    (cross ? cross + " " : "") + "Latitude " + latSpoken() + ".");
 }
 
 canvas.addEventListener("pointerdown", function (ev) {
@@ -995,12 +1019,21 @@ canvas.addEventListener("pointermove", function (ev) {
 });
 
 function endDrag(ev) {
-  const wasSun = dragMode === "sun";
+  const wasSun  = dragMode === "sun";
+  const wasView = dragMode === "view";
   if (dragMode) updateCanvasDesc();
   dragMode = null;
   canvas.classList.remove("dragging", "sun-hover");
   try { canvas.releasePointerCapture(ev.pointerId); } catch (e) {}
-  if (wasSun) announceSun();
+  if (wasSun) {
+    announceSun();
+  } else if (wasView) {
+    const az  = Math.round(pMod(360 - S.theta * R2D, 360));
+    const alt = Math.round(S.phi * R2D);
+    announceLive(elStatus,
+      "View rotated. Azimuth " + speak(az,  0, "degree") +
+                  ", altitude " + speak(alt, 0, "degree") + ".");
+  }
 }
 
 canvas.addEventListener("pointerup",     endDrag);
@@ -1013,19 +1046,19 @@ canvas.addEventListener("keydown", function (ev) {
     canvasVar = pMod( canvasVar + 1, 3 );
     if ( canvasVar == 1 )  { 
       canvasFocus = "sun";
-      announce( "Date control mode; " +
+      announceLive(elStatus, "Date control mode; " +
                 "arrow keys now change the date forward and backward. " +
-                "Press Enter to change latitude." );
+                "Press Enter to change latitude.");
     } else if ( canvasVar == 2 )  {
       canvasFocus = "lat";
-      announce( "Latitude control mode; " +
+      announceLive(elStatus, "Latitude control mode; " +
                 "arrow keys now move observer north and south. " +
-                "Press Enter to change celestial sphere orientation." );
+                "Press Enter to change celestial sphere orientation.");
     } else  {
       canvasFocus = "";
-      announce( "Celestial sphere control mode; " +
+      announceLive(elStatus, "Celestial sphere control mode; " +
                 "arrow keys now rotate and tilt viewpoint. " +
-                "Press Enter to change date." );
+                "Press Enter to change date.");
     }
     ev.preventDefault();
     return;
@@ -1099,8 +1132,9 @@ canvas.addEventListener("keydown", function (ev) {
     recompute(); updateCanvasDesc();
     const az  = Math.round(pMod(360 - S.theta * R2D, 360));
     const alt = Math.round(S.phi * R2D);
-    announce("View rotated. Azimuth " + speak(az,  0, "degree") +
-                        ", altitude " + speak(alt, 0, "degree") + ".");
+    announceSettled(elStatus,
+      "View rotated. Azimuth " + speak(az,  0, "degree") +
+                  ", altitude " + speak(alt, 0, "degree") + ".");
   }
 });
 
@@ -1113,10 +1147,14 @@ function resetState() {
   setDay(0);
   applyURL();
   sun._altaz       = sunAltAz();
-  sunsPath.setParameters(        { ra: 0, dec: sun.dec, tilt:  0   });
-  celestialEquator.setParameters({ ra: 0, dec:       0, tilt:  0   });
-  meridian.setParameters(        { az: 0, alt:       0, tilt: 90   });
-  ecliptic.setParameters(        { ra: 0, dec:       0, tilt: 23.5 });
+  sunsPathH.setParameters(        { ra: 0, dec: sun.dec, tilt:  0   });
+  celestialEquatorH.setParameters({ ra: 0, dec:       0, tilt:  0   });
+  meridianH.setParameters(        { az: 0, alt:       0, tilt: 90   });
+  eclipticH.setParameters(        { ra: 0, dec:       0, tilt: 23.5 });
+  sunsPath.setParameters(         { ra: 0, dec: sun.dec, tilt:  0   });
+  celestialEquator.setParameters( { ra: 0, dec:       0, tilt:  0   });
+  meridian.setParameters(         { az: 0, alt:       0, tilt: 90   });
+  ecliptic.setParameters(         { ra: 0, dec:       0, tilt: 23.5 });
   elLight.checked  = showTemperatures_0;
   showTemperatures = showTemperatures_0;
   initTemperatureBars();
@@ -1130,9 +1168,11 @@ function resetState() {
     elAnimate.checked = true;
     if (reduceMotion) {
       setDay(day + 1);
-      sunsPath.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+      sunsPathH.setParameters({ ra: 0, dec: sun.dec, tilt: 0 });
+      sunsPath.setParameters( { ra: 0, dec: sun.dec, tilt: 0 });
       recompute(); syncReadouts(); updateCanvasDesc();
-      announce("Reduced motion is on. Stepped one day to " + getDateString() + ".");
+      announceLive(elStatus,
+        "Reduced motion is on. Stepped one day to " + getDateString() + ".");
       elAnimate.checked = false;
     } else {
       startAnimate();
@@ -1142,8 +1182,12 @@ function resetState() {
 
 document.addEventListener("sim-reset", function () {
   resetState();
-  announce("Simulation reset to latitude " + latSpoken() + " on March 21.");
-  diagramDescription();
+  announceLive(elStatus,
+    "Simulation reset to latitude " + latSpoken() + " on March 21.");
+});
+
+canvas.addEventListener("blur", function () {
+  updateCanvasDesc();
 });
 
 window.klunlInitEqn = function () { /* this demonstrator has no equations */ };

@@ -21,7 +21,7 @@
   "altazimuth": {
     "meta": {
       "title": "Azimuth/Altitude Demonstrator",
-      "version": "2.1.0 (2026-11-15)"
+      "version": "2.1.0 (2026-11-23)"
     },
     "masthead": {
       "help": {
@@ -225,7 +225,7 @@
   "celestialhorizon": {
     "meta": {
       "title": "Celestial and Horizon Systems Comparison",
-      "version": "2.1.0 (2026-11-15)"
+      "version": "2.1.0 (2026-11-23)"
     },
     "masthead": {
       "help": {
@@ -1619,7 +1619,7 @@
   "sunpaths": {
     "meta": {
       "title": "Paths of the Sun Demonstrator",
-      "version": "2.2.0 (2026-11-14)"
+      "version": "2.2.0 (2026-11-24)"
     },
     "masthead": {
       "help": {
